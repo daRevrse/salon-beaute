@@ -1,0 +1,663 @@
+import { useState, useEffect } from 'react';
+import './App.css';
+
+const API_URL = 'http://localhost:3000/api';
+
+function App() {
+  const [activeTab, setActiveTab] = useState('rendez-vous');
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch(`${API_URL}/stats`);
+      const data = await response.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Erreur lors du chargement des statistiques:', error);
+    }
+  };
+
+  return (
+    <div className="app">
+      <header className="header">
+        <h1>💇‍♀️ Salon de Beauté</h1>
+        {stats && (
+          <div className="header-stats">
+            <div className="stat-card">
+              <span className="stat-value">{stats.aujourd_hui.total}</span>
+              <span className="stat-label">Aujourd'hui</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">{stats.cette_semaine.total}</span>
+              <span className="stat-label">Cette semaine</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">{stats.total_clients.total}</span>
+              <span className="stat-label">Clients</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">{stats.revenu_mois.total}€</span>
+              <span className="stat-label">Revenu mois</span>
+            </div>
+          </div>
+        )}
+      </header>
+
+      <nav className="nav">
+        <button
+          className={`nav-button ${activeTab === 'rendez-vous' ? 'active' : ''}`}
+          onClick={() => setActiveTab('rendez-vous')}
+        >
+          📅 Rendez-vous
+        </button>
+        <button
+          className={`nav-button ${activeTab === 'nouveau' ? 'active' : ''}`}
+          onClick={() => setActiveTab('nouveau')}
+        >
+          ➕ Nouveau RDV
+        </button>
+        <button
+          className={`nav-button ${activeTab === 'clients' ? 'active' : ''}`}
+          onClick={() => setActiveTab('clients')}
+        >
+          👥 Clients
+        </button>
+        <button
+          className={`nav-button ${activeTab === 'services' ? 'active' : ''}`}
+          onClick={() => setActiveTab('services')}
+        >
+          ✂️ Services
+        </button>
+      </nav>
+
+      <main className="content">
+        {activeTab === 'rendez-vous' && <RendezVousTab onStatsUpdate={fetchStats} />}
+        {activeTab === 'nouveau' && <NouveauRDVTab onSuccess={() => { setActiveTab('rendez-vous'); fetchStats(); }} />}
+        {activeTab === 'clients' && <ClientsTab />}
+        {activeTab === 'services' && <ServicesTab />}
+      </main>
+    </div>
+  );
+}
+
+// ===== TAB RENDEZ-VOUS =====
+function RendezVousTab({ onStatsUpdate }) {
+  const [rendezVous, setRendezVous] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('a-venir');
+
+  useEffect(() => {
+    fetchRendezVous();
+  }, [filter]);
+
+  const fetchRendezVous = async () => {
+    setLoading(true);
+    try {
+      const endpoint = filter === 'aujourd-hui' 
+        ? `${API_URL}/rendez-vous/aujourd-hui`
+        : `${API_URL}/rendez-vous/a-venir`;
+      
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      setRendezVous(data);
+    } catch (error) {
+      console.error('Erreur:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateStatut = async (id, statut) => {
+    try {
+      await fetch(`${API_URL}/rendez-vous/${id}/statut`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ statut })
+      });
+      fetchRendezVous();
+      onStatsUpdate();
+    } catch (error) {
+      console.error('Erreur:', error);
+    }
+  };
+
+  const deleteRendezVous = async (id) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce rendez-vous ?')) {
+      try {
+        await fetch(`${API_URL}/rendez-vous/${id}`, { method: 'DELETE' });
+        fetchRendezVous();
+        onStatsUpdate();
+      } catch (error) {
+        console.error('Erreur:', error);
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="loading">
+        <div className="spinner"></div>
+        <p>Chargement des rendez-vous...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="card-header">
+        <h2 className="card-title">Rendez-vous</h2>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            className={`btn btn-small ${filter === 'aujourd-hui' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setFilter('aujourd-hui')}
+          >
+            Aujourd'hui
+          </button>
+          <button
+            className={`btn btn-small ${filter === 'a-venir' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setFilter('a-venir')}
+          >
+            À venir
+          </button>
+        </div>
+      </div>
+
+      {rendezVous.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">📅</div>
+          <h3 className="empty-state-title">Aucun rendez-vous</h3>
+          <p className="empty-state-text">
+            {filter === 'aujourd-hui' 
+              ? "Aucun rendez-vous prévu aujourd'hui" 
+              : "Aucun rendez-vous à venir"}
+          </p>
+        </div>
+      ) : (
+        <div className="rdv-list">
+          {rendezVous.map(rdv => (
+            <div key={rdv.id} className="rdv-card">
+              <div className="rdv-time">
+                {new Date(rdv.date_heure).toLocaleTimeString('fr-FR', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </div>
+              
+              <div className="rdv-info">
+                <div className="rdv-client">
+                  {rdv.client_prenom} {rdv.client_nom}
+                </div>
+                <div className="rdv-service">
+                  {rdv.service_nom}
+                </div>
+                <div className="rdv-details">
+                  {rdv.service_duree} min • {rdv.service_prix}€ • 📞 {rdv.client_telephone}
+                </div>
+                <span className={`status-badge status-${rdv.statut}`}>
+                  {rdv.statut}
+                </span>
+              </div>
+
+              <div className="rdv-actions">
+                {rdv.statut === 'confirmé' && (
+                  <button
+                    className="btn btn-small btn-warning"
+                    onClick={() => updateStatut(rdv.id, 'en cours')}
+                  >
+                    Démarrer
+                  </button>
+                )}
+                {rdv.statut === 'en cours' && (
+                  <button
+                    className="btn btn-small btn-success"
+                    onClick={() => updateStatut(rdv.id, 'terminé')}
+                  >
+                    Terminer
+                  </button>
+                )}
+                <button
+                  className="btn btn-small btn-danger"
+                  onClick={() => deleteRendezVous(rdv.id)}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== TAB NOUVEAU RDV =====
+function NouveauRDVTab({ onSuccess }) {
+  const [step, setStep] = useState(1);
+  const [services, setServices] = useState([]);
+  const [selectedService, setSelectedService] = useState(null);
+  const [clientData, setClientData] = useState({
+    nom: '',
+    prenom: '',
+    telephone: '',
+    email: ''
+  });
+  const [clientId, setClientId] = useState(null);
+  const [dateHeure, setDateHeure] = useState('');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    try {
+      const response = await fetch(`${API_URL}/services`);
+      const data = await response.json();
+      setServices(data);
+    } catch (error) {
+      console.error('Erreur:', error);
+    }
+  };
+
+  const searchClient = async () => {
+    if (!clientData.telephone) return;
+
+    try {
+      const response = await fetch(`${API_URL}/clients/search?telephone=${clientData.telephone}`);
+      const client = await response.json();
+      
+      if (client) {
+        setClientData({
+          nom: client.nom,
+          prenom: client.prenom,
+          telephone: client.telephone,
+          email: client.email || ''
+        });
+        setClientId(client.id);
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+    }
+  };
+
+  const handleClientSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!clientId) {
+      // Créer un nouveau client
+      try {
+        const response = await fetch(`${API_URL}/clients`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(clientData)
+        });
+        const newClient = await response.json();
+        setClientId(newClient.id);
+      } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la création du client');
+        return;
+      }
+    }
+    
+    setStep(3);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/rendez-vous`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: clientId,
+          service_id: selectedService.id,
+          date_heure: dateHeure,
+          notes: notes
+        })
+      });
+
+      if (response.ok) {
+        alert('✅ Rendez-vous créé avec succès !');
+        onSuccess();
+      } else {
+        const error = await response.json();
+        alert(`❌ Erreur: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('❌ Erreur lors de la création du rendez-vous');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="card-header">
+        <h2 className="card-title">Nouveau Rendez-vous</h2>
+        <div style={{ fontSize: '14px', color: '#6c757d' }}>
+          Étape {step} / 3
+        </div>
+      </div>
+
+      {step === 1 && (
+        <div>
+          <h3 style={{ marginBottom: '20px', color: '#495057' }}>
+            Sélectionnez un service
+          </h3>
+          <div className="services-grid">
+            {services.map(service => (
+              <div
+                key={service.id}
+                className={`service-card ${selectedService?.id === service.id ? 'selected' : ''}`}
+                onClick={() => {
+                  setSelectedService(service);
+                  setStep(2);
+                }}
+              >
+                <div className="service-name">{service.nom}</div>
+                <div className="service-description">{service.description}</div>
+                <div className="service-info">
+                  <div className="service-detail">
+                    <span className="service-detail-value">{service.duree}</span>
+                    <span className="service-detail-label">minutes</span>
+                  </div>
+                  <div className="service-detail">
+                    <span className="service-detail-value">{service.prix}€</span>
+                    <span className="service-detail-label">prix</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div>
+          <button
+            className="btn btn-secondary btn-small"
+            onClick={() => setStep(1)}
+            style={{ marginBottom: '20px' }}
+          >
+            ← Retour
+          </button>
+
+          <div className="card">
+            <h3 style={{ marginBottom: '20px', color: '#495057' }}>
+              Informations client
+            </h3>
+
+            <form onSubmit={handleClientSubmit}>
+              <div className="form-group">
+                <label className="form-label">Téléphone *</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input
+                    type="tel"
+                    className="form-input"
+                    value={clientData.telephone}
+                    onChange={(e) => setClientData({ ...clientData, telephone: e.target.value })}
+                    onBlur={searchClient}
+                    required
+                    placeholder="0601020304"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={searchClient}
+                  >
+                    🔍
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Prénom *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={clientData.prenom}
+                    onChange={(e) => setClientData({ ...clientData, prenom: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Nom *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={clientData.nom}
+                    onChange={(e) => setClientData({ ...clientData, nom: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Email</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  value={clientData.email}
+                  onChange={(e) => setClientData({ ...clientData, email: e.target.value })}
+                  placeholder="email@exemple.fr"
+                />
+              </div>
+
+              <button type="submit" className="btn btn-primary">
+                Continuer →
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div>
+          <button
+            className="btn btn-secondary btn-small"
+            onClick={() => setStep(2)}
+            style={{ marginBottom: '20px' }}
+          >
+            ← Retour
+          </button>
+
+          <div className="card">
+            <h3 style={{ marginBottom: '20px', color: '#495057' }}>
+              Date et heure du rendez-vous
+            </h3>
+
+            <div className="alert alert-success" style={{ marginBottom: '20px' }}>
+              <div>
+                <strong>Service:</strong> {selectedService.nom}<br />
+                <strong>Client:</strong> {clientData.prenom} {clientData.nom}<br />
+                <strong>Durée:</strong> {selectedService.duree} min • <strong>Prix:</strong> {selectedService.prix}€
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">Date et heure *</label>
+                <input
+                  type="datetime-local"
+                  className="form-input"
+                  value={dateHeure}
+                  onChange={(e) => setDateHeure(e.target.value)}
+                  required
+                  min={new Date().toISOString().slice(0, 16)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Notes (optionnel)</label>
+                <textarea
+                  className="form-textarea"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Remarques ou demandes particulières..."
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={loading}
+              >
+                {loading ? 'Création...' : '✓ Créer le rendez-vous'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== TAB CLIENTS =====
+function ClientsTab() {
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/clients`);
+      const data = await response.json();
+      setClients(data);
+    } catch (error) {
+      console.error('Erreur:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="loading">
+        <div className="spinner"></div>
+        <p>Chargement des clients...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="card-header">
+        <h2 className="card-title">Base de données clients</h2>
+        <div style={{ fontSize: '14px', color: '#6c757d' }}>
+          {clients.length} client{clients.length > 1 ? 's' : ''}
+        </div>
+      </div>
+
+      <div className="rdv-list">
+        {clients.map(client => (
+          <div key={client.id} className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>
+                  {client.prenom} {client.nom}
+                </h3>
+                <div style={{ color: '#6c757d', fontSize: '14px' }}>
+                  📞 {client.telephone}
+                  {client.email && (
+                    <>
+                      <br />
+                      ✉️ {client.email}
+                    </>
+                  )}
+                </div>
+              </div>
+              <span style={{ 
+                fontSize: '12px', 
+                color: '#868e96',
+                backgroundColor: '#f8f9fa',
+                padding: '6px 12px',
+                borderRadius: '6px'
+              }}>
+                Client depuis {new Date(client.created_at).toLocaleDateString('fr-FR')}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ===== TAB SERVICES =====
+function ServicesTab() {
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/services`);
+      const data = await response.json();
+      setServices(data);
+    } catch (error) {
+      console.error('Erreur:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="loading">
+        <div className="spinner"></div>
+        <p>Chargement des services...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="card-header">
+        <h2 className="card-title">Services proposés</h2>
+        <div style={{ fontSize: '14px', color: '#6c757d' }}>
+          {services.length} service{services.length > 1 ? 's' : ''}
+        </div>
+      </div>
+
+      <div className="services-grid">
+        {services.map(service => (
+          <div key={service.id} className="service-card">
+            <div className="service-name">{service.nom}</div>
+            <div className="service-description">{service.description}</div>
+            <div className="service-info">
+              <div className="service-detail">
+                <span className="service-detail-value">{service.duree}</span>
+                <span className="service-detail-label">minutes</span>
+              </div>
+              <div className="service-detail">
+                <span className="service-detail-value">{service.prix}€</span>
+                <span className="service-detail-label">prix</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default App;
