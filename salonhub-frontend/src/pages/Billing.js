@@ -5,8 +5,10 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import api from "../services/api";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 const Billing = () => {
+  const { formatPrice } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
   const [plans, setPlans] = useState({});
@@ -246,7 +248,7 @@ const Billing = () => {
                     </h3>
                     <div className="mt-4 flex items-baseline">
                       <span className="text-5xl font-extrabold text-gray-900">
-                        {plan.price}€
+                        {formatPrice(plan.price)}
                       </span>
                       <span className="ml-2 text-gray-500">/mois</span>
                     </div>

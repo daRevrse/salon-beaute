@@ -4,9 +4,12 @@
  */
 
 import React, { useState } from "react";
+import DashboardLayout from "../components/common/DashboardLayout";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { useServices } from "../hooks/useServices";
 
 const Services = () => {
+  const { formatPrice: formatCurrency } = useCurrency();
   const {
     services,
     loading,
@@ -117,11 +120,9 @@ const Services = () => {
     fetchServices({ category: category || undefined });
   };
 
+  // Utiliser la fonction formatCurrency du contexte
   const formatPrice = (price) => {
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-    }).format(price);
+    return formatCurrency(price);
   };
 
   const filteredServices = filterCategory
@@ -129,31 +130,29 @@ const Services = () => {
     : services;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Services</h1>
-            <button
-              onClick={() => handleOpenModal()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              + Nouveau service
-            </button>
-          </div>
-        </div>
-      </header>
-
+    <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Services</h1>
+            <p className="mt-2 text-gray-600">Gérez vos prestations et tarifs</p>
+          </div>
+          <button
+            onClick={() => handleOpenModal()}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            + Nouveau service
+          </button>
+        </div>
         {/* Filtres */}
         <div className="mb-6 flex items-center space-x-2">
           <button
             onClick={() => handleFilter("")}
-            className={`px-4 py-2 rounded-md ${
+            className={`px-4 py-2 rounded-md border transition-colors ${
               !filterCategory
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-50"
+                ? "bg-purple-600 text-white border-purple-600"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
             }`}
           >
             Tous
@@ -162,10 +161,10 @@ const Services = () => {
             <button
               key={cat}
               onClick={() => handleFilter(cat)}
-              className={`px-4 py-2 rounded-md capitalize ${
+              className={`px-4 py-2 rounded-md capitalize border transition-colors ${
                 filterCategory === cat
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
+                  ? "bg-purple-600 text-white border-purple-600"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
               }`}
             >
               {cat}
@@ -177,7 +176,7 @@ const Services = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading ? (
             <div className="col-span-full p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
             </div>
           ) : filteredServices.length === 0 ? (
             <div className="col-span-full p-8 text-center text-gray-500">
@@ -187,7 +186,7 @@ const Services = () => {
             filteredServices.map((service) => (
               <div
                 key={service.id}
-                className={`bg-white rounded-lg shadow p-6 ${
+                className={`bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow ${
                   !service.is_active ? "opacity-60" : ""
                 }`}
               >
@@ -207,7 +206,7 @@ const Services = () => {
                       type="checkbox"
                       checked={service.is_active}
                       onChange={() => handleToggle(service.id)}
-                      className="form-checkbox h-5 w-5 text-blue-600"
+                      className="form-checkbox h-5 w-5 text-purple-600"
                     />
                   </label>
                 </div>
@@ -219,7 +218,7 @@ const Services = () => {
                 )}
 
                 <div className="flex justify-between items-center mb-4">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-2xl font-bold text-purple-600">
                     {formatPrice(service.price)}
                   </div>
                   <div className="text-sm text-gray-500">
@@ -245,10 +244,9 @@ const Services = () => {
             ))
           )}
         </div>
-      </div>
 
-      {/* Modal */}
-      {showModal && (
+        {/* Modal */}
+        {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mb-4">
@@ -268,7 +266,7 @@ const Services = () => {
                   required
                   value={formData.name}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                   placeholder="Ex: Coupe Femme"
                 />
               </div>
@@ -282,7 +280,7 @@ const Services = () => {
                   rows="2"
                   value={formData.description}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                   placeholder="Description du service"
                 ></textarea>
               </div>
@@ -299,14 +297,14 @@ const Services = () => {
                     min="1"
                     value={formData.duration}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                     placeholder="30"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Prix (€) *
+                    Prix *
                   </label>
                   <input
                     type="number"
@@ -316,9 +314,10 @@ const Services = () => {
                     step="0.01"
                     value={formData.price}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                     placeholder="35.00"
                   />
+                  <p className="mt-1 text-xs text-gray-500">Les prix s'afficheront dans votre devise ({formatCurrency(0).replace('0', '').trim()})</p>
                 </div>
               </div>
 
@@ -331,7 +330,7 @@ const Services = () => {
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                   placeholder="Ex: coupe, coloration, soin"
                   list="categories"
                 />
@@ -349,7 +348,7 @@ const Services = () => {
                   id="is_active"
                   checked={formData.is_active}
                   onChange={handleChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                 />
                 <label
                   htmlFor="is_active"
@@ -370,7 +369,7 @@ const Services = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-purple-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
                 >
                   {loading ? "Enregistrement..." : "Enregistrer"}
                 </button>
@@ -378,8 +377,9 @@ const Services = () => {
             </form>
           </div>
         </div>
-      )}
-    </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 };
 

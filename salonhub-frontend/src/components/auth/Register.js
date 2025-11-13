@@ -6,10 +6,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const Register = () => {
   const navigate = useNavigate();
   const { register, loading } = useAuth();
+  const { formatPrice } = useCurrency();
   
   const [formData, setFormData] = useState({
     // Salon
@@ -305,7 +307,7 @@ const Register = () => {
                     className="sr-only"
                   />
                   <span className="text-lg font-semibold">Starter</span>
-                  <span className="text-2xl font-bold mt-2">29€<span className="text-sm">/mois</span></span>
+                  <span className="text-2xl font-bold mt-2">{formatPrice(29)}<span className="text-sm">/mois</span></span>
                   <span className="text-sm text-gray-600 mt-1">100 clients max</span>
                 </label>
 
@@ -321,7 +323,7 @@ const Register = () => {
                     className="sr-only"
                   />
                   <span className="text-lg font-semibold">Professional</span>
-                  <span className="text-2xl font-bold mt-2">59€<span className="text-sm">/mois</span></span>
+                  <span className="text-2xl font-bold mt-2">{formatPrice(59)}<span className="text-sm">/mois</span></span>
                   <span className="text-sm text-gray-600 mt-1">Recommandé</span>
                 </label>
 
@@ -337,7 +339,7 @@ const Register = () => {
                     className="sr-only"
                   />
                   <span className="text-lg font-semibold">Business</span>
-                  <span className="text-2xl font-bold mt-2">99€<span className="text-sm">/mois</span></span>
+                  <span className="text-2xl font-bold mt-2">{formatPrice(99)}<span className="text-sm">/mois</span></span>
                   <span className="text-sm text-gray-600 mt-1">Multi-salons</span>
                 </label>
               </div>

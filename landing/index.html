@@ -162,7 +162,7 @@
         <div class="pricing-grid">
             <div class="pricing-card">
                 <h3>Starter</h3>
-                <div class="price">29€<span style="font-size: 18px; font-weight: 400;"> / mois</span></div>
+                <div class="price" data-price="29" data-currency="EUR">29€<span style="font-size: 18px; font-weight: 400;"> / mois</span></div>
                 <ul class="features-list">
                     <li>Rendez-vous illimités</li>
                     <li>1 utilisateur</li>
@@ -174,7 +174,7 @@
 
             <div class="pricing-card featured">
                 <h3>Pro</h3>
-                <div class="price">59€<span style="font-size: 18px; font-weight: 400;"> / mois</span></div>
+                <div class="price" data-price="59" data-currency="EUR">59€<span style="font-size: 18px; font-weight: 400;"> / mois</span></div>
                 <ul class="features-list">
                     <li>Tout du plan Starter</li>
                     <li>3 utilisateurs</li>
@@ -187,7 +187,7 @@
 
             <div class="pricing-card">
                 <h3>Business</h3>
-                <div class="price">99€<span style="font-size: 18px; font-weight: 400;"> / mois</span></div>
+                <div class="price" data-price="99" data-currency="EUR">99€<span style="font-size: 18px; font-weight: 400;"> / mois</span></div>
                 <ul class="features-list">
                     <li>Utilisateurs illimités</li>
                     <li>Multi-salons</li>
@@ -357,6 +357,151 @@
 
     <!-- JavaScript -->
     <script src="script.js"></script>
+
+    <!-- Script de conversion de devises -->
+    <script>
+        (function() {
+            // Configuration des devises supportées
+            const CURRENCIES = {
+                EUR: { symbol: '€', name: 'Euro', locale: 'fr-FR' },
+                USD: { symbol: '$', name: 'US Dollar', locale: 'en-US' },
+                GBP: { symbol: '£', name: 'British Pound', locale: 'en-GB' },
+                CAD: { symbol: 'CA$', name: 'Canadian Dollar', locale: 'en-CA' },
+                CHF: { symbol: 'CHF', name: 'Swiss Franc', locale: 'de-CH' },
+                MAD: { symbol: 'MAD', name: 'Moroccan Dirham', locale: 'ar-MA' },
+                XOF: { symbol: 'CFA', name: 'West African CFA Franc', locale: 'fr-FR' },
+                XAF: { symbol: 'FCFA', name: 'Central African CFA Franc', locale: 'fr-FR' }
+            };
+
+            // Mapping pays -> devise
+            const COUNTRY_TO_CURRENCY = {
+                FR: 'EUR', BE: 'EUR', LU: 'EUR', MC: 'EUR',
+                CH: 'CHF',
+                US: 'USD',
+                CA: 'CAD',
+                GB: 'GBP',
+                MA: 'MAD', DZ: 'MAD', TN: 'MAD',
+                SN: 'XOF', CI: 'XOF',
+                CM: 'XAF', GA: 'XAF', CG: 'XAF'
+            };
+
+            let exchangeRates = null;
+            let userCurrency = 'EUR';
+
+            // Détecter le pays de l'utilisateur avec plusieurs fallbacks
+            async function detectUserCountry() {
+                // Méthode 1 : Utiliser la locale du navigateur (le plus fiable et rapide)
+                try {
+                    const locale = navigator.language || navigator.userLanguage;
+                    console.log('Locale navigateur:', locale);
+
+                    // Détection basée sur la langue du navigateur
+                    if (locale.includes('en-US')) return 'US';
+                    if (locale.includes('en-GB')) return 'GB';
+                    if (locale.includes('fr-CA')) return 'CA';
+                    if (locale.includes('de-CH') || locale.includes('fr-CH')) return 'CH';
+                    if (locale.includes('ar-MA') || locale.includes('fr-MA')) return 'MA';
+                    if (locale.startsWith('fr')) return 'FR';
+                    if (locale.startsWith('en')) return 'GB'; // Anglais par défaut
+                    if (locale.startsWith('de')) return 'CH';
+                } catch (error) {
+                    console.log('Impossible de détecter la locale');
+                }
+
+                // Fallback : EUR par défaut
+                console.log('Utilisation de EUR par défaut');
+                return 'FR';
+            }
+
+            // Charger les taux de change depuis l'API
+            async function loadExchangeRates() {
+                try {
+                    const API_URL = 'http://localhost:5000'; // Changez en production
+                    const response = await fetch(`${API_URL}/api/currency/rates`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        exchangeRates = data.data.rates;
+                        return true;
+                    }
+                } catch (error) {
+                    console.log('Impossible de charger les taux de change, affichage en EUR');
+                    return false;
+                }
+            }
+
+            // Convertir un prix
+            function convertPrice(amount, fromCurrency, toCurrency) {
+                if (fromCurrency === toCurrency || !exchangeRates) {
+                    return amount;
+                }
+
+                try {
+                    const fromRate = exchangeRates[fromCurrency] || 1;
+                    const toRate = exchangeRates[toCurrency] || 1;
+                    const converted = amount * (toRate / fromRate);
+                    return Math.round(converted * 100) / 100;
+                } catch (error) {
+                    return amount;
+                }
+            }
+
+            // Formater un prix
+            function formatPrice(amount, currency) {
+                const currencyInfo = CURRENCIES[currency] || CURRENCIES['EUR'];
+
+                try {
+                    return new Intl.NumberFormat(currencyInfo.locale, {
+                        style: 'currency',
+                        currency: currency,
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    }).format(amount);
+                } catch (error) {
+                    return `${currencyInfo.symbol}${amount}`;
+                }
+            }
+
+            // Mettre à jour tous les prix sur la page
+            function updatePrices() {
+                const priceElements = document.querySelectorAll('[data-price]');
+
+                priceElements.forEach(element => {
+                    const originalPrice = parseFloat(element.getAttribute('data-price'));
+                    const originalCurrency = element.getAttribute('data-currency') || 'EUR';
+
+                    // Convertir le prix
+                    const convertedPrice = convertPrice(originalPrice, originalCurrency, userCurrency);
+
+                    // Formater et afficher
+                    const formattedPrice = formatPrice(convertedPrice, userCurrency);
+                    element.innerHTML = `${formattedPrice}<span style="font-size: 18px; font-weight: 400;"> / mois</span>`;
+                });
+            }
+
+            // Initialiser le système de conversion
+            async function init() {
+                // 1. Détecter le pays
+                const country = await detectUserCountry();
+                userCurrency = COUNTRY_TO_CURRENCY[country] || 'EUR';
+
+                // 2. Charger les taux de change
+                const ratesLoaded = await loadExchangeRates();
+
+                // 3. Mettre à jour les prix
+                if (ratesLoaded && userCurrency !== 'EUR') {
+                    updatePrices();
+                }
+            }
+
+            // Démarrer quand le DOM est prêt
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
 
 </body>
 

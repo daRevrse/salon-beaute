@@ -57,6 +57,12 @@ app.get("/", (req, res) => {
     version: "1.0.0",
     endpoints: {
       health: "/health",
+      public: {
+        salon: "GET /api/public/salon/:slug",
+        services: "GET /api/public/salon/:slug/services",
+        availability: "GET /api/public/salon/:slug/availability",
+        book: "POST /api/public/appointments",
+      },
       auth: {
         register: "POST /api/auth/register",
         login: "POST /api/auth/login",
@@ -80,10 +86,17 @@ app.use("/api/auth", require("./routes/auth"));
 // Routes Stripe (partiellement publiques - webhook)
 app.use("/api/stripe", require("./routes/stripe"));
 
+// Routes publiques pour le booking (sans authentification)
+app.use("/api/public", require("./routes/public"));
+
+// Routes currency (publiques - taux de change)
+app.use("/api/currency", require("./routes/currency"));
+
 // Routes protégées (nécessitent authentification)
 app.use("/api/clients", require("./routes/clients"));
 app.use("/api/services", require("./routes/services"));
 app.use("/api/appointments", require("./routes/appointments"));
+app.use("/api/settings", require("./routes/settings"));
 
 // TODO: Routes tenants (admin)
 // app.use('/api/tenants', require('./routes/tenants'));
@@ -140,9 +153,19 @@ const startServer = async () => {
       console.log("");
       console.log("📋 Routes disponibles:");
       console.log(`   GET  http://localhost:${PORT}/health`);
+      console.log("");
+      console.log("   🌐 Routes publiques (Booking):");
+      console.log(`   GET  http://localhost:${PORT}/api/public/salon/:slug`);
+      console.log(`   GET  http://localhost:${PORT}/api/public/salon/:slug/services`);
+      console.log(`   GET  http://localhost:${PORT}/api/public/salon/:slug/availability`);
+      console.log(`   POST http://localhost:${PORT}/api/public/appointments`);
+      console.log("");
+      console.log("   🔐 Routes authentification:");
       console.log(`   POST http://localhost:${PORT}/api/auth/register`);
       console.log(`   POST http://localhost:${PORT}/api/auth/login`);
       console.log(`   GET  http://localhost:${PORT}/api/auth/me (protégé)`);
+      console.log("");
+      console.log("   📊 Routes protégées:");
       console.log(`   API  http://localhost:${PORT}/api/clients (protégé)`);
       console.log(`   API  http://localhost:${PORT}/api/services (protégé)`);
       console.log(

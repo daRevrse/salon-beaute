@@ -4,12 +4,15 @@
  */
 
 import React, { useState, useEffect } from "react";
+import DashboardLayout from "../components/common/DashboardLayout";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { useAppointments } from "../hooks/useAppointments";
 import { useClients } from "../hooks/useClients";
 import { useServices } from "../hooks/useServices";
 import api from "../services/api";
 
 const Appointments = () => {
+  const { formatPrice } = useCurrency();
   const {
     appointments,
     loading,
@@ -183,11 +186,11 @@ const Appointments = () => {
 
   const getStatusBadge = (status) => {
     const styles = {
-      pending: "bg-yellow-100 text-yellow-800",
-      confirmed: "bg-green-100 text-green-800",
-      cancelled: "bg-red-100 text-red-800",
-      completed: "bg-blue-100 text-blue-800",
-      no_show: "bg-gray-100 text-gray-800",
+      pending: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+      confirmed: "bg-green-100 text-green-800 border border-green-200",
+      cancelled: "bg-red-100 text-red-800 border border-red-200",
+      completed: "bg-indigo-100 text-indigo-800 border border-indigo-200",
+      no_show: "bg-gray-100 text-gray-800 border border-gray-200",
     };
 
     const labels = {
@@ -200,7 +203,7 @@ const Appointments = () => {
 
     return (
       <span
-        className={`px-2 py-1 text-xs font-medium rounded-full ${styles[status]}`}
+        className={`px-3 py-1 text-xs font-medium rounded-full ${styles[status]}`}
       >
         {labels[status]}
       </span>
@@ -237,7 +240,7 @@ const Appointments = () => {
         <button
           key="complete"
           onClick={() => handleStatusChange(appointment.id, "completed")}
-          className="text-blue-600 hover:text-blue-900 text-sm"
+          className="text-indigo-600 hover:text-indigo-900 text-sm"
         >
           Terminer
         </button>
@@ -255,25 +258,23 @@ const Appointments = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Rendez-vous</h1>
-            <button
-              onClick={handleOpenModal}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              + Nouveau rendez-vous
-            </button>
-          </div>
-        </div>
-      </header>
-
+    <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Rendez-vous</h1>
+            <p className="mt-2 text-gray-600">Gérez votre planning et vos réservations</p>
+          </div>
+          <button
+            onClick={handleOpenModal}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            + Nouveau rendez-vous
+          </button>
+        </div>
         {/* Filtres */}
-        <div className="mb-6 bg-white rounded-lg shadow p-4">
+        <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -283,7 +284,7 @@ const Appointments = () => {
                 type="date"
                 value={filterDate}
                 onChange={handleFilterDate}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
@@ -294,30 +295,30 @@ const Appointments = () => {
               <div className="flex space-x-2">
                 <button
                   onClick={() => handleFilterStatus("")}
-                  className={`px-3 py-2 text-sm rounded-md ${
+                  className={`px-3 py-2 text-sm rounded-md border transition-colors ${
                     !filterStatus
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700"
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                   }`}
                 >
                   Tous
                 </button>
                 <button
                   onClick={() => handleFilterStatus("pending")}
-                  className={`px-3 py-2 text-sm rounded-md ${
+                  className={`px-3 py-2 text-sm rounded-md border transition-colors ${
                     filterStatus === "pending"
-                      ? "bg-yellow-600 text-white"
-                      : "bg-gray-100 text-gray-700"
+                      ? "bg-yellow-600 text-white border-yellow-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                   }`}
                 >
                   En attente
                 </button>
                 <button
                   onClick={() => handleFilterStatus("confirmed")}
-                  className={`px-3 py-2 text-sm rounded-md ${
+                  className={`px-3 py-2 text-sm rounded-md border transition-colors ${
                     filterStatus === "confirmed"
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-100 text-gray-700"
+                      ? "bg-green-600 text-white border-green-600"
+                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                   }`}
                 >
                   Confirmés
@@ -328,10 +329,10 @@ const Appointments = () => {
         </div>
 
         {/* Liste */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           {loading ? (
             <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
             </div>
           ) : sortedAppointments.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
@@ -418,10 +419,9 @@ const Appointments = () => {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Modal Création */}
-      {showModal && (
+        {/* Modal Création */}
+        {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mb-4">
@@ -440,7 +440,7 @@ const Appointments = () => {
                   required
                   value={formData.client_id}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 >
                   <option value="">Sélectionner un client</option>
                   {clients.map((client) => (
@@ -460,15 +460,14 @@ const Appointments = () => {
                   required
                   value={formData.service_id}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 >
                   <option value="">Sélectionner un service</option>
                   {services
                     .filter((s) => s.is_active)
                     .map((service) => (
                       <option key={service.id} value={service.id}>
-                        {service.name} ({service.duration} min - {service.price}
-                        €)
+                        {service.name} ({service.duration} min - {formatPrice(service.price)})
                       </option>
                     ))}
                 </select>
@@ -482,7 +481,7 @@ const Appointments = () => {
                   name="staff_id"
                   value={formData.staff_id}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 >
                   <option value="">Non assigné</option>
                   {staff.map((member) => (
@@ -504,7 +503,7 @@ const Appointments = () => {
                   value={formData.appointment_date}
                   onChange={handleChange}
                   min={new Date().toISOString().split("T")[0]}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
@@ -518,7 +517,7 @@ const Appointments = () => {
                   required
                   value={formData.start_time}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
 
@@ -531,7 +530,7 @@ const Appointments = () => {
                   rows="2"
                   value={formData.notes}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Demandes spéciales..."
                 ></textarea>
               </div>
@@ -547,7 +546,7 @@ const Appointments = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {loading ? "Création..." : "Créer le rendez-vous"}
                 </button>
@@ -555,8 +554,9 @@ const Appointments = () => {
             </form>
           </div>
         </div>
-      )}
-    </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 };
 
