@@ -77,6 +77,9 @@ app.get("/", (req, res) => {
 // Routes auth (PUBLIQUES pour register/login)
 app.use("/api/auth", require("./routes/auth"));
 
+// Routes Stripe (partiellement publiques - webhook)
+app.use("/api/stripe", require("./routes/stripe"));
+
 // Routes protégées (nécessitent authentification)
 app.use("/api/clients", require("./routes/clients"));
 app.use("/api/services", require("./routes/services"));

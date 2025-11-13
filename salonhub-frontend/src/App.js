@@ -17,6 +17,7 @@ import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import Services from "./pages/Services";
 import Appointments from "./pages/Appointments";
+import Billing from "./pages/Billing";
 
 function App() {
   return (
@@ -60,6 +61,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Appointments />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/billing"
+            element={
+              <ProtectedRoute>
+                <Billing />
               </ProtectedRoute>
             }
           />
