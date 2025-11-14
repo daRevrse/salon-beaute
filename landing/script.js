@@ -416,3 +416,42 @@ if ("IntersectionObserver" in window) {
     imageObserver.observe(img);
   });
 }
+
+// ===================================
+// Pricing Toggle
+// ===================================
+document.addEventListener('DOMContentLoaded', function() {
+    const billingToggle = document.getElementById('billing-cycle-checkbox');
+    const prices = document.querySelectorAll('.pricing-card .price');
+    const billingPeriods = document.querySelectorAll('.pricing-card .billing-period');
+
+    if (billingToggle) {
+        billingToggle.addEventListener('change', function() {
+            const isYearly = this.checked;
+
+            prices.forEach(priceEl => {
+                const monthlyPrice = priceEl.getAttribute('data-monthly');
+                const yearlyPrice = priceEl.getAttribute('data-yearly');
+                priceEl.textContent = isYearly ? yearlyPrice + '€' : monthlyPrice + '€';
+            });
+
+            billingPeriods.forEach(periodEl => {
+                periodEl.textContent = isYearly ? '/ an' : '/ mois';
+            });
+        });
+    }
+});
+
+// ===================================
+// Responsive Navigation (Hamburger Menu)
+// ===================================
+document.addEventListener('DOMContentLoaded', function() {
+    const hamburger = document.querySelector('.hamburger');
+    const header = document.querySelector('header');
+
+    if (hamburger) {
+        hamburger.addEventListener('click', function() {
+            header.classList.toggle('nav-open');
+        });
+    }
+});

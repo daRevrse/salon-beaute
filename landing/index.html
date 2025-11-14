@@ -32,11 +32,18 @@
                 <img src="logo_fk_black.png" alt="FlowKraft Logo">
                 SalonHub
             </a>
-            <div class="nav-buttons">
-                <a href="#features">Fonctionnalités</a>
-                <a href="#pricing">Tarifs</a>
-                <a href="#contact">Contact</a>
+            <div class="nav-menu">
+                <div class="nav-buttons">
+                    <a href="#features">Fonctionnalités</a>
+                    <a href="#pricing">Tarifs</a>
+                    <a href="#contact">Contact</a>
+                </div>
             </div>
+            <button class="hamburger" aria-label="Ouvrir le menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </nav>
     </header>
 
@@ -51,8 +58,9 @@
             <form class="cta-form" action="#" method="POST">
                 <input type="email" id="hero-email-input" placeholder="Votre email" required
                     aria-label="Email professionnel">
-                <button type="submit">Démarrer gratuitement</button>
+                <button type="submit">Démarrer vos 14 jours gratuits</button>
             </form>
+            <p class="trial-subtext">14 jours d'essai gratuit. Sans engagement.</p>
         </div>
         <img src="2.jpg" alt="Capture d'écran du tableau de bord SalonHub">
     </section>
@@ -89,10 +97,11 @@
 
             <div class="feature-card">
                 <div class="feature-icon">
-                    <i class="fas fa-credit-card"></i>
+                    <i class="fas fa-share-alt"></i>
                 </div>
-                <h3>Paiement en ligne</h3>
-                <p>Encaissez vos prestations en toute sécurité, directement via SalonHub.</p>
+                <h3>Intégration réseaux sociaux</h3>
+                <p>Intégrez votre lien de réservation personnalisé sur vos pages Facebook et Instagram pour permettre à
+                    vos clients de réserver en un clic.</p>
             </div>
 
             <div class="feature-card">
@@ -109,6 +118,42 @@
                 </div>
                 <h3>Application mobile</h3>
                 <p>Gérez votre salon en déplacement avec notre application iOS et Android.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================
+         USE CASES SECTION
+         =================================== -->
+    <section class="use-cases" id="use-cases">
+        <h2 class="section-title">Adapté à tous les secteurs d'activité</h2>
+        <p class="section-subtitle">Découvrez comment SalonHub peut transformer la gestion de votre établissement.</p>
+        <div class="features-grid">
+            <div class="feature-card use-case-beaute featured">
+                <div class="popular-badge">Populaire</div>
+                <div class="feature-icon"><i class="fa-solid fa-scissors"></i></div>
+                <h3>Salon de Beauté</h3>
+                <p>Outils complets pour la gestion des rendez-vous, des clients et des services esthétiques.</p>
+                <a href="salon-de-beaute.html" class="btn-secondary">Découvrir</a>
+            </div>
+            <div class="feature-card use-case-formation">
+                <div class="feature-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                <h3>Centres de Formation</h3>
+                <p>Planifiez vos sessions, gérez les inscriptions et communiquez facilement avec vos participants.</p>
+                <a href="centre-de-formation.html" class="btn-secondary">Découvrir</a>
+            </div>
+            <div class="feature-card use-case-restaurant">
+                <div class="feature-icon"><i class="fas fa-utensils"></i></div>
+                <h3>Restaurants & Cafés</h3>
+                <p>Gérez les réservations de tables, organisez des événements et optimisez le service en salle.</p>
+                <a href="restaurant.html" class="btn-secondary">Découvrir</a>
+            </div>
+            <div class="feature-card use-case-medical">
+                <div class="feature-icon"><i class="fas fa-heartbeat"></i></div>
+                <h3>Cabinets Médicaux</h3>
+                <p>Simplifiez la prise de rendez-vous pour vos patients et réduisez les absences grâce aux rappels
+                    automatiques.</p>
+                <a href="cabinet-medical.html" class="btn-secondary">Découvrir</a>
             </div>
         </div>
     </section>
@@ -158,45 +203,132 @@
          PRICING SECTION
          =================================== -->
     <section class="pricing" id="pricing">
-        <h2 class="section-title">Des offres adaptées à tous les salons</h2>
+        <h2 class="section-title">Des offres flexibles pour votre croissance</h2>
+
+        <!-- Toggle de facturation -->
+        <div class="billing-toggle-container">
+            <span>Mensuel</span>
+            <label class="billing-toggle">
+                <input type="checkbox" id="billing-cycle-checkbox">
+                <span class="slider"></span>
+            </label>
+            <span>
+                Annuel
+                <span class="savings-badge">-15%</span>
+            </span>
+        </div>
+
         <div class="pricing-grid">
+            <!-- Plan Starter -->
             <div class="pricing-card">
                 <h3>Starter</h3>
-                <div class="price" data-price="29" data-currency="EUR">29€<span style="font-size: 18px; font-weight: 400;"> / mois</span></div>
-                <ul class="features-list">
-                    <li>Rendez-vous illimités</li>
-                    <li>1 utilisateur</li>
-                    <li>Support email</li>
-                    <li>Page de réservation personnalisée</li>
-                </ul>
+                <p class="plan-description">Idéal pour les indépendants et les petits salons.</p>
+                <div class="price-container">
+                    <span class="price" data-monthly="29" data-yearly="290">29€</span>
+                    <span class="billing-period">/ mois</span>
+                </div>
                 <button class="btn-pricing">Essayer gratuitement</button>
             </div>
 
+            <!-- Plan Pro (Featured) -->
             <div class="pricing-card featured">
+                <span class="featured-badge">Le plus populaire</span>
                 <h3>Pro</h3>
-                <div class="price" data-price="59" data-currency="EUR">59€<span style="font-size: 18px; font-weight: 400;"> / mois</span></div>
-                <ul class="features-list">
-                    <li>Tout du plan Starter</li>
-                    <li>3 utilisateurs</li>
-                    <li>Statistiques avancées</li>
-                    <li>Paiement en ligne</li>
-                    <li>Rappels automatiques SMS/Email</li>
-                </ul>
+                <p class="plan-description">Parfait pour les équipes et les salons en croissance.</p>
+                <div class="price-container">
+                    <span class="price" data-monthly="59" data-yearly="590">59€</span>
+                    <span class="billing-period">/ mois</span>
+                </div>
                 <button class="btn-pricing">Essayer gratuitement</button>
             </div>
 
+            <!-- Plan Business -->
             <div class="pricing-card">
                 <h3>Business</h3>
-                <div class="price" data-price="99" data-currency="EUR">99€<span style="font-size: 18px; font-weight: 400;"> / mois</span></div>
-                <ul class="features-list">
-                    <li>Utilisateurs illimités</li>
-                    <li>Multi-salons</li>
-                    <li>Support prioritaire</li>
-                    <li>API & intégrations avancées</li>
-                    <li>Formation personnalisée</li>
-                </ul>
+                <p class="plan-description">La solution complète pour les multi-salons et franchises.</p>
+                <div class="price-container">
+                    <span class="price" data-monthly="99" data-yearly="990">99€</span>
+                    <span class="billing-period">/ mois</span>
+                </div>
                 <button class="btn-pricing">Contactez-nous</button>
             </div>
+        </div>
+
+        <!-- Tableau de comparaison des fonctionnalités -->
+        <div class="feature-comparison-container">
+            <h3 class="comparison-title">Comparez les fonctionnalités</h3>
+            <table class="feature-table">
+                <thead>
+                    <tr>
+                        <th>Fonctionnalité</th>
+                        <th>Starter</th>
+                        <th>Pro</th>
+                        <th>Business</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Rendez-vous</td>
+                        <td>Illimités</td>
+                        <td>Illimités</td>
+                        <td>Illimités</td>
+                    </tr>
+                    <tr>
+                        <td>Utilisateurs</td>
+                        <td>1</td>
+                        <td>3</td>
+                        <td>Illimités</td>
+                    </tr>
+                    <tr>
+                        <td>Page de réservation</td>
+                        <td><i class="fas fa-check"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                    </tr>
+                    <tr>
+                        <td>Support email</td>
+                        <td><i class="fas fa-check"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                    </tr>
+                    <tr>
+                        <td>Statistiques avancées</td>
+                        <td><i class="fas fa-times"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                    </tr>
+                    <tr>
+                        <td>Paiement en ligne</td>
+                        <td><i class="fas fa-times"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                    </tr>
+                    <tr>
+                        <td>Rappels automatiques SMS/Email</td>
+                        <td><i class="fas fa-times"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                    </tr>
+                    <tr>
+                        <td>Multi-salons</td>
+                        <td><i class="fas fa-times"></i></td>
+                        <td><i class="fas fa-times"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                    </tr>
+                    <tr>
+                        <td>Support prioritaire</td>
+                        <td><i class="fas fa-times"></i></td>
+                        <td><i class="fas fa-times"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                    </tr>
+                    <tr>
+                        <td>API & intégrations</td>
+                        <td><i class="fas fa-times"></i></td>
+                        <td><i class="fas fa-times"></i></td>
+                        <td><i class="fas fa-check"></i></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </section>
 
@@ -263,11 +395,12 @@
                 <div class="footer-col">
                     <h3>Solutions</h3>
                     <ul class="footer-links">
-                        <li><a href="#"><i class="fas fa-chevron-right"></i>Salons de coiffure</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i>Instituts de beauté</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i>Spas & bien-être</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i>Barbiers</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i>Salons nails</a></li>
+                        <li><a href="salon-de-beaute.html"><i class="fas fa-chevron-right"></i>Salons de Beauté</a></li>
+                        <li><a href="centre-de-formation.html"><i class="fas fa-chevron-right"></i>Centres de
+                                Formation</a></li>
+                        <li><a href="restaurant.html"><i class="fas fa-chevron-right"></i>Restaurants</a></li>
+                        <li><a href="cabinet-medical.html"><i class="fas fa-chevron-right"></i>Cabinets Médicaux</a>
+                        </li>
                     </ul>
                 </div>
 
@@ -360,7 +493,7 @@
 
     <!-- Script de conversion de devises -->
     <script>
-        (function() {
+        (function () {
             // Configuration des devises supportées
             const CURRENCIES = {
                 EUR: { symbol: '€', name: 'Euro', locale: 'fr-FR' },
