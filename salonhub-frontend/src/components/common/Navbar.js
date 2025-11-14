@@ -1,10 +1,26 @@
 /**
- * Navbar - Barre de navigation principale pour l'interface admin
+ * Navbar - Version améliorée (icônes Heroicons, styles premium)
  */
 
-import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { ImageWithFallback } from "../../utils/imageUtils";
+import NotificationBell from "./NotificationBell";
+
+// Heroicons
+import {
+  ChartBarIcon,
+  CalendarDaysIcon,
+  UsersIcon,
+  ScissorsIcon,
+  Cog6ToothIcon,
+  CreditCardIcon,
+  ArrowRightOnRectangleIcon,
+  Bars3Icon,
+  XMarkIcon,
+  ChevronDownIcon,
+} from "@heroicons/react/24/outline";
 
 const Navbar = () => {
   const location = useLocation();
@@ -15,187 +31,260 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const isActive = (path) => location.pathname === path;
 
   const navLinks = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { path: '/appointments', label: 'Rendez-vous', icon: '📅' },
-    { path: '/clients', label: 'Clients', icon: '👥' },
-    { path: '/services', label: 'Services', icon: '✂️' },
+    {
+      path: "/dashboard",
+      label: "Dashboard",
+      icon: <ChartBarIcon className="h-5 w-5" />,
+    },
+    {
+      path: "/appointments",
+      label: "Rendez-vous",
+      icon: <CalendarDaysIcon className="h-5 w-5" />,
+    },
+    {
+      path: "/clients",
+      label: "Clients",
+      icon: <UsersIcon className="h-5 w-5" />,
+    },
+    {
+      path: "/services",
+      label: "Services",
+      icon: <ScissorsIcon className="h-5 w-5" />,
+    },
   ];
 
   return (
-    <nav className="bg-white border-b border-gray-200">
+    <nav className="bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          {/* Logo et navigation principale */}
-          <div className="flex">
-            {/* Logo */}
-            <div className="flex-shrink-0 flex items-center">
-              <Link to="/dashboard" className="flex items-center">
-                <span className="text-2xl mr-2">💇‍♀️</span>
-                <span className="text-xl font-bold text-gray-900">
-                  {tenant?.name || 'SalonHub'}
-                </span>
-              </Link>
-            </div>
+          {/* -------------------------------------------------- */}
+          {/* LOGO & NAV DESKTOP                                 */}
+          {/* -------------------------------------------------- */}
+          <div className="flex items-center">
+            <Link to="/dashboard" className="flex items-center group">
+              {tenant?.logo_url ? (
+                <img
+                  src={tenant.logo_url?.replace("/api", "")}
+                  alt="logo"
+                  className="h-9 w-9 rounded-lg object-cover group-hover:shadow-md transition"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-indigo-600 text-white font-bold text-lg shadow-sm group-hover:bg-indigo-700 transition">
+                  SH
+                </div>
+              )}
+              <span className="ml-3 text-xl font-semibold text-gray-900">
+                {tenant?.name || "SalonHub"}
+              </span>
+            </Link>
 
-            {/* Navigation Desktop */}
-            <div className="hidden sm:ml-8 sm:flex sm:space-x-1">
+            {/* Desktop menu */}
+            <div className="hidden sm:flex sm:space-x-1 ml-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                     isActive(link.path)
-                      ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      ? "bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600 shadow-inner"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                   }`}
                 >
-                  <span className="mr-2">{link.icon}</span>
+                  <div className="mr-2 text-gray-500">{link.icon}</div>
                   {link.label}
                 </Link>
               ))}
             </div>
           </div>
 
-          {/* Actions utilisateur */}
-          <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
+          {/* -------------------------------------------------- */}
+          {/* ACTIONS UTILISATEUR                                */}
+          {/* -------------------------------------------------- */}
+          <div className="hidden sm:flex sm:items-center space-x-4">
             {/* Notifications */}
-            <button
-              type="button"
-              className="p-2 rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <span className="sr-only">Notifications</span>
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-500"></span>
-            </button>
+            <NotificationBell />
 
-            {/* Menu utilisateur */}
+            {/* Profile dropdown */}
             <div className="relative">
               <button
                 onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition"
               >
-                <div className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50">
-                  <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <span className="text-indigo-700 font-medium">
-                      {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
+                {user?.avatar_url ? (
+                  <ImageWithFallback
+                    src={user.avatar_url?.replace("/api", "")}
+                    alt={`${user.first_name} ${user.last_name}`}
+                    fallbackType="avatar"
+                    className="h-9 w-9 rounded-full object-cover border border-indigo-200"
+                  />
+                ) : (
+                  <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center border border-indigo-200">
+                    <span className="text-indigo-700 font-semibold">
+                      {user?.first_name?.charAt(0)}
+                      {user?.last_name?.charAt(0)}
                     </span>
                   </div>
-                  <div className="text-left hidden md:block">
-                    <p className="text-sm font-medium text-gray-900">
-                      {user?.first_name} {user?.last_name}
-                    </p>
-                    <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
-                  </div>
-                  <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
+                )}
+
+                <div className="hidden md:block text-left">
+                  <p className="text-sm font-medium text-gray-900">
+                    {user?.first_name} {user?.last_name}
+                  </p>
+                  <p className="text-xs text-gray-500 capitalize">
+                    {user?.role}
+                  </p>
                 </div>
+
+                <ChevronDownIcon className="h-4 w-4 text-gray-500" />
               </button>
 
-              {/* Dropdown menu */}
+              {/* Dropdown */}
               {profileMenuOpen && (
-                <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
-                  <div className="py-1">
-                    <Link
-                      to="/settings"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setProfileMenuOpen(false)}
-                    >
-                      ⚙️ Paramètres
-                    </Link>
-                    <Link
-                      to="/billing"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setProfileMenuOpen(false)}
-                    >
-                      💳 Facturation
-                    </Link>
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setProfileMenuOpen(false)}
+                  ></div>
+                  <div className="absolute right-0 mt-2 w-56 bg-white shadow-xl rounded-lg border border-gray-200 z-50 py-2">
+                    {/* User Info */}
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">
+                        {user?.first_name} {user?.last_name}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {user?.email}
+                      </p>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="py-1">
+                      <Link
+                        to="/profile"
+                        onClick={() => setProfileMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm transition-colors"
+                      >
+                        <UsersIcon className="h-5 w-5" />
+                        Mon Profil
+                      </Link>
+
+                      <Link
+                        to="/settings"
+                        onClick={() => setProfileMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm transition-colors"
+                      >
+                        <Cog6ToothIcon className="h-5 w-5" />
+                        Paramètres
+                      </Link>
+
+                      {/* <Link
+                        to="/billing"
+                        onClick={() => setProfileMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm transition-colors"
+                      >
+                        <CreditCardIcon className="h-5 w-5" />
+                        Facturation
+                      </Link> */}
+                    </div>
+
                     <hr className="my-1" />
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-                    >
-                      🚪 Déconnexion
-                    </button>
+
+                    <div className="py-1">
+                      <button
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 text-sm transition-colors"
+                      >
+                        <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                        Déconnexion
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
           </div>
 
-          {/* Mobile menu button */}
+          {/* -------------------------------------------------- */}
+          {/* MOBILE MENU BUTTON                                  */}
+          {/* -------------------------------------------------- */}
           <div className="flex items-center sm:hidden">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
             >
-              <span className="sr-only">Ouvrir le menu</span>
-              {!mobileMenuOpen ? (
-                <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+              {mobileMenuOpen ? (
+                <XMarkIcon className="h-6 w-6" />
               ) : (
-                <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <Bars3Icon className="h-6 w-6" />
               )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* ------------------------------------------------------ */}
+      {/* MOBILE MENU                                            */}
+      {/* ------------------------------------------------------ */}
       {mobileMenuOpen && (
-        <div className="sm:hidden border-t border-gray-200">
-          <div className="pt-2 pb-3 space-y-1">
+        <div className="sm:hidden border-t border-gray-200 bg-white shadow-inner">
+          <div className="py-3 space-y-1">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block pl-3 pr-4 py-2 text-base font-medium ${
+                className={`flex items-center px-4 py-3 text-sm font-medium ${
                   isActive(link.path)
-                    ? 'bg-indigo-50 border-l-4 border-indigo-500 text-indigo-700'
-                    : 'border-l-4 border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? "bg-indigo-50 text-indigo-700 border-l-4 border-indigo-600"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 }`}
               >
-                <span className="mr-2">{link.icon}</span>
+                <div className="mr-3 text-gray-500">{link.icon}</div>
                 {link.label}
               </Link>
             ))}
           </div>
-          <div className="pt-4 pb-3 border-t border-gray-200">
-            <div className="flex items-center px-4">
-              <div className="flex-shrink-0">
-                <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                  <span className="text-indigo-700 font-medium">
-                    {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
-                  </span>
-                </div>
-              </div>
-              <div className="ml-3">
-                <div className="text-base font-medium text-gray-800">
-                  {user?.first_name} {user?.last_name}
-                </div>
-                <div className="text-sm font-medium text-gray-500">{user?.email}</div>
-              </div>
-            </div>
-            <div className="mt-3 space-y-1">
-              <button
-                onClick={handleLogout}
-                className="block w-full text-left px-4 py-2 text-base font-medium text-red-700 hover:bg-red-50"
-              >
-                🚪 Déconnexion
-              </button>
-            </div>
+
+          <div className="py-3 border-t border-gray-200">
+            <Link
+              to="/profile"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              <UsersIcon className="h-5 w-5 text-gray-500" />
+              Mon Profil
+            </Link>
+
+            <Link
+              to="/settings"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              <Cog6ToothIcon className="h-5 w-5 text-gray-500" />
+              Paramètres
+            </Link>
+
+            <Link
+              to="/billing"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              <CreditCardIcon className="h-5 w-5 text-gray-500" />
+              Facturation
+            </Link>
+
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 mt-2 border-t border-gray-200"
+            >
+              <ArrowRightOnRectangleIcon className="h-5 w-5" />
+              Déconnexion
+            </button>
           </div>
         </div>
       )}

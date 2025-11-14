@@ -20,6 +20,7 @@ import Services from "./pages/Services";
 import Appointments from "./pages/Appointments";
 import Billing from "./pages/Billing";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 
 // Pages publiques (Booking)
 import BookingLanding from "./pages/public/BookingLanding";
@@ -94,6 +95,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             }
           />

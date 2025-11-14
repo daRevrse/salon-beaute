@@ -28,6 +28,9 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Servir les fichiers statiques (uploads)
+app.use("/uploads", express.static("public/uploads"));
+
 // Logger simple (dev)
 if (process.env.NODE_ENV === "development") {
   app.use((req, res, next) => {
@@ -92,11 +95,15 @@ app.use("/api/public", require("./routes/public"));
 // Routes currency (publiques - taux de change)
 app.use("/api/currency", require("./routes/currency"));
 
+// Routes Uploads (protégées)
+app.use("/api/uploads", require("./routes/uploads")); // <-- NOUVEAU
+
 // Routes protégées (nécessitent authentification)
 app.use("/api/clients", require("./routes/clients"));
 app.use("/api/services", require("./routes/services"));
 app.use("/api/appointments", require("./routes/appointments"));
 app.use("/api/settings", require("./routes/settings"));
+app.use("/api/notifications", require("./routes/notifications"));
 
 // TODO: Routes tenants (admin)
 // app.use('/api/tenants', require('./routes/tenants'));
@@ -156,8 +163,12 @@ const startServer = async () => {
       console.log("");
       console.log("   🌐 Routes publiques (Booking):");
       console.log(`   GET  http://localhost:${PORT}/api/public/salon/:slug`);
-      console.log(`   GET  http://localhost:${PORT}/api/public/salon/:slug/services`);
-      console.log(`   GET  http://localhost:${PORT}/api/public/salon/:slug/availability`);
+      console.log(
+        `   GET  http://localhost:${PORT}/api/public/salon/:slug/services`
+      );
+      console.log(
+        `   GET  http://localhost:${PORT}/api/public/salon/:slug/availability`
+      );
       console.log(`   POST http://localhost:${PORT}/api/public/appointments`);
       console.log("");
       console.log("   🔐 Routes authentification:");

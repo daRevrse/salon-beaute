@@ -89,7 +89,7 @@ const BookingLanding = () => {
           ))
         ) : (
           <img
-            src="https://via.placeholder.com/1400x700?text=Salon+Image"
+            src="https://placehold.net/1-800x600.png"
             className="absolute inset-0 w-full h-full object-cover"
           />
         )}
@@ -99,6 +99,14 @@ const BookingLanding = () => {
 
         {/* HERO CONTENT */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-6">
+          <img
+            src={
+              salon?.logo_url?.replace("/api", "") ||
+              "https://placehold.net/4.png"
+            }
+            alt="Salon Logo"
+            className="h-24 w-24 md:h-32 md:w-32 rounded-full border-4 border-white shadow-lg object-cover mb-4 bg-white p-2"
+          />
           <h1 className="text-4xl md:text-6xl font-bold drop-shadow-xl">
             {salon?.name || "Votre salon de beauté"}
           </h1>
@@ -159,7 +167,7 @@ const BookingLanding = () => {
                 <div className="h-40 bg-gray-100 overflow-hidden relative">
                   <img
                     src={
-                      service.image ||
+                      service.image_url?.replace("/api", "") ||
                       "https://via.placeholder.com/400x300?text=Service"
                     }
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

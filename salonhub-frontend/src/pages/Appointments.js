@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "../components/common/DashboardLayout";
+import AppointmentDetails from "../components/appointments/AppointmentDetails";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useAppointments } from "../hooks/useAppointments";
 import { useClients } from "../hooks/useClients";
@@ -25,6 +26,7 @@ const Appointments = () => {
   const { services } = useServices();
 
   const [showModal, setShowModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [staff, setStaff] = useState([]);
@@ -182,6 +184,18 @@ const Appointments = () => {
   const handleFilterStatus = (status) => {
     setFilterStatus(status);
     fetchAppointments({ date: filterDate, status: status || undefined });
+  };
+
+  const handleOpenDetails = (appointment) => {
+    setSelectedAppointment(appointment);
+  };
+
+  const handleCloseDetails = () => {
+    setSelectedAppointment(null);
+  };
+
+  const handleUpdateAfterDetails = () => {
+    fetchAppointments({ date: filterDate, status: filterStatus || undefined });
   };
 
   const getStatusBadge = (status) => {
@@ -365,7 +379,11 @@ const Appointments = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {sortedAppointments.map((apt) => (
-                    <tr key={apt.id} className="hover:bg-gray-50">
+                    <tr
+                      key={apt.id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleOpenDetails(apt)}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {new Date(apt.appointment_date).toLocaleDateString(
@@ -402,7 +420,7 @@ const Appointments = () => {
                         {getStatusBadge(apt.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                        <div className="flex justify-end space-x-2">
+                        <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
                           {getStatusActions(apt)}
                           <button
                             onClick={() => handleDelete(apt.id)}
@@ -554,6 +572,15 @@ const Appointments = () => {
             </form>
           </div>
         </div>
+        )}
+
+        {/* Modal Détails Rendez-vous */}
+        {selectedAppointment && (
+          <AppointmentDetails
+            appointment={selectedAppointment}
+            onClose={handleCloseDetails}
+            onUpdate={handleUpdateAfterDetails}
+          />
         )}
       </div>
     </DashboardLayout>

@@ -6,7 +6,8 @@
       "Bash(npm run build:*)",
       "Bash(cat:*)",
       "Bash(npm uninstall:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(mysql:*)"
     ],
     "deny": [],
     "ask": []

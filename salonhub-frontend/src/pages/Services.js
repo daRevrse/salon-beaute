@@ -7,6 +7,20 @@ import React, { useState } from "react";
 import DashboardLayout from "../components/common/DashboardLayout";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useServices } from "../hooks/useServices";
+import ImageUploader from "../components/common/ImageUploader"; // <-- IMPORT NOUVEAU
+import { ImageWithFallback } from "../utils/imageUtils";
+import {
+  // <-- Import Heroicons
+  ScissorsIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  PlusIcon,
+  TagIcon,
+  ClockIcon,
+  CurrencyDollarIcon,
+  XMarkIcon,
+  CheckIcon,
+} from "@heroicons/react/24/outline";
 
 const Services = () => {
   const { formatPrice: formatCurrency } = useCurrency();
@@ -30,6 +44,7 @@ const Services = () => {
     price: "",
     category: "",
     is_active: true,
+    image_url: "", // <-- NOUVEAU
   });
 
   // Catégories uniques
@@ -47,6 +62,7 @@ const Services = () => {
         price: service.price,
         category: service.category || "",
         is_active: service.is_active,
+        image_url: service.image_url || "", // <-- NOUVEAU
       });
     } else {
       setEditingService(null);
@@ -57,6 +73,7 @@ const Services = () => {
         price: "",
         category: "",
         is_active: true,
+        image_url: "", // <-- NOUVEAU
       });
     }
     setShowModal(true);
@@ -136,13 +153,16 @@ const Services = () => {
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Services</h1>
-            <p className="mt-2 text-gray-600">Gérez vos prestations et tarifs</p>
+            <p className="mt-2 text-gray-600">
+              Gérez vos prestations et tarifs
+            </p>
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
           >
-            + Nouveau service
+            <PlusIcon className="h-5 w-5 mr-1" />
+            Nouveau service
           </button>
         </div>
         {/* Filtres */}
@@ -190,6 +210,16 @@ const Services = () => {
                   !service.is_active ? "opacity-60" : ""
                 }`}
               >
+                {/* Image du service */}
+                <div className="h-32 w-full mb-4 overflow-hidden rounded-lg bg-gray-100">
+                  <ImageWithFallback
+                    src={service.image_url?.replace("/api", "")}
+                    alt={service.name}
+                    fallbackType="service"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-900">
@@ -197,6 +227,7 @@ const Services = () => {
                     </h3>
                     {service.category && (
                       <span className="inline-block mt-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded capitalize">
+                        <TagIcon className="h-3 w-3 inline mr-1" />
                         {service.category}
                       </span>
                     )}
@@ -206,7 +237,7 @@ const Services = () => {
                       type="checkbox"
                       checked={service.is_active}
                       onChange={() => handleToggle(service.id)}
-                      className="form-checkbox h-5 w-5 text-purple-600"
+                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                     />
                   </label>
                 </div>
@@ -218,10 +249,12 @@ const Services = () => {
                 )}
 
                 <div className="flex justify-between items-center mb-4">
-                  <div className="text-2xl font-bold text-purple-600">
+                  <div className="text-2xl font-bold text-purple-600 flex items-center">
+                    <CurrencyDollarIcon className="h-6 w-6 mr-1" />
                     {formatPrice(service.price)}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-gray-500 flex items-center">
+                    <ClockIcon className="h-4 w-4 mr-1" />
                     {service.duration} min
                   </div>
                 </div>
@@ -229,14 +262,16 @@ const Services = () => {
                 <div className="flex space-x-2">
                   <button
                     onClick={() => handleOpenModal(service)}
-                    className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                    className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center"
                   >
+                    <PencilSquareIcon className="h-4 w-4 mr-1" />
                     Modifier
                   </button>
                   <button
                     onClick={() => handleDelete(service.id)}
-                    className="px-3 py-2 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100"
+                    className="px-3 py-2 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 flex items-center justify-center"
                   >
+                    <TrashIcon className="h-4 w-4 mr-1" />
                     Supprimer
                   </button>
                 </div>
@@ -247,136 +282,154 @@ const Services = () => {
 
         {/* Modal */}
         {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900">
-                {editingService ? "Modifier le service" : "Nouveau service"}
-              </h3>
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+              <div className="mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {editingService ? "Modifier le service" : "Nouveau service"}
+                </h3>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Uploader d'image */}
+                <ImageUploader
+                  target="service-image"
+                  imageUrl={formData.image_url}
+                  onImageUpload={(url) =>
+                    setFormData({ ...formData, image_url: url })
+                  }
+                  onDelete={() => setFormData({ ...formData, image_url: "" })}
+                  label="Image de mise en avant (optionnel)"
+                  aspectRatio="aspect-[16/9]"
+                />
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Nom du service *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="Ex: Coupe Femme"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    rows="2"
+                    value={formData.description}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="Description du service"
+                  ></textarea>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 flex items-center">
+                      <ClockIcon className="h-4 w-4 mr-1" />
+                      Durée (minutes) *
+                    </label>
+                    <input
+                      type="number"
+                      name="duration"
+                      required
+                      min="1"
+                      value={formData.duration}
+                      onChange={handleChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="30"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 flex items-center">
+                      <CurrencyDollarIcon className="h-4 w-4 mr-1" />
+                      Prix *
+                    </label>
+                    <input
+                      type="number"
+                      name="price"
+                      required
+                      min="0"
+                      step="0.01"
+                      value={formData.price}
+                      onChange={handleChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="35.00"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Les prix s'afficheront dans votre devise (
+                      {formatCurrency(0).replace("0", "").trim()})
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 flex items-center">
+                    <TagIcon className="h-4 w-4 mr-1" />
+                    Catégorie
+                  </label>
+                  <input
+                    type="text"
+                    name="category"
+                    value={formData.category}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="Ex: coupe, coloration, soin"
+                    list="categories"
+                  />
+                  <datalist id="categories">
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    id="is_active"
+                    checked={formData.is_active}
+                    onChange={handleChange}
+                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor="is_active"
+                    className="ml-2 block text-sm text-gray-900"
+                  >
+                    Service actif (disponible à la réservation)
+                  </label>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 bg-purple-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {loading ? "Enregistrement..." : "Enregistrer"}
+                  </button>
+                </div>
+              </form>
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Nom du service *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="Ex: Coupe Femme"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  rows="2"
-                  value={formData.description}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="Description du service"
-                ></textarea>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Durée (minutes) *
-                  </label>
-                  <input
-                    type="number"
-                    name="duration"
-                    required
-                    min="1"
-                    value={formData.duration}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-                    placeholder="30"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Prix *
-                  </label>
-                  <input
-                    type="number"
-                    name="price"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-                    placeholder="35.00"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Les prix s'afficheront dans votre devise ({formatCurrency(0).replace('0', '').trim()})</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Catégorie
-                </label>
-                <input
-                  type="text"
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
-                  placeholder="Ex: coupe, coloration, soin"
-                  list="categories"
-                />
-                <datalist id="categories">
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat} />
-                  ))}
-                </datalist>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  id="is_active"
-                  checked={formData.is_active}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                />
-                <label
-                  htmlFor="is_active"
-                  className="ml-2 block text-sm text-gray-900"
-                >
-                  Service actif (disponible à la réservation)
-                </label>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-purple-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {loading ? "Enregistrement..." : "Enregistrer"}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
         )}
       </div>
     </DashboardLayout>

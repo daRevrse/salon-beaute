@@ -200,6 +200,7 @@ router.put("/:id", async (req, res) => {
       requires_deposit,
       deposit_amount,
       available_for_online_booking,
+      image_url,
     } = req.body;
 
     // Vérifier existence
@@ -241,7 +242,8 @@ router.put("/:id", async (req, res) => {
         is_active = ?,
         requires_deposit = ?,
         deposit_amount = ?,
-        available_for_online_booking = ?
+        available_for_online_booking = ?,
+        image_url = COALESCE(?, image_url)
       WHERE id = ? AND tenant_id = ?`,
       [
         name,
@@ -255,6 +257,7 @@ router.put("/:id", async (req, res) => {
         available_for_online_booking !== undefined
           ? available_for_online_booking
           : true,
+        image_url || null,
         id,
         req.tenantId,
       ]

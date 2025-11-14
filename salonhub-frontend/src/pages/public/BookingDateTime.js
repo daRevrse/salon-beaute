@@ -3,10 +3,18 @@
  * Permet au client de choisir un créneau disponible
  */
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import usePublicBooking from '../../hooks/usePublicBooking';
-import { useCurrency } from '../../contexts/CurrencyContext';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import usePublicBooking from "../../hooks/usePublicBooking";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import {
+  // <-- Import Heroicons
+  ClockIcon,
+  ChevronLeftIcon,
+  CalendarDaysIcon,
+  CurrencyDollarIcon,
+  ArrowPathIcon,
+} from "@heroicons/react/24/outline";
 
 const BookingDateTime = () => {
   const { slug } = useParams();
@@ -21,10 +29,10 @@ const BookingDateTime = () => {
     loading,
     error,
     fetchSalon,
-    fetchAvailability
+    fetchAvailability,
   } = usePublicBooking(slug);
 
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState(null);
 
   useEffect(() => {
@@ -47,8 +55,8 @@ const BookingDateTime = () => {
       state: {
         service,
         date: selectedDate,
-        slot
-      }
+        slot,
+      },
     });
   };
 
@@ -57,26 +65,24 @@ const BookingDateTime = () => {
   };
 
   // Date minimum = aujourd'hui
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
+      {/* Header - Nettoyé et centré */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <button
               onClick={handleBack}
-              className="flex items-center text-gray-600 hover:text-gray-900"
+              className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors font-medium"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              <ChevronLeftIcon className="w-5 h-5 mr-2" />
               Retour
             </button>
             <div className="text-center flex-1">
               <h1 className="text-2xl font-bold text-gray-900">
-                {salon?.name || 'Salon de Beauté'}
+                {salon?.name || "Salon de Beauté"}
               </h1>
             </div>
             <div className="w-20"></div>
@@ -86,29 +92,43 @@ const BookingDateTime = () => {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            2️⃣ Choisissez la date et l'heure
+        {/* Step indicator */}
+        <div className="text-center mb-10">
+          <p className="text-sm font-medium text-indigo-600 mb-2">Étape 2/3</p>
+          <h2 className="text-3xl font-bold text-gray-900">
+            Choisissez la date et l'heure
           </h2>
         </div>
 
-        {/* Service sélectionné */}
+        {/* Service sélectionné - Enhanced Card Style */}
         {service && (
-          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-8">
+          <div className="bg-white border border-gray-200 rounded-xl p-5 mb-8 shadow-md">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold text-gray-900">{service.name}</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  {service.duration} min • {formatPrice(service.price)}
+                <p className="font-semibold text-gray-900 text-xl">
+                  {service.name}
+                </p>
+                <p className="text-sm text-gray-600 mt-1 flex items-center">
+                  <ClockIcon className="w-4 h-4 mr-1 inline-block" />
+                  {service.duration} min &bull;
+                  <CurrencyDollarIcon className="w-4 h-4 ml-2 mr-1 inline-block" />
+                  {formatPrice(service.price)}
                 </p>
               </div>
+              <button
+                onClick={handleBack}
+                className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+              >
+                Changer
+              </button>
             </div>
           </div>
         )}
 
         {/* Sélection de date */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
+          <label className="block text-lg font-semibold text-gray-700 mb-4 flex items-center">
+            <CalendarDaysIcon className="w-6 h-6 mr-2 text-indigo-600" />
             Sélectionnez une date
           </label>
           <input
@@ -116,7 +136,7 @@ const BookingDateTime = () => {
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
             min={today}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
           />
         </div>
 
@@ -124,37 +144,37 @@ const BookingDateTime = () => {
         {loading && selectedDate && (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Recherche des créneaux disponibles...</p>
+            <p className="mt-4 text-gray-600">
+              Recherche des créneaux disponibles...
+            </p>
           </div>
         )}
 
         {!loading && selectedDate && availableSlots.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-lg shadow-md">
-            <div className="text-gray-400 text-6xl mb-4">📅</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Aucun créneau disponible
+          <div className="text-center py-12 bg-white rounded-xl shadow-md border border-gray-100">
+            <ClockIcon className="mx-auto h-12 w-12 text-red-400 mb-4" />
+            <h3 className="text-xl font-medium text-gray-900 mb-2">
+              Salon fermé ou complet
             </h3>
             <p className="text-gray-600">
-              Veuillez choisir une autre date
+              Veuillez choisir une autre date ou un autre service.
             </p>
           </div>
         )}
 
         {!loading && selectedDate && availableSlots.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Créneaux disponibles
+          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Créneaux disponibles ({availableSlots.length})
             </h3>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
               {availableSlots.map((slot, index) => (
                 <button
                   key={index}
                   onClick={() => handleSlotSelect(slot)}
-                  className="px-4 py-3 border-2 border-indigo-200 rounded-lg text-center hover:bg-indigo-50 hover:border-indigo-400 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="px-4 py-3 border border-indigo-200 rounded-lg text-center bg-indigo-50/50 hover:bg-indigo-100 hover:border-indigo-400 transition-colors duration-150 font-medium text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <span className="font-medium text-gray-900">
-                    {slot.time}
-                  </span>
+                  {slot.time}
                 </button>
               ))}
             </div>
@@ -162,8 +182,8 @@ const BookingDateTime = () => {
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-            <p className="text-red-800">{error}</p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-8">
+            <p className="text-red-800 font-medium">{error}</p>
           </div>
         )}
       </main>

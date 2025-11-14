@@ -225,7 +225,8 @@ router.post("/login", async (req, res) => {
         t.name as tenant_name,
         t.slug as tenant_slug,
         t.subscription_status,
-        t.trial_ends_at
+        t.trial_ends_at,
+        t.logo_url as logo_url
       FROM users u
       JOIN tenants t ON u.tenant_id = t.id
       WHERE u.email = ?`,
@@ -314,11 +315,13 @@ router.post("/login", async (req, res) => {
           last_name: user.last_name,
           role: user.role,
           tenant_id: user.tenant_id,
+          avatar_url: user.avatar_url,
         },
         tenant: {
           name: user.tenant_name,
           slug: user.tenant_slug,
           subscription_status: user.subscription_status,
+          logo_url: user.logo_url,
         },
       },
     });
@@ -339,7 +342,7 @@ router.get("/me", authMiddleware, async (req, res) => {
     const [user] = await query(
       `SELECT 
         u.id, u.email, u.first_name, u.last_name, u.phone, u.role, 
-        u.is_active, u.last_login_at, u.created_at,
+        u.is_active, u.last_login_at, u.created_at, u.avatar_url,
         t.name as tenant_name,
         t.slug as tenant_slug,
         t.subscription_plan,
@@ -374,22 +377,50 @@ router.get("/me", authMiddleware, async (req, res) => {
 // ==========================================
 // PUT - Modifier son profil
 // ==========================================
-router.put("/me", authMiddleware, async (req, res) => {
+router.put("/profile", authMiddleware, async (req, res) => {
   try {
-    const { first_name, last_name, phone } = req.body;
+    const { first_name, last_name, email, phone, avatar_url } = req.body;
+
+    // Vérifier si email existe déjà (si changé)
+    if (email && email !== req.user.email) {
+      const [existingUser] = await query(
+        "SELECT id FROM users WHERE email = ? AND id != ?",
+        [email, req.user.id]
+      );
+
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          error: "Cet email est déjà utilisé",
+        });
+      }
+    }
 
     await query(
       `UPDATE users SET
         first_name = COALESCE(?, first_name),
         last_name = COALESCE(?, last_name),
-        phone = ?
+        email = COALESCE(?, email),
+        phone = ?,
+        avatar_url = ?
       WHERE id = ?`,
-      [first_name, last_name, phone, req.user.id]
+      [first_name, last_name, email, phone, avatar_url, req.user.id]
+    );
+
+    // Récupérer le profil mis à jour
+    const [updatedUser] = await query(
+      `SELECT
+        id, email, first_name, last_name, phone, avatar_url, role,
+        is_active, last_login_at, created_at
+      FROM users
+      WHERE id = ?`,
+      [req.user.id]
     );
 
     res.json({
       success: true,
       message: "Profil mis à jour",
+      data: updatedUser,
     });
   } catch (error) {
     console.error("Erreur mise à jour profil:", error);
@@ -403,7 +434,7 @@ router.put("/me", authMiddleware, async (req, res) => {
 // ==========================================
 // PUT - Changer mot de passe
 // ==========================================
-router.put("/change-password", authMiddleware, async (req, res) => {
+router.put("/password", authMiddleware, async (req, res) => {
   try {
     const { current_password, new_password } = req.body;
 
@@ -415,10 +446,10 @@ router.put("/change-password", authMiddleware, async (req, res) => {
       });
     }
 
-    if (new_password.length < 8) {
+    if (new_password.length < 6) {
       return res.status(400).json({
         success: false,
-        error: "Le nouveau mot de passe doit contenir au moins 8 caractères",
+        error: "Le nouveau mot de passe doit contenir au moins 6 caractères",
       });
     }
 
@@ -485,7 +516,7 @@ router.get("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
     const staff = await query(
       `SELECT 
         id, email, first_name, last_name, phone, role,
-        is_active, last_login_at, created_at
+        is_active, last_login_at, created_at, avatar_url
       FROM users
       WHERE tenant_id = ?
       ORDER BY role, last_name`,
@@ -584,5 +615,168 @@ router.post("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
     });
   }
 });
+
+// ==========================================
+// PUT - Modifier un membre du staff (owner/admin only)
+// ==========================================
+router.put("/staff/:id", authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    // Vérifier permissions
+    if (!["owner", "admin"].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        error: "Accès refusé",
+      });
+    }
+
+    const { id } = req.params;
+    const { first_name, last_name, phone, role, is_active } = req.body;
+
+    // Vérifier que le staff existe et appartient au même tenant
+    const [staff] = await query(
+      "SELECT id, role FROM users WHERE id = ? AND tenant_id = ?",
+      [id, req.tenantId]
+    );
+
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        error: "Employé introuvable",
+      });
+    }
+
+    // Ne pas permettre de modifier le owner
+    if (staff.role === "owner") {
+      return res.status(403).json({
+        success: false,
+        error: "Impossible de modifier le propriétaire",
+      });
+    }
+
+    // Construire la requête UPDATE
+    const updates = [];
+    const params = [];
+
+    if (first_name !== undefined) {
+      updates.push("first_name = ?");
+      params.push(first_name);
+    }
+    if (last_name !== undefined) {
+      updates.push("last_name = ?");
+      params.push(last_name);
+    }
+    if (phone !== undefined) {
+      updates.push("phone = ?");
+      params.push(phone || null);
+    }
+    if (role !== undefined) {
+      const validRoles = ["staff", "admin"];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({
+          success: false,
+          error: "Rôle invalide",
+        });
+      }
+      updates.push("role = ?");
+      params.push(role);
+    }
+    if (is_active !== undefined) {
+      updates.push("is_active = ?");
+      params.push(is_active ? 1 : 0);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Aucune donnée à mettre à jour",
+      });
+    }
+
+    params.push(id, req.tenantId);
+
+    await query(
+      `UPDATE users SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?`,
+      params
+    );
+
+    res.json({
+      success: true,
+      message: "Employé modifié avec succès",
+    });
+  } catch (error) {
+    console.error("Erreur modification staff:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur",
+    });
+  }
+});
+
+// ==========================================
+// DELETE - Supprimer un membre du staff (owner/admin only)
+// ==========================================
+router.delete(
+  "/staff/:id",
+  authMiddleware,
+  tenantMiddleware,
+  async (req, res) => {
+    try {
+      // Vérifier permissions
+      if (!["owner", "admin"].includes(req.user.role)) {
+        return res.status(403).json({
+          success: false,
+          error: "Accès refusé",
+        });
+      }
+
+      const { id } = req.params;
+
+      // Vérifier que le staff existe et appartient au même tenant
+      const [staff] = await query(
+        "SELECT id, role FROM users WHERE id = ? AND tenant_id = ?",
+        [id, req.tenantId]
+      );
+
+      if (!staff) {
+        return res.status(404).json({
+          success: false,
+          error: "Employé introuvable",
+        });
+      }
+
+      // Ne pas permettre de supprimer le owner
+      if (staff.role === "owner") {
+        return res.status(403).json({
+          success: false,
+          error: "Impossible de supprimer le propriétaire",
+        });
+      }
+
+      // Ne pas permettre de se supprimer soi-même
+      if (parseInt(id) === req.user.id) {
+        return res.status(403).json({
+          success: false,
+          error: "Vous ne pouvez pas supprimer votre propre compte",
+        });
+      }
+
+      await query("DELETE FROM users WHERE id = ? AND tenant_id = ?", [
+        id,
+        req.tenantId,
+      ]);
+
+      res.json({
+        success: true,
+        message: "Employé supprimé avec succès",
+      });
+    } catch (error) {
+      console.error("Erreur suppression staff:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
 
 module.exports = router;
