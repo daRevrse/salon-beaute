@@ -3,23 +3,23 @@
  * Gestion automatique des tokens JWT et erreurs
  */
 
-import axios from 'axios';
+import axios from "axios";
 
 // URL de l'API (à adapter selon environnement)
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL;
 
 // Instance Axios
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Intercepteur requête : Ajouter token JWT automatiquement
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -37,17 +37,17 @@ api.interceptors.response.use(
     if (error.response) {
       // Erreur 401 : Token invalide/expiré → Déconnecter
       if (error.response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/app/login";
       }
-      
+
       // Erreur 403 : Accès refusé
       if (error.response.status === 403) {
-        console.error('Accès refusé:', error.response.data.message);
+        console.error("Accès refusé:", error.response.data.message);
       }
     }
-    
+
     return Promise.reject(error);
   }
 );

@@ -50,8 +50,10 @@ const detectUserCountry = async () => {
     if (browserLang.includes("en-US")) return "US";
     if (browserLang.includes("en-GB")) return "GB";
     if (browserLang.includes("fr-CA")) return "CA";
-    if (browserLang.includes("de-CH") || browserLang.includes("fr-CH")) return "CH";
-    if (browserLang.includes("ar-MA") || browserLang.includes("fr-MA")) return "MA";
+    if (browserLang.includes("de-CH") || browserLang.includes("fr-CH"))
+      return "CH";
+    if (browserLang.includes("ar-MA") || browserLang.includes("fr-MA"))
+      return "MA";
     if (browserLang.startsWith("fr")) return "FR";
     if (browserLang.startsWith("en")) return "GB";
     if (browserLang.startsWith("de")) return "CH";
@@ -73,8 +75,8 @@ export const CurrencyProvider = ({ children }) => {
   useEffect(() => {
     const fetchExchangeRates = async () => {
       try {
-        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-        const response = await fetch(`${API_URL}/api/currency/rates`);
+        const API_URL = process.env.REACT_APP_API_URL;
+        const response = await fetch(`${API_URL}/currency/rates`);
         const data = await response.json();
 
         if (data.success) {

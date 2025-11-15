@@ -3,10 +3,10 @@
  * Utilisé par les clients pour prendre rendez-vous en ligne
  */
 
-import { useState, useCallback } from 'react';
-import axios from 'axios';
+import { useState, useCallback } from "react";
+import axios from "axios";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL;
 
 export const usePublicBooking = (salonSlug) => {
   const [salon, setSalon] = useState(null);
@@ -30,9 +30,10 @@ export const usePublicBooking = (salonSlug) => {
       setSalon(response.data);
       return response.data;
     } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Erreur lors du chargement du salon';
+      const errorMsg =
+        err.response?.data?.error || "Erreur lors du chargement du salon";
       setError(errorMsg);
-      console.error('Erreur fetchSalon:', err);
+      console.error("Erreur fetchSalon:", err);
       throw err;
     } finally {
       setLoading(false);
@@ -49,13 +50,16 @@ export const usePublicBooking = (salonSlug) => {
     setError(null);
 
     try {
-      const response = await axios.get(`${API_URL}/public/salon/${salonSlug}/services`);
+      const response = await axios.get(
+        `${API_URL}/public/salon/${salonSlug}/services`
+      );
       setServices(response.data);
       return response.data;
     } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Erreur lors du chargement des services';
+      const errorMsg =
+        err.response?.data?.error || "Erreur lors du chargement des services";
       setError(errorMsg);
-      console.error('Erreur fetchServices:', err);
+      console.error("Erreur fetchServices:", err);
       throw err;
     } finally {
       setLoading(false);
@@ -72,13 +76,16 @@ export const usePublicBooking = (salonSlug) => {
     setError(null);
 
     try {
-      const response = await axios.get(`${API_URL}/public/salon/${salonSlug}/settings`);
+      const response = await axios.get(
+        `${API_URL}/public/salon/${salonSlug}/settings`
+      );
       setSettings(response.data);
       return response.data;
     } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Erreur lors du chargement des paramètres';
+      const errorMsg =
+        err.response?.data?.error || "Erreur lors du chargement des paramètres";
       setError(errorMsg);
-      console.error('Erreur fetchSettings:', err);
+      console.error("Erreur fetchSettings:", err);
       throw err;
     } finally {
       setLoading(false);
@@ -88,68 +95,78 @@ export const usePublicBooking = (salonSlug) => {
   /**
    * Charger les créneaux disponibles pour un service et une date
    */
-  const fetchAvailability = useCallback(async (serviceId, date) => {
-    if (!salonSlug || !serviceId || !date) {
-      setError('Paramètres manquants pour récupérer les disponibilités');
-      return;
-    }
+  const fetchAvailability = useCallback(
+    async (serviceId, date) => {
+      if (!salonSlug || !serviceId || !date) {
+        setError("Paramètres manquants pour récupérer les disponibilités");
+        return;
+      }
 
-    setLoading(true);
-    setError(null);
+      setLoading(true);
+      setError(null);
 
-    try {
-      const response = await axios.get(
-        `${API_URL}/public/salon/${salonSlug}/availability`,
-        {
-          params: {
-            service_id: serviceId,
-            date: date
+      try {
+        const response = await axios.get(
+          `${API_URL}/public/salon/${salonSlug}/availability`,
+          {
+            params: {
+              service_id: serviceId,
+              date: date,
+            },
           }
-        }
-      );
+        );
 
-      const slots = response.data.slots || [];
-      setAvailableSlots(slots);
-      return { slots, message: response.data.message };
-    } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Erreur lors du chargement des disponibilités';
-      setError(errorMsg);
-      setAvailableSlots([]);
-      console.error('Erreur fetchAvailability:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [salonSlug]);
+        const slots = response.data.slots || [];
+        setAvailableSlots(slots);
+        return { slots, message: response.data.message };
+      } catch (err) {
+        const errorMsg =
+          err.response?.data?.error ||
+          "Erreur lors du chargement des disponibilités";
+        setError(errorMsg);
+        setAvailableSlots([]);
+        console.error("Erreur fetchAvailability:", err);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [salonSlug]
+  );
 
   /**
    * Créer un rendez-vous
    */
-  const createAppointment = useCallback(async (appointmentData) => {
-    if (!salonSlug) {
-      setError('Slug du salon manquant');
-      return;
-    }
+  const createAppointment = useCallback(
+    async (appointmentData) => {
+      if (!salonSlug) {
+        setError("Slug du salon manquant");
+        return;
+      }
 
-    setLoading(true);
-    setError(null);
+      setLoading(true);
+      setError(null);
 
-    try {
-      const response = await axios.post(`${API_URL}/public/appointments`, {
-        salon_slug: salonSlug,
-        ...appointmentData
-      });
+      try {
+        const response = await axios.post(`${API_URL}/public/appointments`, {
+          salon_slug: salonSlug,
+          ...appointmentData,
+        });
 
-      return response.data;
-    } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Erreur lors de la création du rendez-vous';
-      setError(errorMsg);
-      console.error('Erreur createAppointment:', err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [salonSlug]);
+        return response.data;
+      } catch (err) {
+        const errorMsg =
+          err.response?.data?.error ||
+          "Erreur lors de la création du rendez-vous";
+        setError(errorMsg);
+        console.error("Erreur createAppointment:", err);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [salonSlug]
+  );
 
   /**
    * Réinitialiser les créneaux disponibles
@@ -181,7 +198,7 @@ export const usePublicBooking = (salonSlug) => {
     fetchAvailability,
     createAppointment,
     resetAvailability,
-    clearError
+    clearError,
   };
 };
 

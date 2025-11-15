@@ -25,7 +25,7 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/outline";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+const API_URL = process.env.REACT_APP_API_URL;
 
 const DAYS = [
   { key: "monday", label: "Lundi" },
@@ -333,7 +333,7 @@ const Settings = () => {
       // Rafraîchir les données du salon et de l'utilisateur
       const [tenantResult, userResult] = await Promise.all([
         refreshTenant(),
-        refreshUser()
+        refreshUser(),
       ]);
 
       if (!tenantResult.success || !userResult.success) {
@@ -586,7 +586,7 @@ const Settings = () => {
                         </div>
                       </div>
                       <button
-                        onClick={() => navigate("/billing")}
+                        onClick={() => navigate("/app/billing")}
                         className="mt-4 w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
                       >
                         Gérer l'abonnement
@@ -603,7 +603,7 @@ const Settings = () => {
                         facturation.
                       </p>
                       <button
-                        onClick={() => navigate("/billing")}
+                        onClick={() => navigate("/app/billing")}
                         className="w-full px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors font-medium"
                       >
                         Accéder à la facturation
@@ -863,7 +863,7 @@ const Settings = () => {
           {/* Actions - Toujours visibles */}
           <div className="px-8 py-6 bg-gray-50 border-t border-gray-200 flex justify-end space-x-4">
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/app/dashboard")}
               className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 font-medium transition-colors"
             >
               Annuler

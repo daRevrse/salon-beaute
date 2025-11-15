@@ -3,10 +3,10 @@
  * Inscription moderne avec progression visuelle
  */
 
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { useCurrency } from '../../contexts/CurrencyContext';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import {
   BuildingStorefrontIcon,
   UserIcon,
@@ -19,14 +19,14 @@ import {
   PhoneIcon,
   MapPinIcon,
   LockClosedIcon,
-  SparklesIcon
-} from '@heroicons/react/24/outline';
-import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid';
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
+import { CheckCircleIcon as CheckCircleSolid } from "@heroicons/react/24/solid";
 
 const STEPS = [
-  { id: 1, name: 'Salon', icon: BuildingStorefrontIcon },
-  { id: 2, name: 'Compte', icon: UserIcon },
-  { id: 3, name: 'Plan', icon: CreditCardIcon },
+  { id: 1, name: "Salon", icon: BuildingStorefrontIcon },
+  { id: 2, name: "Compte", icon: UserIcon },
+  { id: 3, name: "Plan", icon: CreditCardIcon },
 ];
 
 const Register = () => {
@@ -35,26 +35,26 @@ const Register = () => {
   const { formatPrice } = useCurrency();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
     // Salon
-    salon_name: '',
-    salon_email: '',
-    salon_phone: '',
-    salon_address: '',
-    salon_city: '',
-    salon_postal_code: '',
+    salon_name: "",
+    salon_email: "",
+    salon_phone: "",
+    salon_address: "",
+    salon_city: "",
+    salon_postal_code: "",
 
     // Owner
-    first_name: '',
-    last_name: '',
-    email: '',
-    password: '',
-    password_confirm: '',
+    first_name: "",
+    last_name: "",
+    email: "",
+    password: "",
+    password_confirm: "",
 
     // Plan
-    subscription_plan: 'professional',
+    subscription_plan: "professional",
   });
 
   const handleChange = (e) => {
@@ -62,40 +62,45 @@ const Register = () => {
       ...formData,
       [e.target.name]: e.target.value,
     });
-    if (error) setError('');
+    if (error) setError("");
   };
 
   const validateStep = (step) => {
-    setError('');
+    setError("");
 
     if (step === 1) {
       if (!formData.salon_name || !formData.salon_email) {
-        setError('Le nom et l\'email du salon sont obligatoires');
+        setError("Le nom et l'email du salon sont obligatoires");
         return false;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.salon_email)) {
-        setError('Format email invalide');
+        setError("Format email invalide");
         return false;
       }
     }
 
     if (step === 2) {
-      if (!formData.first_name || !formData.last_name || !formData.email || !formData.password) {
-        setError('Tous les champs sont obligatoires');
+      if (
+        !formData.first_name ||
+        !formData.last_name ||
+        !formData.email ||
+        !formData.password
+      ) {
+        setError("Tous les champs sont obligatoires");
         return false;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
-        setError('Format email invalide');
+        setError("Format email invalide");
         return false;
       }
       if (formData.password.length < 8) {
-        setError('Le mot de passe doit contenir au moins 8 caractères');
+        setError("Le mot de passe doit contenir au moins 8 caractères");
         return false;
       }
       if (formData.password !== formData.password_confirm) {
-        setError('Les mots de passe ne correspondent pas');
+        setError("Les mots de passe ne correspondent pas");
         return false;
       }
     }
@@ -111,12 +116,12 @@ const Register = () => {
 
   const handlePrevious = () => {
     setCurrentStep(currentStep - 1);
-    setError('');
+    setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!validateStep(2)) return;
 
@@ -127,7 +132,7 @@ const Register = () => {
     const result = await register(registerData);
 
     if (result.success) {
-      navigate('/dashboard');
+      navigate("/dashboard");
     } else {
       setError(result.error);
     }
@@ -163,10 +168,10 @@ const Register = () => {
                     <div
                       className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${
                         isCompleted
-                          ? 'bg-green-500 border-green-500'
+                          ? "bg-green-500 border-green-500"
                           : isCurrent
-                          ? 'bg-indigo-600 border-indigo-600'
-                          : 'bg-white border-gray-300'
+                          ? "bg-indigo-600 border-indigo-600"
+                          : "bg-white border-gray-300"
                       }`}
                     >
                       {isCompleted ? (
@@ -174,14 +179,14 @@ const Register = () => {
                       ) : (
                         <Icon
                           className={`w-6 h-6 ${
-                            isCurrent ? 'text-white' : 'text-gray-400'
+                            isCurrent ? "text-white" : "text-gray-400"
                           }`}
                         />
                       )}
                     </div>
                     <span
                       className={`mt-2 text-sm font-medium ${
-                        isCurrent ? 'text-indigo-600' : 'text-gray-500'
+                        isCurrent ? "text-indigo-600" : "text-gray-500"
                       }`}
                     >
                       {step.name}
@@ -190,7 +195,7 @@ const Register = () => {
                   {index < STEPS.length - 1 && (
                     <div
                       className={`flex-1 h-0.5 mx-4 mb-6 transition-all ${
-                        currentStep > step.id ? 'bg-green-500' : 'bg-gray-300'
+                        currentStep > step.id ? "bg-green-500" : "bg-gray-300"
                       }`}
                     />
                   )}
@@ -216,8 +221,12 @@ const Register = () => {
               <div className="space-y-6 animate-fadeIn">
                 <div className="text-center mb-6">
                   <BuildingStorefrontIcon className="h-12 w-12 text-indigo-600 mx-auto mb-3" />
-                  <h3 className="text-2xl font-bold text-gray-900">Informations du salon</h3>
-                  <p className="text-gray-600 mt-1">Commençons par les détails de votre établissement</p>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    Informations du salon
+                  </h3>
+                  <p className="text-gray-600 mt-1">
+                    Commençons par les détails de votre établissement
+                  </p>
                 </div>
 
                 <div>
@@ -332,8 +341,12 @@ const Register = () => {
               <div className="space-y-6 animate-fadeIn">
                 <div className="text-center mb-6">
                   <UserIcon className="h-12 w-12 text-indigo-600 mx-auto mb-3" />
-                  <h3 className="text-2xl font-bold text-gray-900">Votre compte</h3>
-                  <p className="text-gray-600 mt-1">Créez vos identifiants de connexion</p>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    Votre compte
+                  </h3>
+                  <p className="text-gray-600 mt-1">
+                    Créez vos identifiants de connexion
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -407,7 +420,9 @@ const Register = () => {
                         placeholder="Min. 8 caractères"
                       />
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">Au moins 8 caractères</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Au moins 8 caractères
+                    </p>
                   </div>
 
                   <div>
@@ -438,33 +453,41 @@ const Register = () => {
               <div className="space-y-6 animate-fadeIn">
                 <div className="text-center mb-6">
                   <SparklesIcon className="h-12 w-12 text-indigo-600 mx-auto mb-3" />
-                  <h3 className="text-2xl font-bold text-gray-900">Choisissez votre plan</h3>
-                  <p className="text-gray-600 mt-1">14 jours d'essai gratuit sur tous les plans</p>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    Choisissez votre plan
+                  </h3>
+                  <p className="text-gray-600 mt-1">
+                    14 jours d'essai gratuit sur tous les plans
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Plan Essential */}
                   <label
                     className={`relative flex flex-col p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                      formData.subscription_plan === 'essential'
-                        ? 'border-indigo-600 bg-indigo-50 shadow-lg'
-                        : 'border-gray-200 hover:border-gray-300'
+                      formData.subscription_plan === "essential"
+                        ? "border-indigo-600 bg-indigo-50 shadow-lg"
+                        : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <input
                       type="radio"
                       name="subscription_plan"
                       value="essential"
-                      checked={formData.subscription_plan === 'essential'}
+                      checked={formData.subscription_plan === "essential"}
                       onChange={handleChange}
                       className="sr-only"
                     />
-                    {formData.subscription_plan === 'essential' && (
+                    {formData.subscription_plan === "essential" && (
                       <CheckCircleSolid className="absolute top-4 right-4 h-6 w-6 text-indigo-600" />
                     )}
-                    <span className="text-lg font-bold text-gray-900">Essential</span>
+                    <span className="text-lg font-bold text-gray-900">
+                      Essential
+                    </span>
                     <div className="mt-4 mb-4">
-                      <span className="text-3xl font-bold text-gray-900">{formatPrice(29)}</span>
+                      <span className="text-3xl font-bold text-gray-900">
+                        {formatPrice(29)}
+                      </span>
                       <span className="text-gray-600">/mois</span>
                     </div>
                     <ul className="space-y-2 text-sm text-gray-600">
@@ -486,28 +509,32 @@ const Register = () => {
                   {/* Plan Professional */}
                   <label
                     className={`relative flex flex-col p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                      formData.subscription_plan === 'professional'
-                        ? 'border-indigo-600 bg-indigo-50 shadow-lg'
-                        : 'border-gray-200 hover:border-gray-300'
+                      formData.subscription_plan === "professional"
+                        ? "border-indigo-600 bg-indigo-50 shadow-lg"
+                        : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <input
                       type="radio"
                       name="subscription_plan"
                       value="professional"
-                      checked={formData.subscription_plan === 'professional'}
+                      checked={formData.subscription_plan === "professional"}
                       onChange={handleChange}
                       className="sr-only"
                     />
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
                       Populaire
                     </div>
-                    {formData.subscription_plan === 'professional' && (
+                    {formData.subscription_plan === "professional" && (
                       <CheckCircleSolid className="absolute top-4 right-4 h-6 w-6 text-indigo-600" />
                     )}
-                    <span className="text-lg font-bold text-gray-900">Professional</span>
+                    <span className="text-lg font-bold text-gray-900">
+                      Professional
+                    </span>
                     <div className="mt-4 mb-4">
-                      <span className="text-3xl font-bold text-gray-900">{formatPrice(59)}</span>
+                      <span className="text-3xl font-bold text-gray-900">
+                        {formatPrice(59)}
+                      </span>
                       <span className="text-gray-600">/mois</span>
                     </div>
                     <ul className="space-y-2 text-sm text-gray-600">
@@ -529,25 +556,29 @@ const Register = () => {
                   {/* Plan Enterprise */}
                   <label
                     className={`relative flex flex-col p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                      formData.subscription_plan === 'enterprise'
-                        ? 'border-indigo-600 bg-indigo-50 shadow-lg'
-                        : 'border-gray-200 hover:border-gray-300'
+                      formData.subscription_plan === "enterprise"
+                        ? "border-indigo-600 bg-indigo-50 shadow-lg"
+                        : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
                     <input
                       type="radio"
                       name="subscription_plan"
                       value="enterprise"
-                      checked={formData.subscription_plan === 'enterprise'}
+                      checked={formData.subscription_plan === "enterprise"}
                       onChange={handleChange}
                       className="sr-only"
                     />
-                    {formData.subscription_plan === 'enterprise' && (
+                    {formData.subscription_plan === "enterprise" && (
                       <CheckCircleSolid className="absolute top-4 right-4 h-6 w-6 text-indigo-600" />
                     )}
-                    <span className="text-lg font-bold text-gray-900">Enterprise</span>
+                    <span className="text-lg font-bold text-gray-900">
+                      Enterprise
+                    </span>
                     <div className="mt-4 mb-4">
-                      <span className="text-3xl font-bold text-gray-900">{formatPrice(99)}</span>
+                      <span className="text-3xl font-bold text-gray-900">
+                        {formatPrice(99)}
+                      </span>
                       <span className="text-gray-600">/mois</span>
                     </div>
                     <ul className="space-y-2 text-sm text-gray-600">
@@ -568,10 +599,13 @@ const Register = () => {
                 </div>
 
                 <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-100">
-                  <h4 className="font-semibold text-gray-900 mb-2">Période d'essai gratuite</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    Période d'essai gratuite
+                  </h4>
                   <p className="text-sm text-gray-700">
-                    Profitez de 14 jours d'essai gratuit sur tous les plans. Aucune carte bancaire requise.
-                    Vous pourrez changer de plan à tout moment.
+                    Profitez de 14 jours d'essai gratuit sur tous les plans.
+                    Aucune carte bancaire requise. Vous pourrez changer de plan
+                    à tout moment.
                   </p>
                 </div>
               </div>
@@ -590,7 +624,7 @@ const Register = () => {
                 </button>
               ) : (
                 <Link
-                  to="/login"
+                  to="/app/login"
                   className="flex items-center px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-medium transition-all"
                 >
                   <ArrowLeftIcon className="h-5 w-5 mr-2" />
@@ -615,9 +649,25 @@ const Register = () => {
                 >
                   {loading ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       Création...
                     </>
@@ -636,12 +686,18 @@ const Register = () => {
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-gray-600">
           <p>
-            En créant un compte, vous acceptez nos{' '}
-            <a href="#" className="text-indigo-600 hover:text-indigo-500 font-medium">
+            En créant un compte, vous acceptez nos{" "}
+            <a
+              href="#"
+              className="text-indigo-600 hover:text-indigo-500 font-medium"
+            >
               Conditions d'utilisation
-            </a>{' '}
-            et notre{' '}
-            <a href="#" className="text-indigo-600 hover:text-indigo-500 font-medium">
+            </a>{" "}
+            et notre{" "}
+            <a
+              href="#"
+              className="text-indigo-600 hover:text-indigo-500 font-medium"
+            >
               Politique de confidentialité
             </a>
           </p>

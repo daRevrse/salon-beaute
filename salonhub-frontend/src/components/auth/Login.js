@@ -3,26 +3,26 @@
  * Formulaire de connexion moderne avec gradient et animations
  */
 
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   EnvelopeIcon,
   LockClosedIcon,
   ArrowRightIcon,
   CheckCircleIcon,
-  XCircleIcon
-} from '@heroicons/react/24/outline';
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
 
 const Login = () => {
   const navigate = useNavigate();
   const { login, loading } = useAuth();
 
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [focusedField, setFocusedField] = useState(null);
 
   const handleChange = (e) => {
@@ -31,16 +31,16 @@ const Login = () => {
       [e.target.name]: e.target.value,
     });
     // Effacer l'erreur quand l'utilisateur tape
-    if (error) setError('');
+    if (error) setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     // Validation
     if (!formData.email || !formData.password) {
-      setError('Tous les champs sont obligatoires');
+      setError("Tous les champs sont obligatoires");
       return;
     }
 
@@ -48,7 +48,7 @@ const Login = () => {
     const result = await login(formData.email, formData.password);
 
     if (result.success) {
-      navigate('/dashboard');
+      navigate("/dashboard");
     } else {
       setError(result.error);
     }
@@ -83,14 +83,21 @@ const Login = () => {
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-semibold text-gray-700 mb-2"
+              >
                 Adresse email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <EnvelopeIcon className={`h-5 w-5 transition-colors ${
-                    focusedField === 'email' ? 'text-indigo-600' : 'text-gray-400'
-                  }`} />
+                  <EnvelopeIcon
+                    className={`h-5 w-5 transition-colors ${
+                      focusedField === "email"
+                        ? "text-indigo-600"
+                        : "text-gray-400"
+                    }`}
+                  />
                 </div>
                 <input
                   id="email"
@@ -100,7 +107,7 @@ const Login = () => {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  onFocus={() => setFocusedField('email')}
+                  onFocus={() => setFocusedField("email")}
                   onBlur={() => setFocusedField(null)}
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder-gray-400"
                   placeholder="votre@email.com"
@@ -111,18 +118,28 @@ const Login = () => {
             {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label htmlFor="password" className="block text-sm font-semibold text-gray-700">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-semibold text-gray-700"
+                >
                   Mot de passe
                 </label>
-                <a href="#" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                <a
+                  href="#"
+                  className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                >
                   Oublié ?
                 </a>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <LockClosedIcon className={`h-5 w-5 transition-colors ${
-                    focusedField === 'password' ? 'text-indigo-600' : 'text-gray-400'
-                  }`} />
+                  <LockClosedIcon
+                    className={`h-5 w-5 transition-colors ${
+                      focusedField === "password"
+                        ? "text-indigo-600"
+                        : "text-gray-400"
+                    }`}
+                  />
                 </div>
                 <input
                   id="password"
@@ -132,7 +149,7 @@ const Login = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  onFocus={() => setFocusedField('password')}
+                  onFocus={() => setFocusedField("password")}
                   onBlur={() => setFocusedField(null)}
                   className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder-gray-400"
                   placeholder="••••••••"
@@ -148,7 +165,10 @@ const Login = () => {
                 type="checkbox"
                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+              <label
+                htmlFor="remember-me"
+                className="ml-2 block text-sm text-gray-700"
+              >
                 Se souvenir de moi
               </label>
             </div>
@@ -161,9 +181,25 @@ const Login = () => {
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Connexion en cours...
                 </>
@@ -180,9 +216,9 @@ const Login = () => {
         {/* Lien inscription */}
         <div className="mt-6 text-center">
           <p className="text-gray-600">
-            Pas encore de compte ?{' '}
+            Pas encore de compte ?{" "}
             <Link
-              to="/register"
+              to="/app/register"
               className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors"
             >
               Créer un compte gratuitement

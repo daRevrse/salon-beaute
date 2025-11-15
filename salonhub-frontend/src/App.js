@@ -35,21 +35,27 @@ function App() {
         <CurrencyProvider>
           <Routes>
             {/* Routes publiques - Authentification */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/app/login" element={<Login />} />
+            <Route path="/app/register" element={<Register />} />
 
             {/* Routes publiques - Booking (Réservation client) */}
-            <Route path="/book/:slug" element={<BookingLanding />} />
-            <Route path="/book/:slug/datetime" element={<BookingDateTime />} />
-            <Route path="/book/:slug/info" element={<BookingClientInfo />} />
+            <Route path="/app/book/:slug" element={<BookingLanding />} />
             <Route
-              path="/book/:slug/confirmation"
+              path="/app/book/:slug/datetime"
+              element={<BookingDateTime />}
+            />
+            <Route
+              path="/app/book/:slug/info"
+              element={<BookingClientInfo />}
+            />
+            <Route
+              path="/app/book/:slug/confirmation"
               element={<BookingConfirmation />}
             />
 
             {/* Routes protégées - Admin */}
             <Route
-              path="/dashboard"
+              path="/app/dashboard"
               element={
                 <ProtectedRoute>
                   <Dashboard />
@@ -58,7 +64,7 @@ function App() {
             />
 
             <Route
-              path="/clients"
+              path="/app/clients"
               element={
                 <ProtectedRoute>
                   <Clients />
@@ -67,7 +73,7 @@ function App() {
             />
 
             <Route
-              path="/services"
+              path="/app/services"
               element={
                 <ProtectedRoute>
                   <Services />
@@ -76,7 +82,7 @@ function App() {
             />
 
             <Route
-              path="/appointments"
+              path="/app/appointments"
               element={
                 <ProtectedRoute>
                   <Appointments />
@@ -85,7 +91,7 @@ function App() {
             />
 
             <Route
-              path="/billing"
+              path="/app/billing"
               element={
                 <ProtectedRoute>
                   <Billing />
@@ -94,7 +100,7 @@ function App() {
             />
 
             <Route
-              path="/settings"
+              path="/app/settings"
               element={
                 <ProtectedRoute>
                   <Settings />
@@ -103,7 +109,7 @@ function App() {
             />
 
             <Route
-              path="/profile"
+              path="/app/profile"
               element={
                 <ProtectedRoute>
                   <Profile />
@@ -112,10 +118,16 @@ function App() {
             />
 
             {/* Redirect root vers dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/app/app/"
+              element={<Navigate to="/app/app/dashboard" replace />}
+            />
 
             {/* 404 */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="*"
+              element={<Navigate to="/app/dashboard" replace />}
+            />
           </Routes>
         </CurrencyProvider>
       </AuthProvider>

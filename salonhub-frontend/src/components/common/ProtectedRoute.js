@@ -3,11 +3,15 @@
  * Redirige vers login si non authentifié
  */
 
-import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import React from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 
-const ProtectedRoute = ({ children, requireAdmin = false, requireOwner = false }) => {
+const ProtectedRoute = ({
+  children,
+  requireAdmin = false,
+  requireOwner = false,
+}) => {
   const { user, loading } = useAuth();
 
   // Attendre chargement
@@ -21,17 +25,17 @@ const ProtectedRoute = ({ children, requireAdmin = false, requireOwner = false }
 
   // Pas connecté → Login
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/app/login" replace />;
   }
 
   // Vérifier rôle admin si requis
-  if (requireAdmin && user.role !== 'admin' && user.role !== 'owner') {
-    return <Navigate to="/dashboard" replace />;
+  if (requireAdmin && user.role !== "admin" && user.role !== "owner") {
+    return <Navigate to="/app/dashboard" replace />;
   }
 
   // Vérifier rôle owner si requis
-  if (requireOwner && user.role !== 'owner') {
-    return <Navigate to="/dashboard" replace />;
+  if (requireOwner && user.role !== "owner") {
+    return <Navigate to="/app/dashboard" replace />;
   }
 
   return children;

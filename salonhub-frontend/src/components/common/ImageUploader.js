@@ -3,15 +3,15 @@
  * Gère la sélection et l'upload réel d'une image avec FormData
  */
 
-import { useState, useRef } from 'react';
-import api from '../../services/api';
+import { useState, useRef } from "react";
+import api from "../../services/api";
 import {
   PhotoIcon,
   TrashIcon,
   ArrowPathIcon,
-} from '@heroicons/react/24/outline';
+} from "@heroicons/react/24/outline";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL;
 
 const ImageUploader = ({
   target,
@@ -19,7 +19,7 @@ const ImageUploader = ({
   onImageUpload,
   label,
   onDelete,
-  aspectRatio = 'aspect-[4/3]',
+  aspectRatio = "aspect-[4/3]",
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -41,9 +41,15 @@ const ImageUploader = ({
     }
 
     // Validation type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
     if (!allowedTypes.includes(file.type)) {
-      setError('Seules les images JPEG, PNG, GIF et WebP sont autorisées');
+      setError("Seules les images JPEG, PNG, GIF et WebP sont autorisées");
       return;
     }
 
@@ -53,12 +59,12 @@ const ImageUploader = ({
     try {
       // Créer FormData
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append("image", file);
 
       // Upload avec FormData
       const response = await api.post(`/uploads/${target}`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       });
 
@@ -70,7 +76,7 @@ const ImageUploader = ({
         setError(response.data.error || "Erreur d'upload");
       }
     } catch (err) {
-      console.error('Erreur upload:', err);
+      console.error("Erreur upload:", err);
       setError(err.response?.data?.error || "Erreur lors de l'upload");
     } finally {
       setLoading(false);
@@ -85,16 +91,16 @@ const ImageUploader = ({
       setError(null);
 
       // Extraire l'URL relative
-      const relativeUrl = imageUrl.replace(API_URL, '');
+      const relativeUrl = imageUrl.replace(API_URL, "");
 
-      await api.delete('/uploads', {
+      await api.delete("/uploads", {
         data: { url: relativeUrl },
       });
 
       onDelete();
     } catch (err) {
-      console.error('Erreur suppression:', err);
-      setError('Erreur lors de la suppression');
+      console.error("Erreur suppression:", err);
+      setError("Erreur lors de la suppression");
     } finally {
       setLoading(false);
     }
@@ -112,7 +118,7 @@ const ImageUploader = ({
 
       <div
         className={`relative w-full overflow-hidden rounded-lg border-2 ${
-          imageUrl ? 'border-gray-200' : 'border-dashed border-gray-300'
+          imageUrl ? "border-gray-200" : "border-dashed border-gray-300"
         }`}
       >
         {/* Input File caché */}
@@ -135,7 +141,8 @@ const ImageUploader = ({
               alt="Uploaded"
               className="w-full h-full object-cover"
               onError={(e) => {
-                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage%3C/text%3E%3C/svg%3E';
+                e.target.src =
+                  'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage%3C/text%3E%3C/svg%3E';
               }}
             />
           ) : loading ? (
@@ -152,7 +159,9 @@ const ImageUploader = ({
               <p className="mt-2 text-sm text-gray-600">
                 Cliquez pour ajouter une image
               </p>
-              <p className="text-xs text-gray-400 mt-1">(Max 5MB - JPEG, PNG, GIF, WebP)</p>
+              <p className="text-xs text-gray-400 mt-1">
+                (Max 5MB - JPEG, PNG, GIF, WebP)
+              </p>
             </div>
           )}
         </div>

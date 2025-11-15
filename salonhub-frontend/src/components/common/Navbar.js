@@ -31,29 +31,29 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/app/login");
   };
 
   const isActive = (path) => location.pathname === path;
 
   const navLinks = [
     {
-      path: "/dashboard",
+      path: "/app/dashboard",
       label: "Dashboard",
       icon: <ChartBarIcon className="h-5 w-5" />,
     },
     {
-      path: "/appointments",
+      path: "/app/appointments",
       label: "Rendez-vous",
       icon: <CalendarDaysIcon className="h-5 w-5" />,
     },
     {
-      path: "/clients",
+      path: "/app/clients",
       label: "Clients",
       icon: <UsersIcon className="h-5 w-5" />,
     },
     {
-      path: "/services",
+      path: "/app/services",
       label: "Services",
       icon: <ScissorsIcon className="h-5 w-5" />,
     },
@@ -67,7 +67,7 @@ const Navbar = () => {
           {/* LOGO & NAV DESKTOP                                 */}
           {/* -------------------------------------------------- */}
           <div className="flex items-center">
-            <Link to="/dashboard" className="flex items-center group">
+            <Link to="/app/dashboard" className="flex items-center group">
               {tenant?.logo_url ? (
                 <img
                   src={tenant.logo_url?.replace("/api", "")}
@@ -165,7 +165,7 @@ const Navbar = () => {
                     {/* Menu Items */}
                     <div className="py-1">
                       <Link
-                        to="/profile"
+                        to="/app/profile"
                         onClick={() => setProfileMenuOpen(false)}
                         className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm transition-colors"
                       >
@@ -174,7 +174,7 @@ const Navbar = () => {
                       </Link>
 
                       <Link
-                        to="/settings"
+                        to="/app/settings"
                         onClick={() => setProfileMenuOpen(false)}
                         className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm transition-colors"
                       >
@@ -183,7 +183,7 @@ const Navbar = () => {
                       </Link>
 
                       {/* <Link
-                        to="/billing"
+                        to="/app/billing"
                         onClick={() => setProfileMenuOpen(false)}
                         className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm transition-colors"
                       >
@@ -252,7 +252,7 @@ const Navbar = () => {
 
           <div className="py-3 border-t border-gray-200">
             <Link
-              to="/profile"
+              to="/app/profile"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
             >
@@ -261,7 +261,7 @@ const Navbar = () => {
             </Link>
 
             <Link
-              to="/settings"
+              to="/app/settings"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
             >
@@ -270,7 +270,7 @@ const Navbar = () => {
             </Link>
 
             <Link
-              to="/billing"
+              to="/app/billing"
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
             >

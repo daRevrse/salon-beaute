@@ -2,8 +2,8 @@
  * Utilitaires pour la gestion des images
  */
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-const BACKEND_URL = API_BASE_URL.replace('/api', '');
+const API_BASE_URL = process.env.REACT_APP_API_URL;
+const BACKEND_URL = API_BASE_URL.replace("/api", "");
 
 /**
  * Construire l'URL complète d'une image
@@ -14,7 +14,7 @@ export const getImageUrl = (imageUrl) => {
   if (!imageUrl) return null;
 
   // Si c'est déjà une URL complète, la retourner telle quelle
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
     return imageUrl;
   }
 
@@ -29,9 +29,10 @@ export const getImageUrl = (imageUrl) => {
  */
 export const getDefaultImage = (type) => {
   const defaults = {
-    avatar: 'https://ui-avatars.com/api/?name=User&background=6366f1&color=fff',
-    logo: 'https://ui-avatars.com/api/?name=Salon&background=6366f1&color=fff&size=200',
-    service: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop',
+    avatar: "https://ui-avatars.com/api/?name=User&background=6366f1&color=fff",
+    logo: "https://ui-avatars.com/api/?name=Salon&background=6366f1&color=fff&size=200",
+    service:
+      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop",
   };
 
   return defaults[type] || defaults.avatar;
@@ -40,7 +41,13 @@ export const getDefaultImage = (type) => {
 /**
  * Composant Image avec fallback
  */
-export const ImageWithFallback = ({ src, alt, fallbackType = 'avatar', className = '', ...props }) => {
+export const ImageWithFallback = ({
+  src,
+  alt,
+  fallbackType = "avatar",
+  className = "",
+  ...props
+}) => {
   const handleError = (e) => {
     e.target.src = getDefaultImage(fallbackType);
   };
