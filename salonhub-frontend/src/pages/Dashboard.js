@@ -24,7 +24,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, tenant } = useAuth();
   const { formatPrice } = useCurrency();
   const [stats, setStats] = useState({
     todayAppointments: 0,
@@ -171,11 +171,23 @@ const Dashboard = () => {
     <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-2 text-gray-600">
-            Bienvenue, {user?.first_name} ! Voici un aperçu de votre activité.
-          </p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="mt-2 text-gray-600">
+              Bienvenue, {user?.first_name} ! Voici un aperçu de votre activité.
+            </p>
+          </div>
+          <div>
+            <Link
+              to={`/book/${tenant?.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Voir la page publique
+            </Link>
+          </div>
         </div>
 
         {/* Notification pour RDV en attente */}

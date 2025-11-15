@@ -19,7 +19,12 @@ export const useServices = () => {
       
       const response = await api.get('/services', { params: filters });
       
-      setServices(response.data.data);
+      if (response.data && Array.isArray(response.data.data)) {
+        setServices(response.data.data);
+      } else {
+        setServices([]);
+      }
+      
       return { success: true, data: response.data.data };
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Erreur lors du chargement des services';
@@ -28,7 +33,7 @@ export const useServices = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setServices, setLoading, setError]);
 
   useEffect(() => {
     fetchServices();

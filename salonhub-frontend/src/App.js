@@ -34,86 +34,89 @@ function App() {
       <AuthProvider>
         <CurrencyProvider>
           <Routes>
-          {/* Routes publiques - Authentification */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+            {/* Routes publiques - Authentification */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-          {/* Routes publiques - Booking (Réservation client) */}
-          <Route path="/book/:slug" element={<BookingLanding />} />
-          <Route path="/book/:slug/datetime" element={<BookingDateTime />} />
-          <Route path="/book/:slug/info" element={<BookingClientInfo />} />
-          <Route path="/book/:slug/confirmation" element={<BookingConfirmation />} />
+            {/* Routes publiques - Booking (Réservation client) */}
+            <Route path="/book/:slug" element={<BookingLanding />} />
+            <Route path="/book/:slug/datetime" element={<BookingDateTime />} />
+            <Route path="/book/:slug/info" element={<BookingClientInfo />} />
+            <Route
+              path="/book/:slug/confirmation"
+              element={<BookingConfirmation />}
+            />
 
-          {/* Routes protégées - Admin */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+            {/* Routes protégées - Admin */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/clients"
-            element={
-              <ProtectedRoute>
-                <Clients />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/clients"
+              element={
+                <ProtectedRoute>
+                  <Clients />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/services"
-            element={
-              <ProtectedRoute>
-                <Services />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/services"
+              element={
+                <ProtectedRoute>
+                  <Services />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/appointments"
-            element={
-              <ProtectedRoute>
-                <Appointments />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/appointments"
+              element={
+                <ProtectedRoute>
+                  <Appointments />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/billing"
-            element={
-              <ProtectedRoute>
-                <Billing />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/billing"
+              element={
+                <ProtectedRoute>
+                  <Billing />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Redirect root vers dashboard */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* Redirect root vers dashboard */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          {/* 404 */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+            {/* 404 */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </CurrencyProvider>
       </AuthProvider>
     </BrowserRouter>

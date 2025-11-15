@@ -8,6 +8,7 @@ import DashboardLayout from "../components/common/DashboardLayout";
 import AppointmentDetails from "../components/appointments/AppointmentDetails";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useAppointments } from "../hooks/useAppointments";
+import AppointmentCalendar from "../components/appointments/AppointmentCalendar";
 import { useClients } from "../hooks/useClients";
 import { useServices } from "../hooks/useServices";
 import api from "../services/api";
@@ -25,6 +26,7 @@ const Appointments = () => {
   const { clients } = useClients();
   const { services } = useServices();
 
+  const [view, setView] = useState("list"); // 'list' or 'calendar'
   const [showModal, setShowModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [filterDate, setFilterDate] = useState("");
@@ -49,6 +51,8 @@ const Appointments = () => {
       } catch (err) {
         console.error("Erreur chargement staff:", err);
       }
+
+      console.log("appoint", appointments);
     };
     loadStaff();
   }, []);
@@ -278,7 +282,9 @@ const Appointments = () => {
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Rendez-vous</h1>
-            <p className="mt-2 text-gray-600">Gérez votre planning et vos réservations</p>
+            <p className="mt-2 text-gray-600">
+              Gérez votre planning et vos réservations
+            </p>
           </div>
           <button
             onClick={handleOpenModal}
@@ -342,236 +348,275 @@ const Appointments = () => {
           </div>
         </div>
 
-        {/* Liste */}
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          {loading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-            </div>
-          ) : sortedAppointments.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              Aucun rendez-vous trouvé
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date & Heure
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Client
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Service
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Employé
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Statut
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedAppointments.map((apt) => (
-                    <tr
-                      key={apt.id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => handleOpenDetails(apt)}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {new Date(apt.appointment_date).toLocaleDateString(
-                            "fr-FR"
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {apt.start_time.substring(0, 5)} -{" "}
-                          {apt.end_time.substring(0, 5)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {apt.client_first_name} {apt.client_last_name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {apt.client_phone}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {apt.service_name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {apt.service_duration} min
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {apt.staff_first_name
-                          ? `${apt.staff_first_name} ${apt.staff_last_name}`
-                          : "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(apt.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                        <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
-                          {getStatusActions(apt)}
-                          <button
-                            onClick={() => handleDelete(apt.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Supprimer
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        {/* View Switcher */}
+        <div className="mb-6 flex justify-end">
+          <div className="flex rounded-md border border-gray-300">
+            <button
+              onClick={() => setView("list")}
+              className={`px-4 py-2 text-sm font-medium rounded-l-md transition-colors ${
+                view === "list"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Liste
+            </button>
+            <button
+              onClick={() => setView("calendar")}
+              className={`px-4 py-2 text-sm font-medium rounded-r-md transition-colors ${
+                view === "calendar"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Calendrier
+            </button>
+          </div>
         </div>
+
+        {/* Content: List or Calendar */}
+        {view === "list" && (
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            {loading ? (
+              <div className="p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+              </div>
+            ) : sortedAppointments.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                Aucun rendez-vous trouvé
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date & Heure
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Client
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Service
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Employé
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Statut
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {sortedAppointments.map((apt) => (
+                      <tr
+                        key={apt.id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleOpenDetails(apt)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {new Date(apt.appointment_date).toLocaleDateString(
+                              "fr-FR"
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {apt.start_time.substring(0, 5)} -{" "}
+                            {apt.end_time.substring(0, 5)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {apt.client_first_name} {apt.client_last_name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {apt.client_phone}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {apt.service_name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {apt.service_duration} min
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {apt.staff_first_name
+                            ? `${apt.staff_first_name} ${apt.staff_last_name}`
+                            : "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(apt.status)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                          <div
+                            className="flex justify-end space-x-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {getStatusActions(apt)}
+                            <button
+                              onClick={() => handleDelete(apt.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {view === "calendar" && (
+          <AppointmentCalendar
+            appointments={appointments}
+            onSelectEvent={handleOpenDetails}
+          />
+        )}
 
         {/* Modal Création */}
         {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900">
-                Nouveau rendez-vous
-              </h3>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Client *
-                </label>
-                <select
-                  name="client_id"
-                  required
-                  value={formData.client_id}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="">Sélectionner un client</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.first_name} {client.last_name}
-                    </option>
-                  ))}
-                </select>
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Nouveau rendez-vous
+                </h3>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Service *
-                </label>
-                <select
-                  name="service_id"
-                  required
-                  value={formData.service_id}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="">Sélectionner un service</option>
-                  {services
-                    .filter((s) => s.is_active)
-                    .map((service) => (
-                      <option key={service.id} value={service.id}>
-                        {service.name} ({service.duration} min - {formatPrice(service.price)})
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Client *
+                  </label>
+                  <select
+                    name="client_id"
+                    required
+                    value={formData.client_id}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Sélectionner un client</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.first_name} {client.last_name}
                       </option>
                     ))}
-                </select>
-              </div>
+                  </select>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Employé (optionnel)
-                </label>
-                <select
-                  name="staff_id"
-                  value={formData.staff_id}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="">Non assigné</option>
-                  {staff.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.first_name} {member.last_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Service *
+                  </label>
+                  <select
+                    name="service_id"
+                    required
+                    value={formData.service_id}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Sélectionner un service</option>
+                    {services
+                      .filter((s) => s.is_active)
+                      .map((service) => (
+                        <option key={service.id} value={service.id}>
+                          {service.name} ({service.duration} min -{" "}
+                          {formatPrice(service.price)})
+                        </option>
+                      ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Date *
-                </label>
-                <input
-                  type="date"
-                  name="appointment_date"
-                  required
-                  value={formData.appointment_date}
-                  onChange={handleChange}
-                  min={new Date().toISOString().split("T")[0]}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Employé (optionnel)
+                  </label>
+                  <select
+                    name="staff_id"
+                    value={formData.staff_id}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Non assigné</option>
+                    {staff.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.first_name} {member.last_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Heure de début *
-                </label>
-                <input
-                  type="time"
-                  name="start_time"
-                  required
-                  value={formData.start_time}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Date *
+                  </label>
+                  <input
+                    type="date"
+                    name="appointment_date"
+                    required
+                    value={formData.appointment_date}
+                    onChange={handleChange}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Notes
-                </label>
-                <textarea
-                  name="notes"
-                  rows="2"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Demandes spéciales..."
-                ></textarea>
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Heure de début *
+                  </label>
+                  <input
+                    type="time"
+                    name="start_time"
+                    required
+                    value={formData.start_time}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {loading ? "Création..." : "Créer le rendez-vous"}
-                </button>
-              </div>
-            </form>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Notes
+                  </label>
+                  <textarea
+                    name="notes"
+                    rows="2"
+                    value={formData.notes}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Demandes spéciales..."
+                  ></textarea>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {loading ? "Création..." : "Créer le rendez-vous"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
         )}
 
         {/* Modal Détails Rendez-vous */}

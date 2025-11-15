@@ -20,7 +20,12 @@ export const useClients = () => {
       const params = searchQuery ? { search: searchQuery } : {};
       const response = await api.get('/clients', { params });
       
-      setClients(response.data.data);
+      if (response.data && Array.isArray(response.data.data)) {
+        setClients(response.data.data);
+      } else {
+        setClients([]);
+      }
+      
       return { success: true, data: response.data.data };
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Erreur lors du chargement des clients';
@@ -29,7 +34,7 @@ export const useClients = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setClients, setLoading, setError]);
 
   // Charger au montage
   useEffect(() => {

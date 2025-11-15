@@ -39,7 +39,7 @@ const DAYS = [
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { tenant } = useAuth();
+  const { tenant, refreshTenant, refreshUser } = useAuth();
   const { currency, changeCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,6 +66,7 @@ const Settings = () => {
     email: "",
     address: "",
   });
+  const [copied, setCopied] = useState(false);
   const [staff, setStaff] = useState([]);
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
@@ -268,6 +269,14 @@ const Settings = () => {
     }
   };
 
+  const handleCopy = () => {
+    const url = `${window.location.origin}/book/${tenant?.slug}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   const handleDayChange = (day, field, value) => {
     setBusinessHours((prev) => ({
       ...prev,
@@ -320,6 +329,16 @@ const Settings = () => {
       }
 
       changeCurrency(selectedCurrency);
+
+      // Rafraîchir les données du salon et de l'utilisateur
+      const [tenantResult, userResult] = await Promise.all([
+        refreshTenant(),
+        refreshUser()
+      ]);
+
+      if (!tenantResult.success || !userResult.success) {
+        console.warn("Erreur lors du rafraîchissement des données");
+      }
 
       setMessage("Paramètres enregistrés avec succès !");
       setTimeout(() => setMessage(null), 3000);
@@ -476,14 +495,21 @@ const Settings = () => {
                         </label>
                         <div className="flex">
                           <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-                            /book/
+                            {window.location.origin}/book/
                           </span>
                           <input
                             type="text"
                             value={tenant?.slug || ""}
-                            disabled
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-r-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                            readOnly
+                            className="flex-1 px-4 py-2 border-l-0 border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed"
                           />
+                          <button
+                            type="button"
+                            onClick={handleCopy}
+                            className="px-4 py-2 border border-l-0 border-gray-300 rounded-r-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium text-gray-700"
+                          >
+                            {copied ? "Copié !" : "Copier"}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -745,10 +771,18 @@ const Settings = () => {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4 flex-1">
                               <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
-                                <span className="text-indigo-700 font-semibold text-lg">
-                                  {member.first_name?.charAt(0)}
-                                  {member.last_name?.charAt(0)}
-                                </span>
+                                {member.avatar_url ? (
+                                  <img
+                                    src={member.avatar_url?.replace("/api", "")}
+                                    alt={member.first_name}
+                                    className="h-full w-full rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-indigo-700 font-semibold text-lg">
+                                    {member.first_name?.charAt(0)}
+                                    {member.last_name?.charAt(0)}
+                                  </span>
+                                )}
                               </div>
                               <div className="flex-1">
                                 <h3 className="font-semibold text-gray-900">

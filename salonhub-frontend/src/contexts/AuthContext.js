@@ -1,8 +1,3 @@
-/**
- * Context Authentification
- * Gestion globale de l'auth (login, logout, register, token)
- */
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
 
@@ -145,6 +140,54 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Rafraîchir les données du salon
+  const refreshTenant = async () => {
+    try {
+      const response = await api.get('/settings/salon');
+
+      if (response.data.success && response.data.data) {
+        const updatedTenant = response.data.data;
+
+        localStorage.setItem('tenant', JSON.stringify(updatedTenant));
+        setTenant(updatedTenant);
+
+        return { success: true, data: updatedTenant };
+      }
+
+      return { success: false, error: 'Aucune donnée reçue' };
+    } catch (err) {
+      console.error("Erreur rafraîchissement tenant:", err);
+      return {
+        success: false,
+        error: err.response?.data?.error || 'Erreur lors de la mise à jour des données du salon'
+      };
+    }
+  };
+
+  // Rafraîchir les données de l'utilisateur
+  const refreshUser = async () => {
+    try {
+      const response = await api.get('/auth/me');
+
+      if (response.data.success && response.data.data) {
+        const updatedUser = response.data.data;
+
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+
+        return { success: true, data: updatedUser };
+      }
+
+      return { success: false, error: 'Aucune donnée reçue' };
+    } catch (err) {
+      console.error("Erreur rafraîchissement user:", err);
+      return {
+        success: false,
+        error: err.response?.data?.error || 'Erreur lors de la mise à jour des données utilisateur'
+      };
+    }
+  };
+
   const value = {
     user,
     tenant,
@@ -158,6 +201,8 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     changePassword,
+    refreshTenant,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

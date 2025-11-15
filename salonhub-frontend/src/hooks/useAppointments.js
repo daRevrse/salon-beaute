@@ -19,7 +19,12 @@ export const useAppointments = () => {
       
       const response = await api.get('/appointments', { params: filters });
       
-      setAppointments(response.data.data);
+      if (response.data && Array.isArray(response.data.data)) {
+        setAppointments(response.data.data);
+      } else {
+        setAppointments([]);
+      }
+      
       return { success: true, data: response.data.data };
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Erreur lors du chargement';
@@ -28,7 +33,7 @@ export const useAppointments = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setAppointments, setLoading, setError]);
 
   useEffect(() => {
     fetchAppointments();
