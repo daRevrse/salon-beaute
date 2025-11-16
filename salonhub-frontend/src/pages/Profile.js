@@ -399,7 +399,7 @@ const Profile = () => {
                 <div className="flex justify-end space-x-4 pt-4 border-t">
                   <button
                     type="button"
-                    onClick={() => navigate("/app/dashboard")}
+                    onClick={() => navigate("/dashboard")}
                     className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
                   >
                     Annuler

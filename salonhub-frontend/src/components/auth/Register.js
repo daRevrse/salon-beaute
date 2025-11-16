@@ -624,7 +624,7 @@ const Register = () => {
                 </button>
               ) : (
                 <Link
-                  to="/app/login"
+                  to="/login"
                   className="flex items-center px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-medium transition-all"
                 >
                   <ArrowLeftIcon className="h-5 w-5 mr-2" />

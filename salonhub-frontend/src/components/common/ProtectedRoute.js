@@ -25,17 +25,17 @@ const ProtectedRoute = ({
 
   // Pas connecté → Login
   if (!user) {
-    return <Navigate to="/app/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // Vérifier rôle admin si requis
   if (requireAdmin && user.role !== "admin" && user.role !== "owner") {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   // Vérifier rôle owner si requis
   if (requireOwner && user.role !== "owner") {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

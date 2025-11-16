@@ -202,7 +202,7 @@ const Dashboard = () => {
                   Vous avez <strong>{stats.pendingAppointments}</strong>{" "}
                   rendez-vous en attente de validation.{" "}
                   <Link
-                    to="/app/appointments"
+                    to="/appointments"
                     className="font-medium underline hover:text-yellow-800"
                   >
                     Voir les rendez-vous →
@@ -226,7 +226,7 @@ const Dashboard = () => {
                   {stats.todayAppointments}
                 </p>
                 <Link
-                  to="/app/appointments"
+                  to="/appointments"
                   className="mt-3 text-sm text-indigo-100 hover:text-white inline-flex items-center"
                 >
                   Voir le planning →
@@ -247,7 +247,7 @@ const Dashboard = () => {
                 </p>
                 <p className="mt-2 text-4xl font-bold">{stats.totalClients}</p>
                 <Link
-                  to="/app/clients"
+                  to="/clients"
                   className="mt-3 text-sm text-green-100 hover:text-white inline-flex items-center"
                 >
                   Gérer les clients →
@@ -268,7 +268,7 @@ const Dashboard = () => {
                 </p>
                 <p className="mt-2 text-4xl font-bold">{stats.totalServices}</p>
                 <Link
-                  to="/app/services"
+                  to="/services"
                   className="mt-3 text-sm text-purple-100 hover:text-white inline-flex items-center"
                 >
                   Gérer les services →
@@ -291,7 +291,7 @@ const Dashboard = () => {
                   {stats.pendingAppointments}
                 </p>
                 <Link
-                  to="/app/appointments?status=pending"
+                  to="/appointments?status=pending"
                   className="mt-3 text-sm text-yellow-100 hover:text-white inline-flex items-center"
                 >
                   Valider les RDV →
@@ -384,7 +384,7 @@ const Dashboard = () => {
                   Rendez-vous d'aujourd'hui
                 </h2>
                 <Link
-                  to="/app/appointments"
+                  to="/appointments"
                   className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
                 >
                   Voir tout
@@ -501,7 +501,7 @@ const Dashboard = () => {
                   Clients récents
                 </h2>
                 <Link
-                  to="/app/clients"
+                  to="/clients"
                   className="text-sm text-green-600 hover:text-green-700 font-medium"
                 >
                   Voir tout

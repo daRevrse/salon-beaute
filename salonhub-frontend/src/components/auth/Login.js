@@ -218,7 +218,7 @@ const Login = () => {
           <p className="text-gray-600">
             Pas encore de compte ?{" "}
             <Link
-              to="/app/register"
+              to="/register"
               className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors"
             >
               Créer un compte gratuitement
