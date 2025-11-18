@@ -1490,3 +1490,70 @@ body[class*="theme-"] .features .feature-card .feature-icon {
 body[class*="theme-"] .features .feature-card:before {
   background: rgba(0, 0, 0, 0.2);
 }
+
+/* ===================================
+   HOW IT WORKS SECTION
+   =================================== */
+.how-it-works {
+  padding: 100px 20px;
+  background: var(--gris); /* Fond gris pour alterner avec le blanc */
+}
+
+.how-it-works-card {
+  background: var(--blanc);
+  border-radius: 12px;
+  padding: 50px 30px 40px 30px; /* Plus de padding en haut pour le numéro */
+  text-align: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 30px rgba(0, 0, 0, 0.05);
+  position: relative;
+  opacity: 0; /* Pour l'animation fade-in */
+  transform: translateY(30px); /* Pour l'animation fade-in */
+}
+
+.how-it-works-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.8s ease;
+}
+
+.how-it-works-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.step-number {
+  position: absolute;
+  top: -25px; /* Place le cercle à cheval sur le haut de la carte */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 50px;
+  background: var(--theme-color);
+  color: var(--blanc);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  border: 4px solid var(--blanc);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.how-it-works-icon {
+  font-size: 40px;
+  color: var(--theme-color);
+  margin-bottom: 15px;
+}
+
+.how-it-works-card h3 {
+  color: var(--theme-color);
+  margin-bottom: 10px;
+  font-size: 22px;
+}
+
+.how-it-works-card p {
+  color: #555;
+  font-size: 15px;
+}
