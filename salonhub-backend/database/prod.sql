@@ -1,16 +1,33 @@
 -- ==========================================
--- SALONHUB - SCHÉMA MYSQL MULTI-TENANT (CONSOLIDÉ)
--- Version: 1.1 (Base + Migrations)
--- Date: 2025-11-14
+-- SALONHUB - SCHÉMA MYSQL MULTI-TENANT (PRODUCTION)
+-- Version: 2.0 (Base + SuperAdmin + Migrations)
+-- Date: 2025-11-18
 -- ==========================================
 
--- Suppression des tables existantes (si besoin)
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+-- ==========================================
+-- Suppression des tables existantes
+-- ==========================================
+DROP TABLE IF EXISTS promotion_usages;
+DROP TABLE IF EXISTS promotions;
+DROP TABLE IF EXISTS marketing_campaigns;
 DROP TABLE IF EXISTS client_notifications;
+DROP TABLE IF EXISTS admin_activity_logs;
 DROP TABLE IF EXISTS appointments;
 DROP TABLE IF EXISTS services;
 DROP TABLE IF EXISTS clients;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS settings;
+DROP TABLE IF EXISTS system_settings;
+DROP TABLE IF EXISTS super_admins;
 DROP TABLE IF EXISTS tenants;
 
 -- ==========================================
@@ -25,30 +42,68 @@ CREATE TABLE tenants (
     address TEXT COMMENT 'Adresse complète',
     city VARCHAR(100) COMMENT 'Ville',
     postal_code VARCHAR(10) COMMENT 'Code postal',
-    
-    -- Colonnes des migrations
-    logo_url VARCHAR(255) NULL COMMENT 'URL du logo/bannière du salon',
-    currency VARCHAR(3) DEFAULT 'EUR' COMMENT 'Devise utilisée par le salon (EUR, USD, GBP, CAD, CHF, MAD, XOF, XAF)',
-    
+
     -- Abonnement
     subscription_plan ENUM('starter', 'professional', 'business') DEFAULT 'starter',
     subscription_status ENUM('trial', 'active', 'suspended', 'cancelled') DEFAULT 'trial',
     trial_ends_at DATETIME COMMENT 'Fin de période d essai',
     subscription_started_at DATETIME COMMENT 'Début abonnement payant',
-    
+
     -- Stripe
     stripe_customer_id VARCHAR(100) COMMENT 'ID client Stripe',
     stripe_subscription_id VARCHAR(100) COMMENT 'ID subscription Stripe',
-    
+
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
+    -- Personnalisation (migrations)
+    currency VARCHAR(3) DEFAULT 'EUR' COMMENT 'Devise utilisée par le salon (EUR, USD, GBP, CAD, CHF, MAD, XOF, XAF)',
+    logo_url VARCHAR(255) DEFAULT NULL COMMENT 'URL du logo du salon (icône/avatar)',
+    banner_url VARCHAR(255) DEFAULT NULL COMMENT 'URL de la bannière du salon',
+
     -- Index
     INDEX idx_slug (slug),
     INDEX idx_email (email),
     INDEX idx_subscription_status (subscription_status),
-    INDEX idx_tenants_currency (currency) -- Ajout de la migration
+    INDEX idx_tenants_currency (currency)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- TABLE: super_admins (Administrateurs système)
+-- ==========================================
+CREATE TABLE super_admins (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+
+    -- Authentification
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL COMMENT 'Hash bcrypt du mot de passe',
+
+    -- Informations personnelles
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) DEFAULT NULL,
+
+    -- Permissions granulaires
+    permissions JSON COMMENT 'Permissions système',
+
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE COMMENT 'Compte actif ou désactivé',
+    is_super BOOLEAN DEFAULT FALSE COMMENT 'Super admin avec tous les droits',
+
+    -- Audit
+    last_login_at DATETIME DEFAULT NULL,
+    last_login_ip VARCHAR(45) DEFAULT NULL,
+    login_count INT DEFAULT 0,
+
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    -- Index
+    INDEX idx_email (email),
+    INDEX idx_active (is_active),
+    INDEX idx_last_login (last_login_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================
@@ -57,35 +112,35 @@ CREATE TABLE tenants (
 CREATE TABLE users (
     id INT PRIMARY KEY AUTO_INCREMENT,
     tenant_id INT NOT NULL COMMENT 'Lien vers le salon',
-    
+
     email VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL COMMENT 'Hash bcrypt du mot de passe',
-    
+
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20),
-    
-    -- Colonne de migration
-    avatar_url VARCHAR(255) NULL COMMENT 'URL de l avatar de l employé',
-    
+
     -- Rôles
     role ENUM('owner', 'admin', 'staff') DEFAULT 'staff' COMMENT 'owner=propriétaire, admin=manager, staff=employé',
-    
+
     -- Disponibilités
     working_hours JSON COMMENT 'Horaires de travail par jour',
-    
+
     -- Status
     is_active BOOLEAN DEFAULT TRUE,
     last_login_at DATETIME,
-    
+
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
+    -- Personnalisation (migration)
+    avatar_url VARCHAR(255) DEFAULT NULL COMMENT 'URL de l avatar de l employé',
+
     -- Contraintes
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     UNIQUE KEY unique_email_per_tenant (tenant_id, email),
-    
+
     -- Index
     INDEX idx_tenant (tenant_id),
     INDEX idx_email (email),
@@ -99,36 +154,36 @@ CREATE TABLE users (
 CREATE TABLE clients (
     id INT PRIMARY KEY AUTO_INCREMENT,
     tenant_id INT NOT NULL COMMENT 'Lien vers le salon',
-    
+
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255),
     phone VARCHAR(20),
-    
-    -- Colonne de migration
+
+    -- Préférences de contact (migration)
     preferred_contact_method ENUM('email', 'sms', 'whatsapp', 'phone') DEFAULT 'email' COMMENT 'Moyen de contact préféré pour les notifications',
 
     -- Informations complémentaires
     date_of_birth DATE COMMENT 'Date de naissance',
     gender ENUM('male', 'female', 'other') COMMENT 'Genre',
     notes TEXT COMMENT 'Notes privées sur le client',
-    
+
     -- Marketing
     email_marketing_consent BOOLEAN DEFAULT FALSE,
     sms_marketing_consent BOOLEAN DEFAULT FALSE,
-    
+
     -- Stats
     total_appointments INT DEFAULT 0 COMMENT 'Nombre total de RDV',
     total_spent DECIMAL(10, 2) DEFAULT 0.00 COMMENT 'Total dépensé',
     last_visit_date DATE COMMENT 'Dernière visite',
-    
+
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
     -- Contraintes
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    
+
     -- Index
     INDEX idx_tenant (tenant_id),
     INDEX idx_email (email),
@@ -143,38 +198,38 @@ CREATE TABLE clients (
 CREATE TABLE services (
     id INT PRIMARY KEY AUTO_INCREMENT,
     tenant_id INT NOT NULL COMMENT 'Lien vers le salon',
-    
+
     name VARCHAR(255) NOT NULL COMMENT 'Nom de la prestation',
     description TEXT COMMENT 'Description détaillée',
-    
+
     -- Durée et prix
     duration INT NOT NULL COMMENT 'Durée en minutes',
-    price DECIMAL(10, 2) NOT NULL COMMENT 'Prix en euros',
-    
+    price DECIMAL(10, 2) NOT NULL COMMENT 'Prix',
+
     -- Catégorie
     category VARCHAR(100) COMMENT 'Catégorie (coupe, coloration, etc.)',
-    
-    -- Colonne de migration
-    image_url VARCHAR(255) NULL COMMENT 'URL de l image de mise en avant du service',
-    
+
     -- Options
     is_active BOOLEAN DEFAULT TRUE COMMENT 'Service disponible à la réservation',
     requires_deposit BOOLEAN DEFAULT FALSE COMMENT 'Nécessite un acompte',
     deposit_amount DECIMAL(10, 2) DEFAULT 0.00 COMMENT 'Montant de l acompte',
-    
+
     -- Disponibilité
     available_for_online_booking BOOLEAN DEFAULT TRUE,
-    
+
     -- Stats
     booking_count INT DEFAULT 0 COMMENT 'Nombre de réservations',
-    
+
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
+    -- Personnalisation (migration)
+    image_url VARCHAR(255) DEFAULT NULL COMMENT 'URL de l image de mise en avant du service',
+
     -- Contraintes
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    
+
     -- Index
     INDEX idx_tenant (tenant_id),
     INDEX idx_active (is_active),
@@ -191,45 +246,45 @@ CREATE TABLE appointments (
     client_id INT NOT NULL COMMENT 'Client concerné',
     service_id INT NOT NULL COMMENT 'Prestation réservée',
     staff_id INT COMMENT 'Employé assigné (optionnel)',
-    
+
     -- Date et heure
     appointment_date DATE NOT NULL COMMENT 'Date du RDV',
     start_time TIME NOT NULL COMMENT 'Heure de début',
     end_time TIME NOT NULL COMMENT 'Heure de fin',
-    
+
     -- Statut
     status ENUM('pending', 'confirmed', 'cancelled', 'completed', 'no_show') DEFAULT 'pending',
-    
+
     -- Réservation
     booked_by ENUM('client', 'staff', 'admin') DEFAULT 'staff' COMMENT 'Qui a créé le RDV',
     booking_source ENUM('website', 'phone', 'walk_in', 'admin') DEFAULT 'admin',
-    
+
     -- Notes
     notes TEXT COMMENT 'Notes internes',
     client_notes TEXT COMMENT 'Demandes spéciales du client',
-    
+
     -- Rappels
     reminder_sent BOOLEAN DEFAULT FALSE,
     reminder_sent_at DATETIME,
-    
+
     -- Annulation
     cancelled_at DATETIME,
     cancellation_reason TEXT,
-    
+
     -- Paiement
     payment_status ENUM('pending', 'deposit_paid', 'paid', 'refunded') DEFAULT 'pending',
     amount_paid DECIMAL(10, 2) DEFAULT 0.00,
-    
+
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
     -- Contraintes
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
     FOREIGN KEY (staff_id) REFERENCES users(id) ON DELETE SET NULL,
-    
+
     -- Index
     INDEX idx_tenant (tenant_id),
     INDEX idx_date (appointment_date),
@@ -245,105 +300,212 @@ CREATE TABLE appointments (
 CREATE TABLE settings (
     id INT PRIMARY KEY AUTO_INCREMENT,
     tenant_id INT NOT NULL,
-    
+
     setting_key VARCHAR(100) NOT NULL COMMENT 'Clé du paramètre',
     setting_value TEXT COMMENT 'Valeur du paramètre',
     setting_type ENUM('string', 'number', 'boolean', 'json') DEFAULT 'string',
-    
+
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
     -- Contraintes
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     UNIQUE KEY unique_setting_per_tenant (tenant_id, setting_key),
-    
+
     -- Index
     INDEX idx_tenant (tenant_id),
     INDEX idx_key (setting_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================
--- TABLE: client_notifications (Migration)
+-- TABLE: system_settings (Paramètres globaux SaaS)
 -- ==========================================
-CREATE TABLE IF NOT EXISTS client_notifications (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  tenant_id INT NOT NULL,
-  client_id INT NOT NULL,
-  appointment_id INT NULL,
-  type ENUM('manual', 'appointment_reminder', 'appointment_confirmation', 'marketing', 'other') DEFAULT 'manual',
-  subject VARCHAR(255) NULL COMMENT 'Sujet (pour emails)',
-  message TEXT NOT NULL,
-  send_via ENUM('email', 'sms', 'both') NOT NULL,
-  status ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
-  sent_by INT NULL COMMENT 'ID de l utilisateur qui a envoyé',
-  sent_at DATETIME NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE system_settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
 
-  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-  FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
-  FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL,
-  FOREIGN KEY (sent_by) REFERENCES users(id) ON DELETE SET NULL,
+    setting_key VARCHAR(100) UNIQUE NOT NULL,
+    setting_value TEXT,
+    setting_type ENUM('string', 'number', 'boolean', 'json') DEFAULT 'string',
 
-  INDEX idx_client (client_id),
-  INDEX idx_tenant (tenant_id),
-  INDEX idx_appointment (appointment_id),
-  INDEX idx_created (created_at)
+    description TEXT,
+    is_public BOOLEAN DEFAULT FALSE,
+
+    updated_by INT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (updated_by) REFERENCES super_admins(id) ON DELETE SET NULL,
+
+    INDEX idx_key (setting_key),
+    INDEX idx_public (is_public)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ==========================================
+-- TABLE: admin_activity_logs (Logs SuperAdmin)
+-- ==========================================
+CREATE TABLE admin_activity_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+
+    super_admin_id INT NOT NULL,
+
+    -- Action effectuée
+    action VARCHAR(100) NOT NULL,
+    resource_type VARCHAR(50),
+    resource_id INT,
+
+    -- Détails
+    description TEXT,
+    metadata JSON,
+
+    -- Context
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+
+    -- Timestamp
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Contraintes
+    FOREIGN KEY (super_admin_id) REFERENCES super_admins(id) ON DELETE CASCADE,
+
+    -- Index
+    INDEX idx_super_admin (super_admin_id),
+    INDEX idx_action (action),
+    INDEX idx_resource (resource_type, resource_id),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================
--- DONNÉES DE TEST
+-- TABLE: client_notifications (Notifications clients)
 -- ==========================================
+CREATE TABLE client_notifications (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tenant_id INT NOT NULL,
+    client_id INT NOT NULL,
+    appointment_id INT DEFAULT NULL,
 
--- Salon de test
-INSERT INTO tenants (name, slug, email, phone, address, city, postal_code, subscription_plan, subscription_status, trial_ends_at) 
-VALUES 
-('Salon Beauté Paris', 'salon-beaute-paris', 'contact@salonbeauteparis.fr', '0123456789', '123 Rue de Rivoli', 'Paris', '75001', 'professional', 'trial', DATE_ADD(NOW(), INTERVAL 14 DAY));
+    type ENUM('manual', 'appointment_reminder', 'appointment_confirmation', 'marketing', 'other') DEFAULT 'manual',
+    subject VARCHAR(255) DEFAULT NULL COMMENT 'Sujet (pour emails)',
+    message TEXT NOT NULL,
+    send_via ENUM('email', 'sms', 'both') NOT NULL,
+    status ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
 
--- Propriétaire du salon (password: "password123" - À CHANGER !)
-INSERT INTO users (tenant_id, email, password_hash, first_name, last_name, role, is_active) 
-VALUES 
-(1, 'marie@salonbeauteparis.fr', '$2b$10$YourHashedPasswordHere', 'Marie', 'Dupont', 'owner', TRUE);
+    sent_by INT DEFAULT NULL COMMENT 'ID de l utilisateur qui a envoyé',
+    sent_at DATETIME DEFAULT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
--- Employé
-INSERT INTO users (tenant_id, email, password_hash, first_name, last_name, phone, role, is_active) 
-VALUES 
-(1, 'sophie@salonbeauteparis.fr', '$2b$10$YourHashedPasswordHere', 'Sophie', 'Martin', '0612345678', 'staff', TRUE);
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL,
+    FOREIGN KEY (sent_by) REFERENCES users(id) ON DELETE SET NULL,
 
--- Services
-INSERT INTO services (tenant_id, name, description, duration, price, category, is_active) 
-VALUES 
-(1, 'Coupe Femme', 'Coupe et brushing inclus', 45, 35.00, 'coupe', TRUE),
-(1, 'Coupe Homme', 'Coupe classique', 30, 20.00, 'coupe', TRUE),
-(1, 'Coloration Complète', 'Coloration racines et longueurs', 90, 65.00, 'coloration', TRUE),
-(1, 'Balayage', 'Technique balayage californien', 120, 85.00, 'coloration', TRUE),
-(1, 'Brushing', 'Brushing simple', 30, 25.00, 'coiffage', TRUE),
-(1, 'Soin Capillaire', 'Soin hydratant profond', 30, 20.00, 'soin', TRUE);
+    INDEX idx_client (client_id),
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_appointment (appointment_id),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Clients
-INSERT INTO clients (tenant_id, first_name, last_name, email, phone, notes) 
-VALUES 
-(1, 'Sophie', 'Bernard', 'sophie.bernard@example.com', '0612345678', 'Préfère les RDV en matinée'),
-(1, 'Pierre', 'Durand', 'pierre.durand@example.com', '0698765432', 'Allergique aux produits parfumés'),
-(1, 'Julie', 'Rousseau', 'julie.rousseau@example.com', '0645678901', 'Cliente fidèle depuis 2 ans'),
-(1, 'Marc', 'Lefebvre', 'marc.lefebvre@example.com', '0656789012', NULL);
+-- ==========================================
+-- TABLE: promotions (Codes promo)
+-- ==========================================
+CREATE TABLE promotions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tenant_id INT NOT NULL,
 
--- Rendez-vous (quelques exemples)
-INSERT INTO appointments (tenant_id, client_id, service_id, staff_id, appointment_date, start_time, end_time, status, booked_by, booking_source) 
-VALUES 
-(1, 1, 1, 2, CURDATE() + INTERVAL 1 DAY, '10:00:00', '10:45:00', 'confirmed', 'client', 'website'),
-(1, 2, 2, 2, CURDATE() + INTERVAL 2 DAY, '14:00:00', '14:30:00', 'pending', 'staff', 'phone'),
-(1, 3, 3, 2, CURDATE() + INTERVAL 3 DAY, '09:00:00', '10:30:00', 'confirmed', 'client', 'website'),
-(1, 1, 5, 2, CURDATE() - INTERVAL 7 DAY, '11:00:00', '11:30:00', 'completed', 'staff', 'phone');
+    code VARCHAR(50) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
 
--- Paramètres du salon
-INSERT INTO settings (tenant_id, setting_key, setting_value, setting_type) 
-VALUES 
-(1, 'business_hours', '{"monday":"09:00-18:00","tuesday":"09:00-18:00","wednesday":"09:00-18:00","thursday":"09:00-20:00","friday":"09:00-20:00","saturday":"09:00-17:00","sunday":"closed"}', 'json'),
-(1, 'appointment_buffer', '15', 'number'),
-(1, 'require_email_confirmation', 'true', 'boolean'),
-(1, 'cancellation_policy', '24h avant le RDV', 'string');
+    discount_type ENUM('percentage', 'fixed_amount', 'service_discount') NOT NULL DEFAULT 'percentage',
+    discount_value DECIMAL(10,2) NOT NULL,
+
+    applies_to ENUM('all_services', 'specific_services', 'categories') DEFAULT 'all_services',
+    service_ids JSON,
+
+    min_purchase_amount DECIMAL(10,2),
+    max_discount_amount DECIMAL(10,2),
+
+    usage_limit INT,
+    usage_per_client INT DEFAULT 1,
+
+    valid_from DATETIME NOT NULL,
+    valid_until DATETIME NOT NULL,
+
+    is_active BOOLEAN DEFAULT TRUE,
+    is_public BOOLEAN DEFAULT TRUE,
+
+    created_by INT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    UNIQUE KEY unique_code_per_tenant (tenant_id, code),
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_active (is_active),
+    INDEX idx_dates (valid_from, valid_until),
+    INDEX idx_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- TABLE: promotion_usages (Utilisation des promos)
+-- ==========================================
+CREATE TABLE promotion_usages (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tenant_id INT NOT NULL,
+    promotion_id INT NOT NULL,
+    client_id INT NOT NULL,
+    appointment_id INT,
+
+    discount_amount DECIMAL(10,2) NOT NULL,
+    order_amount DECIMAL(10,2) NOT NULL,
+    used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_promotion (promotion_id),
+    INDEX idx_client (client_id),
+    INDEX idx_used_at (used_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- TABLE: marketing_campaigns (Campagnes marketing)
+-- ==========================================
+CREATE TABLE marketing_campaigns (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tenant_id INT NOT NULL,
+
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    image_url VARCHAR(500),
+
+    campaign_type ENUM('promotion', 'announcement', 'event', 'newsletter') NOT NULL DEFAULT 'promotion',
+    promotion_id INT,
+
+    target_audience ENUM('all_clients', 'active_clients', 'inactive_clients', 'vip_clients', 'custom') DEFAULT 'all_clients',
+    custom_client_ids JSON,
+
+    send_via_email BOOLEAN DEFAULT FALSE,
+    send_via_sms BOOLEAN DEFAULT FALSE,
+    send_via_whatsapp BOOLEAN DEFAULT FALSE,
+
+    scheduled_for DATETIME,
+    sent_at DATETIME,
+
+    total_recipients INT DEFAULT 0,
+    emails_sent INT DEFAULT 0,
+    sms_sent INT DEFAULT 0,
+    whatsapp_sent INT DEFAULT 0,
+
+    status ENUM('draft', 'scheduled', 'sending', 'sent', 'failed') DEFAULT 'draft',
+
+    created_by INT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_status (status),
+    INDEX idx_scheduled (scheduled_for),
+    INDEX idx_type (campaign_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================
 -- VUES UTILES
@@ -351,7 +513,7 @@ VALUES
 
 -- Vue: Statistiques par salon
 CREATE OR REPLACE VIEW tenant_stats AS
-SELECT 
+SELECT
     t.id AS tenant_id,
     t.name AS tenant_name,
     COUNT(DISTINCT c.id) AS total_clients,
@@ -368,5 +530,25 @@ LEFT JOIN users u ON t.id = u.tenant_id
 GROUP BY t.id;
 
 -- ==========================================
+-- DONNÉES INITIALES
+-- ==========================================
+
+-- Paramètres système par défaut
+INSERT INTO system_settings (setting_key, setting_value, setting_type, description, is_public) VALUES
+('maintenance_mode', 'false', 'boolean', 'Mode maintenance du SaaS', FALSE),
+('allow_new_signups', 'true', 'boolean', 'Autoriser les nouvelles inscriptions', FALSE),
+('trial_duration_days', '14', 'number', 'Durée de la période d essai en jours', FALSE),
+('max_tenants', '1000', 'number', 'Nombre maximum de tenants autorisés', FALSE),
+('default_subscription_plan', 'starter', 'string', 'Plan par défaut lors de l inscription', FALSE),
+('support_email', 'support@salonhub.com', 'string', 'Email de support', TRUE),
+('app_version', '2.0.0', 'string', 'Version de l application', TRUE);
+
+-- ==========================================
 -- FIN DU SCHÉMA
 -- ==========================================
+
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

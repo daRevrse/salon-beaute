@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : sam. 15 nov. 2025 à 01:44
+-- Généré le : mar. 18 nov. 2025 à 23:20
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -18,10 +18,27 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Base de données : `salonhub`
+-- Base de données : `salonhub_dev`
 --
-CREATE DATABASE IF NOT EXISTS `salonhub` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `salonhub`;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `admin_activity_logs`
+--
+
+CREATE TABLE `admin_activity_logs` (
+  `id` int(11) NOT NULL,
+  `super_admin_id` int(11) NOT NULL,
+  `action` varchar(100) NOT NULL,
+  `resource_type` varchar(50) DEFAULT NULL,
+  `resource_id` int(11) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `metadata` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`metadata`)),
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -103,6 +120,83 @@ CREATE TABLE `client_notifications` (
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `marketing_campaigns`
+--
+
+CREATE TABLE `marketing_campaigns` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `image_url` varchar(500) DEFAULT NULL,
+  `campaign_type` enum('promotion','announcement','event','newsletter') NOT NULL DEFAULT 'promotion',
+  `promotion_id` int(11) DEFAULT NULL,
+  `target_audience` enum('all_clients','active_clients','inactive_clients','vip_clients','custom') DEFAULT 'all_clients',
+  `custom_client_ids` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`custom_client_ids`)),
+  `send_via_email` tinyint(1) DEFAULT 0,
+  `send_via_sms` tinyint(1) DEFAULT 0,
+  `send_via_whatsapp` tinyint(1) DEFAULT 0,
+  `scheduled_for` datetime DEFAULT NULL,
+  `sent_at` datetime DEFAULT NULL,
+  `total_recipients` int(11) DEFAULT 0,
+  `emails_sent` int(11) DEFAULT 0,
+  `sms_sent` int(11) DEFAULT 0,
+  `whatsapp_sent` int(11) DEFAULT 0,
+  `status` enum('draft','scheduled','sending','sent','failed') DEFAULT 'draft',
+  `created_by` int(11) NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `promotions`
+--
+
+CREATE TABLE `promotions` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `code` varchar(50) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `discount_type` enum('percentage','fixed_amount','service_discount') NOT NULL DEFAULT 'percentage',
+  `discount_value` decimal(10,2) NOT NULL,
+  `applies_to` enum('all_services','specific_services','categories') DEFAULT 'all_services',
+  `service_ids` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`service_ids`)),
+  `min_purchase_amount` decimal(10,2) DEFAULT NULL,
+  `max_discount_amount` decimal(10,2) DEFAULT NULL,
+  `usage_limit` int(11) DEFAULT NULL,
+  `usage_per_client` int(11) DEFAULT 1,
+  `valid_from` datetime NOT NULL,
+  `valid_until` datetime NOT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `is_public` tinyint(1) DEFAULT 1,
+  `created_by` int(11) NOT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `promotion_usages`
+--
+
+CREATE TABLE `promotion_usages` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `promotion_id` int(11) NOT NULL,
+  `client_id` int(11) NOT NULL,
+  `appointment_id` int(11) DEFAULT NULL,
+  `discount_amount` decimal(10,2) NOT NULL,
+  `order_amount` decimal(10,2) NOT NULL,
+  `used_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `services`
 --
 
@@ -143,6 +237,47 @@ CREATE TABLE `settings` (
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `super_admins`
+--
+
+CREATE TABLE `super_admins` (
+  `id` int(11) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `password_hash` varchar(255) NOT NULL COMMENT 'Hash bcrypt du mot de passe',
+  `first_name` varchar(100) NOT NULL,
+  `last_name` varchar(100) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `permissions` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Permissions système' CHECK (json_valid(`permissions`)),
+  `is_active` tinyint(1) DEFAULT 1 COMMENT 'Compte actif ou désactivé',
+  `is_super` tinyint(1) DEFAULT 0 COMMENT 'Super admin avec tous les droits',
+  `last_login_at` datetime DEFAULT NULL,
+  `last_login_ip` varchar(45) DEFAULT NULL,
+  `login_count` int(11) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `system_settings`
+--
+
+CREATE TABLE `system_settings` (
+  `id` int(11) NOT NULL,
+  `setting_key` varchar(100) NOT NULL,
+  `setting_value` text DEFAULT NULL,
+  `setting_type` enum('string','number','boolean','json') DEFAULT 'string',
+  `description` text DEFAULT NULL,
+  `is_public` tinyint(1) DEFAULT 0,
+  `updated_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `tenants`
 --
 
@@ -164,7 +299,8 @@ CREATE TABLE `tenants` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `currency` varchar(3) DEFAULT 'EUR' COMMENT 'Devise utilisée par le salon (EUR, USD, GBP, CAD, CHF, MAD, XOF, XAF)',
-  `logo_url` varchar(255) DEFAULT NULL COMMENT 'URL du logo/bannière du salon'
+  `logo_url` varchar(255) DEFAULT NULL COMMENT 'URL du logo du salon (icône/avatar)',
+  `banner_url` varchar(255) DEFAULT NULL COMMENT 'URL de la bannière du salon'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -221,6 +357,16 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 
 --
+-- Index pour la table `admin_activity_logs`
+--
+ALTER TABLE `admin_activity_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_super_admin` (`super_admin_id`),
+  ADD KEY `idx_action` (`action`),
+  ADD KEY `idx_resource` (`resource_type`,`resource_id`),
+  ADD KEY `idx_created` (`created_at`);
+
+--
 -- Index pour la table `appointments`
 --
 ALTER TABLE `appointments`
@@ -256,6 +402,37 @@ ALTER TABLE `client_notifications`
   ADD KEY `idx_created` (`created_at`);
 
 --
+-- Index pour la table `marketing_campaigns`
+--
+ALTER TABLE `marketing_campaigns`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_tenant` (`tenant_id`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_scheduled` (`scheduled_for`),
+  ADD KEY `idx_type` (`campaign_type`);
+
+--
+-- Index pour la table `promotions`
+--
+ALTER TABLE `promotions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_code_per_tenant` (`tenant_id`,`code`),
+  ADD KEY `idx_tenant` (`tenant_id`),
+  ADD KEY `idx_active` (`is_active`),
+  ADD KEY `idx_dates` (`valid_from`,`valid_until`),
+  ADD KEY `idx_code` (`code`);
+
+--
+-- Index pour la table `promotion_usages`
+--
+ALTER TABLE `promotion_usages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_tenant` (`tenant_id`),
+  ADD KEY `idx_promotion` (`promotion_id`),
+  ADD KEY `idx_client` (`client_id`),
+  ADD KEY `idx_used_at` (`used_at`);
+
+--
 -- Index pour la table `services`
 --
 ALTER TABLE `services`
@@ -273,6 +450,26 @@ ALTER TABLE `settings`
   ADD UNIQUE KEY `unique_setting_per_tenant` (`tenant_id`,`setting_key`),
   ADD KEY `idx_tenant` (`tenant_id`),
   ADD KEY `idx_key` (`setting_key`);
+
+--
+-- Index pour la table `super_admins`
+--
+ALTER TABLE `super_admins`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `idx_email` (`email`),
+  ADD KEY `idx_active` (`is_active`),
+  ADD KEY `idx_last_login` (`last_login_at`);
+
+--
+-- Index pour la table `system_settings`
+--
+ALTER TABLE `system_settings`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `setting_key` (`setting_key`),
+  ADD KEY `updated_by` (`updated_by`),
+  ADD KEY `idx_key` (`setting_key`),
+  ADD KEY `idx_public` (`is_public`);
 
 --
 -- Index pour la table `tenants`
@@ -301,6 +498,12 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT pour la table `admin_activity_logs`
+--
+ALTER TABLE `admin_activity_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT pour la table `appointments`
 --
 ALTER TABLE `appointments`
@@ -319,6 +522,24 @@ ALTER TABLE `client_notifications`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT pour la table `marketing_campaigns`
+--
+ALTER TABLE `marketing_campaigns`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `promotions`
+--
+ALTER TABLE `promotions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `promotion_usages`
+--
+ALTER TABLE `promotion_usages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT pour la table `services`
 --
 ALTER TABLE `services`
@@ -328,6 +549,18 @@ ALTER TABLE `services`
 -- AUTO_INCREMENT pour la table `settings`
 --
 ALTER TABLE `settings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `super_admins`
+--
+ALTER TABLE `super_admins`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `system_settings`
+--
+ALTER TABLE `system_settings`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -345,6 +578,12 @@ ALTER TABLE `users`
 --
 -- Contraintes pour les tables déchargées
 --
+
+--
+-- Contraintes pour la table `admin_activity_logs`
+--
+ALTER TABLE `admin_activity_logs`
+  ADD CONSTRAINT `admin_activity_logs_ibfk_1` FOREIGN KEY (`super_admin_id`) REFERENCES `super_admins` (`id`) ON DELETE CASCADE;
 
 --
 -- Contraintes pour la table `appointments`
@@ -381,6 +620,12 @@ ALTER TABLE `services`
 --
 ALTER TABLE `settings`
   ADD CONSTRAINT `settings_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE;
+
+--
+-- Contraintes pour la table `system_settings`
+--
+ALTER TABLE `system_settings`
+  ADD CONSTRAINT `system_settings_ibfk_1` FOREIGN KEY (`updated_by`) REFERENCES `super_admins` (`id`) ON DELETE SET NULL;
 
 --
 -- Contraintes pour la table `users`
