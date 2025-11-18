@@ -348,6 +348,8 @@ router.post("/appointments", async (req, res) => {
       start_time,
       notes,
       preferred_contact_method,
+      promo_code,
+      final_amount,
     } = req.body;
 
     // Validation des champs obligatoires
@@ -470,6 +472,28 @@ router.post("/appointments", async (req, res) => {
       clientId = result.insertId;
     }
 
+    // Gérer le code promo si fourni
+    let promotionId = null;
+    let discountAmount = 0;
+    let appointmentPrice = service[0].price;
+
+    if (promo_code && final_amount !== undefined) {
+      // Valider et récupérer la promotion
+      const promotion = await db.query(
+        `SELECT id, discount_value, discount_type
+         FROM promotions
+         WHERE tenant_id = ? AND code = ? AND is_active = 1
+           AND valid_from <= NOW() AND valid_until >= NOW()`,
+        [tenantId, promo_code]
+      );
+
+      if (promotion.length > 0) {
+        promotionId = promotion[0].id;
+        discountAmount = service[0].price - final_amount;
+        appointmentPrice = final_amount;
+      }
+    }
+
     // Créer le rendez-vous avec statut "pending" (en attente de validation)
     const appointment = await db.query(
       `INSERT INTO appointments
@@ -486,6 +510,23 @@ router.post("/appointments", async (req, res) => {
         notes || null,
       ]
     );
+
+    // Si un code promo a été utilisé, enregistrer l'utilisation
+    if (promotionId && discountAmount > 0) {
+      await db.query(
+        `INSERT INTO promotion_usages
+         (tenant_id, promotion_id, client_id, appointment_id, discount_amount, order_amount, used_at)
+         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          tenantId,
+          promotionId,
+          clientId,
+          appointment.insertId,
+          discountAmount,
+          service[0].price,
+        ]
+      );
+    }
 
     // Récupérer le rendez-vous créé avec tous les détails
     const createdAppointment = await db.query(

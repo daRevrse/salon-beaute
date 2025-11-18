@@ -6,6 +6,7 @@
 import React, { useState } from "react";
 import DashboardLayout from "../components/common/DashboardLayout";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { usePermissions } from "../contexts/PermissionContext";
 import { useServices } from "../hooks/useServices";
 import ImageUploader from "../components/common/ImageUploader"; // <-- IMPORT NOUVEAU
 import { ImageWithFallback } from "../utils/imageUtils";
@@ -24,6 +25,7 @@ import {
 
 const Services = () => {
   const { formatPrice: formatCurrency } = useCurrency();
+  const { can } = usePermissions();
   const {
     services,
     loading,
@@ -157,13 +159,15 @@ const Services = () => {
               Gérez vos prestations et tarifs
             </p>
           </div>
-          <button
-            onClick={() => handleOpenModal()}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
-          >
-            <PlusIcon className="h-5 w-5 mr-1" />
-            Nouveau service
-          </button>
+          {can.createService && (
+            <button
+              onClick={() => handleOpenModal()}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
+            >
+              <PlusIcon className="h-5 w-5 mr-1" />
+              Nouveau service
+            </button>
+          )}
         </div>
         {/* Filtres */}
         <div className="mb-6 flex items-center space-x-2">
@@ -259,22 +263,26 @@ const Services = () => {
                   </div>
                 </div>
 
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleOpenModal(service)}
-                    className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center"
-                  >
-                    <PencilSquareIcon className="h-4 w-4 mr-1" />
-                    Modifier
-                  </button>
-                  <button
-                    onClick={() => handleDelete(service.id)}
-                    className="px-3 py-2 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 flex items-center justify-center"
-                  >
-                    <TrashIcon className="h-4 w-4 mr-1" />
-                    Supprimer
-                  </button>
-                </div>
+                {can.editService && (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleOpenModal(service)}
+                      className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center"
+                    >
+                      <PencilSquareIcon className="h-4 w-4 mr-1" />
+                      Modifier
+                    </button>
+                    {can.deleteService && (
+                      <button
+                        onClick={() => handleDelete(service.id)}
+                        className="px-3 py-2 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 flex items-center justify-center"
+                      >
+                        <TrashIcon className="h-4 w-4 mr-1" />
+                        Supprimer
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))
           )}

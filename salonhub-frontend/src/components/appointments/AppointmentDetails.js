@@ -118,6 +118,36 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
     }
   };
 
+  const handleSendConfirmation = async (sendVia) => {
+    if (!window.confirm(`Envoyer la confirmation par ${sendVia === 'email' ? 'email' : sendVia === 'whatsapp' ? 'WhatsApp' : 'email et WhatsApp'} ?`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await api.post(`/appointments/${appointment.id}/send-confirmation`, {
+        send_via: sendVia,
+      });
+
+      if (response.data.success) {
+        const { emailSent, whatsappSent } = response.data.data;
+        let message = 'Confirmation envoyée avec succès ';
+        if (emailSent && whatsappSent) {
+          message += 'par email et WhatsApp !';
+        } else if (emailSent) {
+          message += 'par email !';
+        } else if (whatsappSent) {
+          message += 'par WhatsApp !';
+        }
+        alert(message);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || "Erreur lors de l'envoi de la confirmation");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('fr-FR', {
       weekday: 'long',
@@ -265,6 +295,32 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
                     Marquer comme terminé
                   </button>
                 )}
+
+                {/* Envoyer confirmation par Email */}
+                {(appointment.status === 'pending' || appointment.status === 'confirmed') &&
+                  appointment.client_email && (
+                    <button
+                      onClick={() => handleSendConfirmation('email')}
+                      disabled={loading}
+                      className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+                    >
+                      <EnvelopeIcon className="h-5 w-5 mr-2" />
+                      Confirmation Email
+                    </button>
+                  )}
+
+                {/* Envoyer confirmation par WhatsApp */}
+                {(appointment.status === 'pending' || appointment.status === 'confirmed') &&
+                  appointment.client_phone && (
+                    <button
+                      onClick={() => handleSendConfirmation('whatsapp')}
+                      disabled={loading}
+                      className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
+                    >
+                      <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+                      Confirmation WhatsApp
+                    </button>
+                  )}
 
                 {/* Envoyer rappel */}
                 {(appointment.status === 'pending' || appointment.status === 'confirmed') &&

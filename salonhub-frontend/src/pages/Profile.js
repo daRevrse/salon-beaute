@@ -18,12 +18,13 @@ import {
   XMarkIcon,
   CalendarDaysIcon,
   ClockIcon,
-  ScissorsIcon,
+  ExclamationTriangleIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { user, tenant, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -43,6 +44,14 @@ const Profile = () => {
     new_password: "",
     confirm_password: "",
   });
+
+  const [deleteAccountData, setDeleteAccountData] = useState({
+    password: "",
+    confirmation_text: "",
+  });
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [stats, setStats] = useState({
     totalAppointments: 0,
@@ -181,6 +190,37 @@ const Profile = () => {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+    setDeleting(true);
+    setError(null);
+
+    try {
+      const response = await api.delete("/auth/account", {
+        data: {
+          password: deleteAccountData.password,
+          confirmation_text: deleteAccountData.confirmation_text,
+        },
+      });
+
+      if (response.data.success) {
+        // Déconnexion et redirection
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        alert(response.data.message);
+        window.location.href = "/login";
+      }
+    } catch (err) {
+      console.error("Erreur suppression compte:", err);
+      setError(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Erreur lors de la suppression du compte"
+      );
+      setDeleting(false);
     }
   };
 
@@ -417,78 +457,112 @@ const Profile = () => {
 
             {/* Onglet Mot de passe */}
             {activeTab === "password" && (
-              <form
-                onSubmit={handleSavePassword}
-                className="max-w-md space-y-6"
-              >
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Mot de passe actuel *
-                  </label>
-                  <input
-                    type="password"
-                    name="current_password"
-                    required
-                    value={passwordData.current_password}
-                    onChange={handlePasswordChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
+              <div className="space-y-8">
+                {/* Changement de mot de passe */}
+                <form
+                  onSubmit={handleSavePassword}
+                  className="max-w-md space-y-6 pb-8 border-b"
+                >
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Changer le mot de passe
+                  </h3>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nouveau mot de passe *
-                  </label>
-                  <input
-                    type="password"
-                    name="new_password"
-                    required
-                    value={passwordData.new_password}
-                    onChange={handlePasswordChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Minimum 6 caractères
-                  </p>
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mot de passe actuel *
+                    </label>
+                    <input
+                      type="password"
+                      name="current_password"
+                      required
+                      value={passwordData.current_password}
+                      onChange={handlePasswordChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirmer le nouveau mot de passe *
-                  </label>
-                  <input
-                    type="password"
-                    name="confirm_password"
-                    required
-                    value={passwordData.confirm_password}
-                    onChange={handlePasswordChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nouveau mot de passe *
+                    </label>
+                    <input
+                      type="password"
+                      name="new_password"
+                      required
+                      value={passwordData.new_password}
+                      onChange={handlePasswordChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Minimum 6 caractères
+                    </p>
+                  </div>
 
-                <div className="flex justify-end space-x-4 pt-4 border-t">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPasswordData({
-                        current_password: "",
-                        new_password: "",
-                        confirm_password: "",
-                      })
-                    }
-                    className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-                  >
-                    Réinitialiser
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-                  >
-                    {saving ? "Enregistrement..." : "Modifier le mot de passe"}
-                  </button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Confirmer le nouveau mot de passe *
+                    </label>
+                    <input
+                      type="password"
+                      name="confirm_password"
+                      required
+                      value={passwordData.confirm_password}
+                      onChange={handlePasswordChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-4 pt-4">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPasswordData({
+                          current_password: "",
+                          new_password: "",
+                          confirm_password: "",
+                        })
+                      }
+                      className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                    >
+                      Réinitialiser
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                    >
+                      {saving ? "Enregistrement..." : "Modifier le mot de passe"}
+                    </button>
+                  </div>
+                </form>
+
+                {/* Zone dangereuse - Suppression de compte */}
+                <div className="max-w-md">
+                  <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6">
+                    <div className="flex items-start space-x-3">
+                      <ExclamationTriangleIcon className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-red-900 mb-2">
+                          Zone dangereuse
+                        </h3>
+                        <p className="text-sm text-red-700 mb-4">
+                          {user?.role === "owner"
+                            ? "La suppression de votre compte entraînera la suppression définitive de votre salon et de toutes les données associées (clients, rendez-vous, services, etc.). Cette action est irréversible."
+                            : "La suppression de votre compte est définitive et irréversible. Vous ne pourrez plus accéder au système."}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setShowDeleteModal(true)}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center"
+                        >
+                          <TrashIcon className="h-5 w-5 mr-2" />
+                          Supprimer mon compte
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </form>
+              </div>
             )}
 
             {/* Onglet Statistiques */}
@@ -553,6 +627,135 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de suppression de compte */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full mx-4 shadow-2xl">
+            <div className="bg-red-600 text-white px-6 py-4 rounded-t-xl flex items-center">
+              <ExclamationTriangleIcon className="h-6 w-6 mr-3" />
+              <h3 className="text-xl font-bold">
+                Confirmer la suppression du compte
+              </h3>
+            </div>
+
+            <form onSubmit={handleDeleteAccount} className="p-6">
+              <div className="mb-6">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-red-800 font-medium mb-2">
+                    Attention : Cette action est irréversible !
+                  </p>
+                  <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+                    {user?.role === "owner" ? (
+                      <>
+                        <li>Votre salon sera définitivement supprimé</li>
+                        <li>Tous vos clients seront supprimés</li>
+                        <li>Tous vos rendez-vous seront supprimés</li>
+                        <li>Tous vos services seront supprimés</li>
+                        <li>Tous les comptes employés seront supprimés</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>Votre compte sera définitivement supprimé</li>
+                        <li>Vous ne pourrez plus accéder au système</li>
+                        <li>
+                          Vos rendez-vous passés resteront dans l'historique du
+                          salon
+                        </li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+
+                {user?.role === "owner" && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pour confirmer, tapez le nom de votre salon :{" "}
+                      <span className="font-bold text-gray-900">
+                        {tenant?.name}
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={deleteAccountData.confirmation_text}
+                      onChange={(e) =>
+                        setDeleteAccountData({
+                          ...deleteAccountData,
+                          confirmation_text: e.target.value,
+                        })
+                      }
+                      placeholder={tenant?.name}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mot de passe de confirmation *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={deleteAccountData.password}
+                    onChange={(e) =>
+                      setDeleteAccountData({
+                        ...deleteAccountData,
+                        password: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Entrez votre mot de passe"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start">
+                  <XMarkIcon className="h-5 w-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteAccountData({
+                      password: "",
+                      confirmation_text: "",
+                    });
+                    setError(null);
+                  }}
+                  disabled={deleting}
+                  className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={deleting}
+                  className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {deleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Suppression...
+                    </>
+                  ) : (
+                    <>
+                      <TrashIcon className="h-5 w-5 mr-2" />
+                      Supprimer définitivement
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };

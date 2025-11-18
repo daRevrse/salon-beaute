@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import DashboardLayout from '../components/common/DashboardLayout';
 import { useClients } from '../hooks/useClients';
+import { usePermissions } from '../contexts/PermissionContext';
 import api from '../services/api';
 import {
   EnvelopeIcon,
@@ -23,6 +24,7 @@ const Clients = () => {
     deleteClient,
     fetchClients,
   } = useClients();
+  const { can } = usePermissions();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -289,18 +291,22 @@ const Clients = () => {
                           Contacter
                         </button>
                       )}
-                      <button
-                        onClick={() => handleOpenModal(client)}
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => handleDelete(client.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Supprimer
-                      </button>
+                      {can.editClient && (
+                        <button
+                          onClick={() => handleOpenModal(client)}
+                          className="text-indigo-600 hover:text-indigo-900"
+                        >
+                          Modifier
+                        </button>
+                      )}
+                      {can.deleteClient && (
+                        <button
+                          onClick={() => handleDelete(client.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Supprimer
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -460,7 +466,8 @@ const Clients = () => {
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
-                      SMS
+                      <ChatBubbleLeftRightIcon className="h-4 w-4 inline mr-1" />
+                      WhatsApp/SMS
                     </button>
                   )}
                   {messagingClient.email && messagingClient.phone && (
@@ -512,10 +519,11 @@ const Clients = () => {
                 ></textarea>
               </div>
 
-              {/* Info simulation */}
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-sm text-yellow-800">
-                  Mode simulation: Le message ne sera pas réellement envoyé.
+              {/* Info envoi */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  📧 L'email sera envoyé immédiatement.
+                  📱 WhatsApp/SMS est en mode simulation (affichage dans les logs serveur).
                 </p>
               </div>
 

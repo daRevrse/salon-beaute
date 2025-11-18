@@ -188,6 +188,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Mettre à jour l'utilisateur (utilisé après modification de profil)
+  const updateUser = (updatedUser) => {
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  };
+
   const value = {
     user,
     tenant,
@@ -200,6 +206,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateProfile,
+    updateUser,
     changePassword,
     refreshTenant,
     refreshUser,

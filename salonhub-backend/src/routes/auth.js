@@ -9,6 +9,7 @@ const bcrypt = require("bcrypt");
 const { query, transaction } = require("../config/database");
 const { generateToken, authMiddleware } = require("../middleware/auth");
 const { tenantMiddleware } = require("../middleware/tenant");
+const emailService = require("../services/emailService");
 
 // ==========================================
 // POST - Inscription (Créer nouveau salon + owner)
@@ -173,6 +174,16 @@ router.post("/register", async (req, res) => {
       tenant_id: result.tenantId,
       email: email,
       role: "owner",
+    });
+
+    // Envoyer l'email de bienvenue (async, sans bloquer la réponse)
+    emailService.sendWelcomeEmail({
+      to: email,
+      firstName: first_name,
+      tenantSlug: finalSlug
+    }).catch(error => {
+      console.error('Erreur envoi email de bienvenue:', error.message);
+      // Ne pas bloquer l'inscription si l'email échoue
     });
 
     res.status(201).json({
@@ -778,5 +789,131 @@ router.delete(
     }
   }
 );
+
+// ==========================================
+// DELETE - Supprimer son propre compte utilisateur
+// ==========================================
+router.delete("/account", authMiddleware, async (req, res) => {
+  try {
+    const { password, confirmation_text } = req.body;
+
+    // Validation : mot de passe requis pour confirmer la suppression
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        error: "Le mot de passe est requis pour supprimer votre compte",
+      });
+    }
+
+    // Récupérer l'utilisateur avec son rôle et infos du salon
+    const [user] = await query(
+      `SELECT
+        u.id, u.role, u.password_hash, u.tenant_id, u.email,
+        t.name as salon_name, t.subscription_status, t.slug
+      FROM users u
+      JOIN tenants t ON u.tenant_id = t.id
+      WHERE u.id = ?`,
+      [req.user.id]
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "Utilisateur introuvable",
+      });
+    }
+
+    // Vérifier le mot de passe
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        success: false,
+        error: "Mot de passe incorrect",
+      });
+    }
+
+    // Si l'utilisateur est "owner", supprimer tout le tenant (salon + tous les données)
+    if (user.role === "owner") {
+      // Vérification de la confirmation (type GitHub)
+      // Le frontend doit envoyer le nom du salon pour confirmer
+      if (confirmation_text !== user.salon_name) {
+        return res.status(400).json({
+          success: false,
+          error: "Confirmation invalide",
+          message: `Pour confirmer la suppression, veuillez saisir exactement le nom de votre salon : "${user.salon_name}"`,
+          required_confirmation: user.salon_name,
+        });
+      }
+
+      // Vérifier s'il y a un abonnement actif
+      if (user.subscription_status === "active") {
+        return res.status(403).json({
+          success: false,
+          error:
+            "Vous devez d'abord annuler votre abonnement avant de supprimer votre salon",
+          message:
+            "Veuillez annuler votre abonnement dans les paramètres de facturation, puis réessayez.",
+        });
+      }
+
+      // Compter les données qui seront supprimées (pour information)
+      const [stats] = await query(
+        `SELECT
+          (SELECT COUNT(*) FROM users WHERE tenant_id = ?) as total_users,
+          (SELECT COUNT(*) FROM clients WHERE tenant_id = ?) as total_clients,
+          (SELECT COUNT(*) FROM services WHERE tenant_id = ?) as total_services,
+          (SELECT COUNT(*) FROM appointments WHERE tenant_id = ?) as total_appointments`,
+        [user.tenant_id, user.tenant_id, user.tenant_id, user.tenant_id]
+      );
+
+      // Suppression en cascade du tenant (grâce aux contraintes FK ON DELETE CASCADE)
+      // Cela supprimera automatiquement :
+      // - Tous les users du tenant
+      // - Tous les clients
+      // - Tous les services
+      // - Tous les rendez-vous
+      // - Tous les paramètres
+      // - Toutes les notifications
+      await query("DELETE FROM tenants WHERE id = ?", [user.tenant_id]);
+
+      res.json({
+        success: true,
+        message: `Le salon "${user.salon_name}" et toutes ses données ont été supprimés avec succès. Nous sommes désolés de vous voir partir.`,
+        deleted: {
+          type: "owner",
+          tenant_deleted: true,
+          tenant_name: user.salon_name,
+          stats: {
+            users: stats.total_users,
+            clients: stats.total_clients,
+            services: stats.total_services,
+            appointments: stats.total_appointments,
+          },
+        },
+      });
+    } else {
+      // Si l'utilisateur est "admin" ou "staff", supprimer seulement son compte
+      // Pas besoin de confirmation du nom du salon pour les employés
+      await query("DELETE FROM users WHERE id = ?", [user.id]);
+
+      res.json({
+        success: true,
+        message: `Votre compte a été supprimé avec succès. Vous ne faites plus partie de l'équipe de "${user.salon_name}".`,
+        deleted: {
+          type: user.role,
+          tenant_deleted: false,
+          user_email: user.email,
+        },
+      });
+    }
+  } catch (error) {
+    console.error("Erreur suppression compte:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur lors de la suppression du compte",
+    });
+  }
+});
 
 module.exports = router;

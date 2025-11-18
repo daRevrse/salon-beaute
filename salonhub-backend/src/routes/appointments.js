@@ -622,4 +622,193 @@ router.get("/availability/slots", async (req, res) => {
   }
 });
 
+// ==========================================
+// POST - Envoyer une confirmation de RDV
+// ==========================================
+router.post("/:id/send-confirmation", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { send_via } = req.body; // 'email', 'whatsapp', ou 'both'
+
+    // Validation
+    if (!send_via || !['email', 'whatsapp', 'both'].includes(send_via)) {
+      return res.status(400).json({
+        success: false,
+        error: "send_via doit être: email, whatsapp ou both"
+      });
+    }
+
+    // Récupérer le RDV avec toutes les infos
+    const [appointment] = await query(
+      `SELECT
+        a.*,
+        c.first_name as client_first_name,
+        c.last_name as client_last_name,
+        c.email as client_email,
+        c.phone as client_phone,
+        s.name as service_name,
+        s.duration as service_duration,
+        s.price as service_price,
+        u.first_name as staff_first_name,
+        u.last_name as staff_last_name,
+        t.name as salon_name,
+        t.phone as salon_phone,
+        t.email as salon_email
+      FROM appointments a
+      JOIN clients c ON a.client_id = c.id
+      JOIN services s ON a.service_id = s.id
+      JOIN tenants t ON a.tenant_id = t.id
+      LEFT JOIN users u ON a.staff_id = u.id
+      WHERE a.id = ? AND a.tenant_id = ?`,
+      [id, req.tenantId]
+    );
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        error: "Rendez-vous introuvable"
+      });
+    }
+
+    const emailService = require("../services/emailService");
+
+    // Préparer les données de la confirmation
+    const confirmationData = {
+      clientName: `${appointment.client_first_name} ${appointment.client_last_name}`,
+      salonName: appointment.salon_name,
+      serviceName: appointment.service_name,
+      date: new Date(appointment.appointment_date).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+      time: appointment.start_time.substring(0, 5),
+      staffName: appointment.staff_first_name ?
+        `${appointment.staff_first_name} ${appointment.staff_last_name}` :
+        "Un membre de notre équipe",
+      duration: appointment.service_duration,
+      salonPhone: appointment.salon_phone
+    };
+
+    let emailSent = false;
+    let whatsappSent = false;
+
+    // Envoyer par email
+    if (send_via === 'email' || send_via === 'both') {
+      if (!appointment.client_email) {
+        return res.status(400).json({
+          success: false,
+          error: "Le client n'a pas d'adresse email"
+        });
+      }
+
+      try {
+        await emailService.sendEmail({
+          to: appointment.client_email,
+          subject: `Confirmation de rendez-vous - ${confirmationData.salonName}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #4F46E5;">Confirmation de rendez-vous</h2>
+
+              <p>Bonjour <strong>${confirmationData.clientName}</strong>,</p>
+
+              <p>Votre rendez-vous a bien été confirmé :</p>
+
+              <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Service :</strong> ${confirmationData.serviceName}</p>
+                <p style="margin: 5px 0;"><strong>Date :</strong> ${confirmationData.date}</p>
+                <p style="margin: 5px 0;"><strong>Heure :</strong> ${confirmationData.time}</p>
+                <p style="margin: 5px 0;"><strong>Durée :</strong> ${confirmationData.duration} minutes</p>
+                <p style="margin: 5px 0;"><strong>Avec :</strong> ${confirmationData.staffName}</p>
+              </div>
+
+              <p>Nous vous attendons avec plaisir !</p>
+
+              <p>Pour toute question, contactez-nous au ${confirmationData.salonPhone}</p>
+
+              <p style="color: #6B7280; font-size: 12px; margin-top: 30px;">
+                ${confirmationData.salonName}
+              </p>
+            </div>
+          `
+        });
+        emailSent = true;
+      } catch (error) {
+        console.error("Erreur envoi email confirmation:", error);
+      }
+    }
+
+    // Envoyer par WhatsApp (simulation pour l'instant)
+    if (send_via === 'whatsapp' || send_via === 'both') {
+      if (!appointment.client_phone) {
+        return res.status(400).json({
+          success: false,
+          error: "Le client n'a pas de numéro de téléphone"
+        });
+      }
+
+      // Message WhatsApp formaté
+      const whatsappMessage = `
+🎉 *Confirmation de rendez-vous*
+
+Bonjour ${confirmationData.clientName},
+
+Votre rendez-vous est confirmé :
+
+📋 *Service :* ${confirmationData.serviceName}
+📅 *Date :* ${confirmationData.date}
+🕐 *Heure :* ${confirmationData.time}
+⏱️ *Durée :* ${confirmationData.duration} min
+👤 *Avec :* ${confirmationData.staffName}
+
+Nous vous attendons avec plaisir ! 😊
+
+📞 ${confirmationData.salonPhone}
+*${confirmationData.salonName}*
+      `.trim();
+
+      console.log(`📱 [WHATSAPP] To: ${appointment.client_phone}`);
+      console.log(whatsappMessage);
+
+      // TODO: Intégrer l'API WhatsApp Business (Twilio, etc.)
+      whatsappSent = true; // Simulation
+    }
+
+    // Enregistrer la notification dans la DB
+    await query(
+      `INSERT INTO client_notifications (
+        tenant_id, client_id, appointment_id, type, subject, message, send_via, status, sent_by, sent_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.tenantId,
+        appointment.client_id,
+        appointment.id,
+        'appointment_confirmation',
+        'Confirmation de rendez-vous',
+        `Rendez-vous confirmé le ${confirmationData.date} à ${confirmationData.time}`,
+        send_via,
+        (emailSent || whatsappSent) ? 'sent' : 'failed',
+        req.user.id,
+        new Date()
+      ]
+    );
+
+    res.json({
+      success: true,
+      message: "Confirmation envoyée avec succès",
+      data: {
+        emailSent,
+        whatsappSent
+      }
+    });
+  } catch (error) {
+    console.error("Erreur envoi confirmation:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur lors de l'envoi de la confirmation"
+    });
+  }
+});
+
 module.exports = router;

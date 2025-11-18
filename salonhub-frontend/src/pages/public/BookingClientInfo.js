@@ -7,6 +7,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import PromoCodeInput from "../../components/common/PromoCodeInput";
+import api from "../../services/api";
 import {
   // <-- Import Heroicons
   ClockIcon,
@@ -41,6 +43,8 @@ const BookingClientInfo = () => {
 
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [promoCode, setPromoCode] = useState(null);
+  const [finalAmount, setFinalAmount] = useState(service?.price || 0);
 
   useEffect(() => {
     if (!service || !date || !slot) {
@@ -49,6 +53,12 @@ const BookingClientInfo = () => {
     }
     fetchSalon();
   }, [service, date, slot, slug, navigate, fetchSalon]);
+
+  useEffect(() => {
+    if (service) {
+      setFinalAmount(service.price);
+    }
+  }, [service]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -112,6 +122,8 @@ const BookingClientInfo = () => {
         start_time: slot.time + ":00",
         notes: formData.notes.trim() || null,
         preferred_contact_method: formData.preferred_contact_method,
+        promo_code: promoCode?.code || null,
+        final_amount: finalAmount,
       };
 
       const result = await createAppointment(appointmentData);
@@ -134,6 +146,36 @@ const BookingClientInfo = () => {
 
   const handleBack = () => {
     navigate(`/book/${slug}/datetime`, { state: { service } });
+  };
+
+  const handleValidatePromoCode = async (code) => {
+    if (!code) {
+      // Retirer le code promo
+      setPromoCode(null);
+      setFinalAmount(service.price);
+      return { success: true };
+    }
+
+    try {
+      const response = await api.post('/promotions/validate', {
+        code: code,
+        service_id: service.id,
+        amount: service.price,
+      });
+
+      if (response.data.success) {
+        setPromoCode(response.data.data);
+        setFinalAmount(response.data.data.final_amount);
+        return response.data;
+      } else {
+        setPromoCode(null);
+        setFinalAmount(service.price);
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Erreur validation promo:', error);
+      throw error;
+    }
   };
 
   const formatDate = (dateString) => {
@@ -196,10 +238,22 @@ const BookingClientInfo = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Prix</p>
-                <p className="font-bold text-indigo-600 text-lg flex items-center">
-                  <CurrencyDollarIcon className="w-5 h-5 mr-1" />
-                  {formatPrice(service.price)}
-                </p>
+                {promoCode ? (
+                  <div>
+                    <p className="text-sm text-gray-400 line-through">
+                      {formatPrice(service.price)}
+                    </p>
+                    <p className="font-bold text-green-600 text-lg flex items-center">
+                      <CurrencyDollarIcon className="w-5 h-5 mr-1" />
+                      {formatPrice(finalAmount)}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="font-bold text-indigo-600 text-lg flex items-center">
+                    <CurrencyDollarIcon className="w-5 h-5 mr-1" />
+                    {formatPrice(service.price)}
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-sm text-gray-500">Date & Heure</p>
@@ -464,6 +518,15 @@ const BookingClientInfo = () => {
                 rows="3"
                 placeholder="Précisez vos demandes ou préférences..."
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+
+            {/* Code Promo */}
+            <div className="pt-4">
+              <PromoCodeInput
+                onValidate={handleValidatePromoCode}
+                currentAmount={service?.price || 0}
+                clientId={null}
               />
             </div>
 

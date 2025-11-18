@@ -7,6 +7,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { CurrencyProvider } from "./contexts/CurrencyContext";
+import { PermissionProvider } from "./contexts/PermissionContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 
 // Auth
@@ -18,6 +19,7 @@ import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import Services from "./pages/Services";
 import Appointments from "./pages/Appointments";
+import Promotions from "./pages/Promotions";
 import Billing from "./pages/Billing";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
@@ -32,8 +34,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <CurrencyProvider>
-          <Routes>
+        <PermissionProvider>
+          <CurrencyProvider>
+            <Routes>
             {/* Routes publiques - Authentification */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -85,6 +88,15 @@ function App() {
             />
 
             <Route
+              path="/promotions"
+              element={
+                <ProtectedRoute>
+                  <Promotions />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/billing"
               element={
                 <ProtectedRoute>
@@ -116,8 +128,9 @@ function App() {
 
             {/* 404 */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </CurrencyProvider>
+            </Routes>
+          </CurrencyProvider>
+        </PermissionProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/common/DashboardLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { withPermission } from "../components/common/PermissionGate";
 import api from '../services/api';
 import {
   CreditCardIcon,
@@ -359,4 +360,5 @@ const Billing = () => {
   );
 };
 
-export default Billing;
+// Protéger la page avec les permissions (Owner seulement)
+export default withPermission(Billing, 'viewBilling');

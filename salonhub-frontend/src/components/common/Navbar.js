@@ -5,6 +5,7 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { usePermissions } from "../../contexts/PermissionContext";
 import { ImageWithFallback } from "../../utils/imageUtils";
 import NotificationBell from "./NotificationBell";
 
@@ -14,6 +15,7 @@ import {
   CalendarDaysIcon,
   UsersIcon,
   ScissorsIcon,
+  TagIcon,
   Cog6ToothIcon,
   CreditCardIcon,
   ArrowRightOnRectangleIcon,
@@ -26,6 +28,7 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, tenant, logout } = useAuth();
+  const { can, isOwner } = usePermissions();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
@@ -36,28 +39,39 @@ const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
 
+  // Navigation principale - accessible à tous
   const navLinks = [
     {
       path: "/dashboard",
       label: "Dashboard",
       icon: <ChartBarIcon className="h-5 w-5" />,
+      visible: true,
     },
     {
       path: "/appointments",
       label: "Rendez-vous",
       icon: <CalendarDaysIcon className="h-5 w-5" />,
+      visible: true,
     },
     {
       path: "/clients",
       label: "Clients",
       icon: <UsersIcon className="h-5 w-5" />,
+      visible: can.viewClients,
     },
     {
       path: "/services",
       label: "Services",
       icon: <ScissorsIcon className="h-5 w-5" />,
+      visible: can.viewServices,
     },
-  ];
+    {
+      path: "/promotions",
+      label: "Promotions",
+      icon: <TagIcon className="h-5 w-5" />,
+      visible: can.viewSettings, // Admins et Owners uniquement
+    },
+  ].filter(link => link.visible);
 
   return (
     <nav className="bg-white border-b border-gray-200 shadow-sm">
@@ -173,23 +187,29 @@ const Navbar = () => {
                         Mon Profil
                       </Link>
 
-                      <Link
-                        to="/settings"
-                        onClick={() => setProfileMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm transition-colors"
-                      >
-                        <Cog6ToothIcon className="h-5 w-5" />
-                        Paramètres
-                      </Link>
+                      {/* Paramètres - seulement pour Admin et Owner */}
+                      {can.viewSettings && (
+                        <Link
+                          to="/settings"
+                          onClick={() => setProfileMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm transition-colors"
+                        >
+                          <Cog6ToothIcon className="h-5 w-5" />
+                          Paramètres
+                        </Link>
+                      )}
 
-                      {/* <Link
-                        to="/billing"
-                        onClick={() => setProfileMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm transition-colors"
-                      >
-                        <CreditCardIcon className="h-5 w-5" />
-                        Facturation
-                      </Link> */}
+                      {/* Facturation - seulement pour Owner */}
+                      {can.viewBilling && (
+                        <Link
+                          to="/billing"
+                          onClick={() => setProfileMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm transition-colors"
+                        >
+                          <CreditCardIcon className="h-5 w-5" />
+                          Facturation
+                        </Link>
+                      )}
                     </div>
 
                     <hr className="my-1" />
@@ -260,23 +280,29 @@ const Navbar = () => {
               Mon Profil
             </Link>
 
-            <Link
-              to="/settings"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
-            >
-              <Cog6ToothIcon className="h-5 w-5 text-gray-500" />
-              Paramètres
-            </Link>
+            {/* Paramètres - seulement pour Admin et Owner */}
+            {can.viewSettings && (
+              <Link
+                to="/settings"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                <Cog6ToothIcon className="h-5 w-5 text-gray-500" />
+                Paramètres
+              </Link>
+            )}
 
-            <Link
-              to="/billing"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
-            >
-              <CreditCardIcon className="h-5 w-5 text-gray-500" />
-              Facturation
-            </Link>
+            {/* Facturation - seulement pour Owner */}
+            {can.viewBilling && (
+              <Link
+                to="/billing"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                <CreditCardIcon className="h-5 w-5 text-gray-500" />
+                Facturation
+              </Link>
+            )}
 
             <button
               onClick={handleLogout}

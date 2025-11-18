@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/common/DashboardLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { useCurrency, CURRENCIES } from "../contexts/CurrencyContext";
+import { withPermission } from "../components/common/PermissionGate";
 import ImageUploader from "../components/common/ImageUploader";
 import {
   ClockIcon,
@@ -1034,4 +1035,5 @@ const Settings = () => {
   );
 };
 
-export default Settings;
+// Protéger la page avec les permissions
+export default withPermission(Settings, 'viewSettings');

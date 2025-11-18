@@ -51,8 +51,6 @@ const Appointments = () => {
       } catch (err) {
         console.error("Erreur chargement staff:", err);
       }
-
-      console.log("appoint", appointments);
     };
     loadStaff();
   }, []);

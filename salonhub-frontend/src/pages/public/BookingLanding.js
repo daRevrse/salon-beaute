@@ -168,7 +168,7 @@ const BookingLanding = () => {
                   <img
                     src={
                       service.image_url?.replace("/api", "") ||
-                      "https://via.placeholder.com/400x300?text=Service"
+                      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop"
                     }
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />

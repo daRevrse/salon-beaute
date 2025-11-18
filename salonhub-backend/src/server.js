@@ -104,6 +104,7 @@ app.use("/api/services", require("./routes/services"));
 app.use("/api/appointments", require("./routes/appointments"));
 app.use("/api/settings", require("./routes/settings"));
 app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/promotions", require("./routes/promotions"));
 
 // TODO: Routes tenants (admin)
 // app.use('/api/tenants', require('./routes/tenants'));
