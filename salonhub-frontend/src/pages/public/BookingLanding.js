@@ -77,19 +77,30 @@ const BookingLanding = () => {
       {/* ------------------------------------------------------ */}
       <div className="relative w-full h-[60vh] md:h-[70vh] overflow-hidden rounded-b-3xl shadow-lg">
         {/* IMAGES BACKGROUND */}
-        {salon?.images?.length > 0 ? (
+        {salon?.banner_url ? (
+          /* Bannière du salon si disponible */
+          <img
+            src={salon.banner_url.replace("/api", "")}
+            alt="Bannière du salon"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : salon?.images?.length > 0 ? (
+          /* Slideshow d'images si disponible */
           salon.images.map((img, index) => (
             <img
               key={index}
               src={img}
+              alt={`Salon image ${index + 1}`}
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
                 index === currentSlide ? "opacity-100" : "opacity-0"
               }`}
             />
           ))
         ) : (
+          /* Image par défaut */
           <img
-            src="https://placehold.net/1-800x600.png"
+            src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1800&h=600&fit=crop"
+            alt="Salon de beauté"
             className="absolute inset-0 w-full h-full object-cover"
           />
         )}

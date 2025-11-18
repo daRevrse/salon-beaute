@@ -78,14 +78,16 @@ const Profile = () => {
           avatar_url: user.avatar_url || "",
         });
 
-        // Charger les statistiques (si staff)
-        if (user.role === "staff" || user.role === "owner") {
+        // Charger les statistiques (si staff ou owner)
+        if (user.role === "staff" || user.role === "owner" || user.role === "admin") {
           const appointmentsRes = await api.get("/appointments");
           const allAppointments = appointmentsRes.data.data || [];
 
-          const userAppointments = allAppointments.filter(
-            (apt) => apt.staff_id === user.id
-          );
+          // Pour owner/admin : tous les RDV du salon
+          // Pour staff : uniquement ses RDV assignés
+          const userAppointments = user.role === "staff"
+            ? allAppointments.filter((apt) => apt.staff_id === user.id)
+            : allAppointments;
 
           const completed = userAppointments.filter(
             (a) => a.status === "completed"

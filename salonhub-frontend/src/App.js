@@ -30,6 +30,10 @@ import BookingDateTime from "./pages/public/BookingDateTime";
 import BookingClientInfo from "./pages/public/BookingClientInfo";
 import BookingConfirmation from "./pages/public/BookingConfirmation";
 
+// Pages SuperAdmin
+import SuperAdminLogin from "./pages/admin/SuperAdminLogin";
+import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
+
 function App() {
   return (
     <BrowserRouter>
@@ -40,6 +44,10 @@ function App() {
             {/* Routes publiques - Authentification */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+
+            {/* Routes SuperAdmin */}
+            <Route path="/superadmin/login" element={<SuperAdminLogin />} />
+            <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
 
             {/* Routes publiques - Booking (Réservation client) */}
             <Route path="/book/:slug" element={<BookingLanding />} />

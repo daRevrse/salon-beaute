@@ -128,6 +128,7 @@ router.post("/", async (req, res) => {
       requires_deposit,
       deposit_amount,
       available_for_online_booking,
+      image_url,
     } = req.body;
 
     // Validation
@@ -150,8 +151,8 @@ router.post("/", async (req, res) => {
       `INSERT INTO services (
         tenant_id, name, description, duration, price, category,
         is_active, requires_deposit, deposit_amount,
-        available_for_online_booking
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        available_for_online_booking, image_url
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.tenantId,
         name,
@@ -165,6 +166,7 @@ router.post("/", async (req, res) => {
         available_for_online_booking !== undefined
           ? available_for_online_booking
           : true,
+        image_url || null,
       ]
     );
 

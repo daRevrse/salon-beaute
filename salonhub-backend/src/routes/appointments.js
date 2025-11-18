@@ -144,22 +144,23 @@ router.get("/", async (req, res) => {
 router.get("/today", async (req, res) => {
   try {
     const appointments = await query(
-      `SELECT 
+      `SELECT
         a.*,
         c.first_name as client_first_name,
         c.last_name as client_last_name,
         c.phone as client_phone,
         s.name as service_name,
         s.duration as service_duration,
+        s.price as service_price,
         u.first_name as staff_first_name,
         u.last_name as staff_last_name
       FROM appointments a
       LEFT JOIN clients c ON a.client_id = c.id
       LEFT JOIN services s ON a.service_id = s.id
       LEFT JOIN users u ON a.staff_id = u.id
-      WHERE a.tenant_id = ? 
+      WHERE a.tenant_id = ?
       AND a.appointment_date = CURDATE()
-      AND a.status IN ('pending', 'confirmed')
+      AND a.status IN ('pending', 'confirmed', 'completed')
       ORDER BY a.start_time`,
       [req.tenantId]
     );

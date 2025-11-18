@@ -19,7 +19,7 @@ router.get("/salon/:slug", async (req, res) => {
 
     const tenant = await db.query(
       `SELECT id, name, slug, phone, address, city, postal_code,
-              subscription_status, logo_url, currency
+              subscription_status, logo_url, banner_url, currency
        FROM tenants
        WHERE slug = ? AND subscription_status IN ('trial', 'active')`,
       [slug]

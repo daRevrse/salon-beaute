@@ -335,6 +335,16 @@ router.post("/validate", async (req, res) => {
       });
     }
 
+    if (!order_amount || isNaN(order_amount)) {
+      return res.status(400).json({
+        success: false,
+        error: "Montant de commande invalide"
+      });
+    }
+
+    // Convertir en nombre
+    const amount = parseFloat(order_amount);
+
     // Récupérer la promotion
     const [promotion] = await query(
       `SELECT * FROM promotions
@@ -351,7 +361,7 @@ router.post("/validate", async (req, res) => {
     }
 
     // Vérifier montant minimum
-    if (promotion.min_purchase_amount && order_amount < promotion.min_purchase_amount) {
+    if (promotion.min_purchase_amount && amount < promotion.min_purchase_amount) {
       return res.status(400).json({
         success: false,
         error: `Montant minimum de ${promotion.min_purchase_amount}€ requis`
@@ -392,19 +402,19 @@ router.post("/validate", async (req, res) => {
     let discountAmount = 0;
 
     if (promotion.discount_type === 'percentage') {
-      discountAmount = (order_amount * promotion.discount_value) / 100;
+      discountAmount = (amount * parseFloat(promotion.discount_value)) / 100;
     } else if (promotion.discount_type === 'fixed_amount') {
-      discountAmount = promotion.discount_value;
+      discountAmount = parseFloat(promotion.discount_value);
     }
 
     // Appliquer le montant maximum de réduction
-    if (promotion.max_discount_amount && discountAmount > promotion.max_discount_amount) {
-      discountAmount = promotion.max_discount_amount;
+    if (promotion.max_discount_amount && discountAmount > parseFloat(promotion.max_discount_amount)) {
+      discountAmount = parseFloat(promotion.max_discount_amount);
     }
 
     // Ne pas dépasser le montant total
-    if (discountAmount > order_amount) {
-      discountAmount = order_amount;
+    if (discountAmount > amount) {
+      discountAmount = amount;
     }
 
     res.json({
@@ -416,7 +426,7 @@ router.post("/validate", async (req, res) => {
         discount_type: promotion.discount_type,
         discount_value: promotion.discount_value,
         discount_amount: parseFloat(discountAmount.toFixed(2)),
-        final_amount: parseFloat((order_amount - discountAmount).toFixed(2))
+        final_amount: parseFloat((amount - discountAmount).toFixed(2))
       }
     });
   } catch (error) {

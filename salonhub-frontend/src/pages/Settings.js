@@ -61,6 +61,7 @@ const Settings = () => {
   const [slotDuration, setSlotDuration] = useState(30);
   const [selectedCurrency, setSelectedCurrency] = useState(currency);
   const [logoUrl, setLogoUrl] = useState(null);
+  const [bannerUrl, setBannerUrl] = useState(null);
   const [salonInfo, setSalonInfo] = useState({
     business_name: "",
     phone: "",
@@ -137,6 +138,9 @@ const Settings = () => {
         });
         if (salon.logo_url) {
           setLogoUrl(salon.logo_url);
+        }
+        if (salon.banner_url) {
+          setBannerUrl(salon.banner_url);
         }
       }
     } catch (err) {
@@ -309,9 +313,10 @@ const Settings = () => {
         }
       );
 
-      // Sauvegarder le logo et infos du salon si modifiés
+      // Sauvegarder le logo, bannière et infos du salon si modifiés
       if (
         logoUrl ||
+        bannerUrl ||
         salonInfo.name ||
         salonInfo.phone ||
         salonInfo.email ||
@@ -322,6 +327,7 @@ const Settings = () => {
           {
             ...salonInfo,
             logo_url: logoUrl,
+            banner_url: bannerUrl,
           },
           {
             headers: { Authorization: `Bearer ${token}` },
@@ -465,14 +471,31 @@ const Settings = () => {
                         imageUrl={logoUrl?.replace("/api", "")}
                         onImageUpload={setLogoUrl}
                         onDelete={() => setLogoUrl(null)}
-                        label="Logo ou Bannière du Salon"
-                        aspectRatio="aspect-[16/9]"
+                        label="Logo du Salon"
+                        aspectRatio="aspect-square"
                       />
                       <p className="mt-2 text-sm text-gray-500">
-                        Ce logo apparaîtra sur votre page de réservation.
+                        Logo carré qui apparaîtra comme icône de votre salon.
                       </p>
                     </div>
 
+                    {/* Bannière */}
+                    <div>
+                      <ImageUploader
+                        target="tenant-banner"
+                        imageUrl={bannerUrl?.replace("/api", "")}
+                        onImageUpload={setBannerUrl}
+                        onDelete={() => setBannerUrl(null)}
+                        label="Bannière du Salon"
+                        aspectRatio="aspect-[16/9]"
+                      />
+                      <p className="mt-2 text-sm text-gray-500">
+                        Bannière large qui apparaîtra sur votre page de réservation.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-8 mt-8">
                     {/* Info salon */}
                     <div className="space-y-4">
                       <div>

@@ -106,8 +106,8 @@ app.use("/api/settings", require("./routes/settings"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/promotions", require("./routes/promotions"));
 
-// TODO: Routes tenants (admin)
-// app.use('/api/tenants', require('./routes/tenants'));
+// Routes SuperAdmin (système SaaS)
+app.use("/api/admin", require("./routes/admin"));
 
 // ==========================================
 // GESTION ERREURS

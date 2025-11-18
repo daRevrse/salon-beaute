@@ -7,12 +7,14 @@ import { useState } from 'react';
 import DashboardLayout from '../components/common/DashboardLayout';
 import { useClients } from '../hooks/useClients';
 import { usePermissions } from '../contexts/PermissionContext';
+import ClientHistory from '../components/clients/ClientHistory';
 import api from '../services/api';
 import {
   EnvelopeIcon,
   ChatBubbleLeftRightIcon,
   PaperAirplaneIcon,
   XMarkIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 
 const Clients = () => {
@@ -29,8 +31,10 @@ const Clients = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [messagingClient, setMessagingClient] = useState(null);
+  const [historyClient, setHistoryClient] = useState(null);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -281,6 +285,17 @@ const Clients = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                      <button
+                        onClick={() => {
+                          setHistoryClient(client);
+                          setShowHistoryModal(true);
+                        }}
+                        className="text-purple-600 hover:text-purple-900 inline-flex items-center"
+                        title="Voir l'historique"
+                      >
+                        <ClockIcon className="h-4 w-4 mr-1" />
+                        Historique
+                      </button>
                       {(client.email || client.phone) && (
                         <button
                           onClick={() => handleOpenMessageModal(client)}
@@ -547,6 +562,17 @@ const Clients = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modal Historique Client */}
+      {showHistoryModal && historyClient && (
+        <ClientHistory
+          client={historyClient}
+          onClose={() => {
+            setShowHistoryModal(false);
+            setHistoryClient(null);
+          }}
+        />
       )}
     </DashboardLayout>
   );

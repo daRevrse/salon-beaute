@@ -14,7 +14,10 @@
       "Bash(node setup-promotions-db.js:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(dir:*)",
+      "Bash(node scripts/run-migration.js:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

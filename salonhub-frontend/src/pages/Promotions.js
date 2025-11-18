@@ -3,11 +3,11 @@
  * Gestion des codes promo et offres spéciales
  */
 
-import { useState, useEffect } from 'react';
-import DashboardLayout from '../components/common/DashboardLayout';
-import { usePermissions } from '../contexts/PermissionContext';
-import { useCurrency } from '../contexts/CurrencyContext';
-import api from '../services/api';
+import { useState, useEffect } from "react";
+import DashboardLayout from "../components/common/DashboardLayout";
+import { usePermissions } from "../contexts/PermissionContext";
+import { useCurrency } from "../contexts/CurrencyContext";
+import api from "../services/api";
 import {
   TagIcon,
   PlusIcon,
@@ -19,7 +19,7 @@ import {
   CalendarIcon,
   UsersIcon,
   XMarkIcon,
-} from '@heroicons/react/24/outline';
+} from "@heroicons/react/24/outline";
 
 const Promotions = () => {
   const { can } = usePermissions();
@@ -29,22 +29,22 @@ const Promotions = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState(null);
-  const [filterActive, setFilterActive] = useState('all'); // 'all', 'active', 'expired'
+  const [filterActive, setFilterActive] = useState("all"); // 'all', 'active', 'expired'
 
   const [formData, setFormData] = useState({
-    code: '',
-    title: '',
-    description: '',
-    discount_type: 'percentage',
-    discount_value: '',
-    applies_to: 'all_services',
+    code: "",
+    title: "",
+    description: "",
+    discount_type: "percentage",
+    discount_value: "",
+    applies_to: "all_services",
     service_ids: [],
-    min_purchase_amount: '',
-    max_discount_amount: '',
-    usage_limit: '',
+    min_purchase_amount: "",
+    max_discount_amount: "",
+    usage_limit: "",
     usage_per_client: 1,
-    valid_from: '',
-    valid_until: '',
+    valid_from: "",
+    valid_until: "",
     is_active: true,
     is_public: true,
   });
@@ -57,10 +57,10 @@ const Promotions = () => {
   const loadPromotions = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/promotions');
+      const response = await api.get("/promotions");
       setPromotions(response.data.data);
     } catch (error) {
-      console.error('Erreur chargement promotions:', error);
+      console.error("Erreur chargement promotions:", error);
     } finally {
       setLoading(false);
     }
@@ -68,10 +68,10 @@ const Promotions = () => {
 
   const loadStats = async () => {
     try {
-      const response = await api.get('/promotions/stats/summary');
+      const response = await api.get("/promotions/stats/summary");
       setStats(response.data.data);
     } catch (error) {
-      console.error('Erreur chargement stats:', error);
+      console.error("Erreur chargement stats:", error);
     }
   };
 
@@ -81,36 +81,38 @@ const Promotions = () => {
       setFormData({
         code: promotion.code,
         title: promotion.title,
-        description: promotion.description || '',
+        description: promotion.description || "",
         discount_type: promotion.discount_type,
         discount_value: promotion.discount_value,
         applies_to: promotion.applies_to,
-        service_ids: promotion.service_ids ? JSON.parse(promotion.service_ids) : [],
-        min_purchase_amount: promotion.min_purchase_amount || '',
-        max_discount_amount: promotion.max_discount_amount || '',
-        usage_limit: promotion.usage_limit || '',
+        service_ids: promotion.service_ids
+          ? JSON.parse(promotion.service_ids)
+          : [],
+        min_purchase_amount: promotion.min_purchase_amount || "",
+        max_discount_amount: promotion.max_discount_amount || "",
+        usage_limit: promotion.usage_limit || "",
         usage_per_client: promotion.usage_per_client,
-        valid_from: promotion.valid_from?.split('T')[0] || '',
-        valid_until: promotion.valid_until?.split('T')[0] || '',
+        valid_from: promotion.valid_from?.split("T")[0] || "",
+        valid_until: promotion.valid_until?.split("T")[0] || "",
         is_active: promotion.is_active,
         is_public: promotion.is_public,
       });
     } else {
       setEditingPromotion(null);
       setFormData({
-        code: '',
-        title: '',
-        description: '',
-        discount_type: 'percentage',
-        discount_value: '',
-        applies_to: 'all_services',
+        code: "",
+        title: "",
+        description: "",
+        discount_type: "percentage",
+        discount_value: "",
+        applies_to: "all_services",
         service_ids: [],
-        min_purchase_amount: '',
-        max_discount_amount: '',
-        usage_limit: '',
+        min_purchase_amount: "",
+        max_discount_amount: "",
+        usage_limit: "",
         usage_per_client: 1,
-        valid_from: '',
-        valid_until: '',
+        valid_from: "",
+        valid_until: "",
         is_active: true,
         is_public: true,
       });
@@ -127,7 +129,7 @@ const Promotions = () => {
     const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: type === "checkbox" ? checked : value,
     });
   };
 
@@ -137,32 +139,34 @@ const Promotions = () => {
     try {
       if (editingPromotion) {
         await api.put(`/promotions/${editingPromotion.id}`, formData);
-        alert('Promotion modifiée avec succès !');
+        alert("Promotion modifiée avec succès !");
       } else {
-        await api.post('/promotions', formData);
-        alert('Promotion créée avec succès !');
+        await api.post("/promotions", formData);
+        alert("Promotion créée avec succès !");
       }
 
       handleCloseModal();
       loadPromotions();
       loadStats();
     } catch (error) {
-      alert(error.response?.data?.error || 'Erreur lors de la sauvegarde');
+      alert(error.response?.data?.error || "Erreur lors de la sauvegarde");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette promotion ?')) {
+    if (
+      !window.confirm("Êtes-vous sûr de vouloir supprimer cette promotion ?")
+    ) {
       return;
     }
 
     try {
       await api.delete(`/promotions/${id}`);
-      alert('Promotion supprimée avec succès !');
+      alert("Promotion supprimée avec succès !");
       loadPromotions();
       loadStats();
     } catch (error) {
-      alert(error.response?.data?.error || 'Erreur lors de la suppression');
+      alert(error.response?.data?.error || "Erreur lors de la suppression");
     }
   };
 
@@ -173,7 +177,7 @@ const Promotions = () => {
       });
       loadPromotions();
     } catch (error) {
-      alert(error.response?.data?.error || 'Erreur lors de la modification');
+      alert(error.response?.data?.error || "Erreur lors de la modification");
     }
   };
 
@@ -181,9 +185,9 @@ const Promotions = () => {
     const now = new Date();
 
     return promotions.filter((promo) => {
-      if (filterActive === 'active') {
+      if (filterActive === "active") {
         return promo.is_active && new Date(promo.valid_until) >= now;
-      } else if (filterActive === 'expired') {
+      } else if (filterActive === "expired") {
         return new Date(promo.valid_until) < now;
       }
       return true; // 'all'
@@ -191,11 +195,11 @@ const Promotions = () => {
   };
 
   const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('fr-FR');
+    return new Date(date).toLocaleDateString("fr-FR");
   };
 
   const getDiscountLabel = (promo) => {
-    if (promo.discount_type === 'percentage') {
+    if (promo.discount_type === "percentage") {
       return `-${promo.discount_value}%`;
     } else {
       return `-${formatPrice(promo.discount_value)}`;
@@ -206,7 +210,7 @@ const Promotions = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -236,7 +240,9 @@ const Promotions = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-purple-100 text-sm">Total Promotions</p>
-                  <p className="text-3xl font-bold mt-1">{stats.total_promotions || 0}</p>
+                  <p className="text-3xl font-bold mt-1">
+                    {stats.total_promotions || 0}
+                  </p>
                 </div>
                 <TagIcon className="h-12 w-12 text-purple-200 opacity-80" />
               </div>
@@ -246,7 +252,9 @@ const Promotions = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-green-100 text-sm">Actives</p>
-                  <p className="text-3xl font-bold mt-1">{stats.active_promotions || 0}</p>
+                  <p className="text-3xl font-bold mt-1">
+                    {stats.active_promotions || 0}
+                  </p>
                 </div>
                 <CheckCircleIcon className="h-12 w-12 text-green-200 opacity-80" />
               </div>
@@ -256,7 +264,9 @@ const Promotions = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-100 text-sm">Utilisations</p>
-                  <p className="text-3xl font-bold mt-1">{stats.total_usages || 0}</p>
+                  <p className="text-3xl font-bold mt-1">
+                    {stats.total_usages || 0}
+                  </p>
                 </div>
                 <UsersIcon className="h-12 w-12 text-blue-200 opacity-80" />
               </div>
@@ -279,31 +289,31 @@ const Promotions = () => {
         {/* Filtres */}
         <div className="mb-6 flex items-center space-x-2">
           <button
-            onClick={() => setFilterActive('all')}
+            onClick={() => setFilterActive("all")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filterActive === 'all'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              filterActive === "all"
+                ? "bg-purple-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             Toutes
           </button>
           <button
-            onClick={() => setFilterActive('active')}
+            onClick={() => setFilterActive("active")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filterActive === 'active'
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              filterActive === "active"
+                ? "bg-green-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             Actives
           </button>
           <button
-            onClick={() => setFilterActive('expired')}
+            onClick={() => setFilterActive("expired")}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filterActive === 'expired'
-                ? 'bg-red-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              filterActive === "expired"
+                ? "bg-red-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             Expirées
@@ -343,27 +353,35 @@ const Promotions = () => {
                 <div
                   key={promo.id}
                   className={`bg-white rounded-xl shadow-md border-2 overflow-hidden transition-all hover:shadow-xl ${
-                    isExpired ? 'border-gray-300 opacity-75' : 'border-purple-200'
+                    isExpired
+                      ? "border-gray-300 opacity-75"
+                      : "border-purple-200"
                   }`}
                 >
                   {/* Badge de réduction */}
                   <div
                     className={`p-6 text-center ${
                       isExpired
-                        ? 'bg-gray-100'
-                        : 'bg-gradient-to-r from-purple-500 to-purple-600'
+                        ? "bg-gray-100"
+                        : "bg-gradient-to-r from-purple-500 to-purple-600"
                     } text-white`}
                   >
-                    <div className="text-4xl font-bold">{getDiscountLabel(promo)}</div>
+                    <div className="text-4xl font-bold">
+                      {getDiscountLabel(promo)}
+                    </div>
                     <div className="text-sm mt-1 uppercase tracking-wide font-semibold">
                       {promo.code}
                     </div>
                   </div>
 
                   <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{promo.title}</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {promo.title}
+                    </h3>
                     {promo.description && (
-                      <p className="text-gray-600 text-sm mb-4">{promo.description}</p>
+                      <p className="text-gray-600 text-sm mb-4">
+                        {promo.description}
+                      </p>
                     )}
 
                     {/* Détails */}
@@ -371,7 +389,8 @@ const Promotions = () => {
                       <div className="flex items-center text-sm">
                         <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
                         <span className="text-gray-600">
-                          Du {formatDate(promo.valid_from)} au {formatDate(promo.valid_until)}
+                          Du {formatDate(promo.valid_from)} au{" "}
+                          {formatDate(promo.valid_until)}
                         </span>
                       </div>
 
@@ -379,7 +398,8 @@ const Promotions = () => {
                         <div className="flex items-center text-sm">
                           <UsersIcon className="h-4 w-4 text-gray-400 mr-2" />
                           <span className="text-gray-600">
-                            {promo.total_usages || 0} / {promo.usage_limit} utilisations
+                            {promo.total_usages || 0} / {promo.usage_limit}{" "}
+                            utilisations
                           </span>
                         </div>
                       )}
@@ -421,11 +441,11 @@ const Promotions = () => {
                           onClick={() => handleToggleActive(promo)}
                           className={`flex-1 px-3 py-2 text-sm rounded-lg font-medium transition-colors ${
                             promo.is_active
-                              ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
+                              ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              : "bg-green-100 text-green-700 hover:bg-green-200"
                           }`}
                         >
-                          {promo.is_active ? 'Désactiver' : 'Activer'}
+                          {promo.is_active ? "Désactiver" : "Activer"}
                         </button>
 
                         <button
@@ -458,7 +478,9 @@ const Promotions = () => {
             <div className="bg-white rounded-xl max-w-2xl w-full mx-4 shadow-2xl my-8">
               <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
                 <h3 className="text-xl font-bold">
-                  {editingPromotion ? 'Modifier la promotion' : 'Nouvelle promotion'}
+                  {editingPromotion
+                    ? "Modifier la promotion"
+                    : "Nouvelle promotion"}
                 </h3>
                 <button
                   onClick={handleCloseModal}
@@ -547,7 +569,9 @@ const Promotions = () => {
                       step="0.01"
                       value={formData.discount_value}
                       onChange={handleChange}
-                      placeholder={formData.discount_type === 'percentage' ? '20' : '10.00'}
+                      placeholder={
+                        formData.discount_type === "percentage" ? "20" : "10.00"
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                     />
                   </div>
@@ -662,7 +686,9 @@ const Promotions = () => {
                       onChange={handleChange}
                       className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                     />
-                    <span className="ml-2 text-sm text-gray-700">Promotion active</span>
+                    <span className="ml-2 text-sm text-gray-700">
+                      Promotion active
+                    </span>
                   </label>
 
                   <label className="flex items-center">
@@ -692,7 +718,7 @@ const Promotions = () => {
                     type="submit"
                     className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-md"
                   >
-                    {editingPromotion ? 'Modifier' : 'Créer la promotion'}
+                    {editingPromotion ? "Modifier" : "Créer la promotion"}
                   </button>
                 </div>
               </form>

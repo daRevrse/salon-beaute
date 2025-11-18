@@ -114,7 +114,7 @@ router.get("/salon", async (req, res) => {
 router.put("/salon", async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { name, phone, email, address, logo_url } = req.body;
+    const { name, phone, email, address, logo_url, banner_url } = req.body;
 
     // Construire la requête de mise à jour dynamiquement
     const updates = [];
@@ -139,6 +139,10 @@ router.put("/salon", async (req, res) => {
     if (logo_url !== undefined) {
       updates.push("logo_url = ?");
       params.push(logo_url);
+    }
+    if (banner_url !== undefined) {
+      updates.push("banner_url = ?");
+      params.push(banner_url);
     }
 
     if (updates.length === 0) {
