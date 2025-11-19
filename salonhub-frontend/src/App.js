@@ -13,6 +13,8 @@ import ProtectedRoute from "./components/common/ProtectedRoute";
 // Auth
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 // Pages Admin
 import Dashboard from "./pages/Dashboard";
@@ -37,6 +39,7 @@ import TenantDetails from "./pages/admin/TenantDetails";
 import SuperAdminsManagement from "./pages/admin/SuperAdminsManagement";
 import ActivityLogs from "./pages/admin/ActivityLogs";
 import UsersManagement from "./pages/admin/UsersManagement";
+import PasswordResetManagement from "./pages/admin/PasswordResetManagement";
 
 function App() {
   return (
@@ -48,6 +51,12 @@ function App() {
             {/* Routes publiques - Authentification */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/:tenant/login" element={<Login />} />
+            <Route path="/:tenant/register" element={<Register />} />
+            <Route path="/:tenant/forgot-password" element={<ForgotPassword />} />
+            <Route path="/:tenant/reset-password" element={<ResetPassword />} />
 
             {/* Routes SuperAdmin */}
             <Route path="/superadmin/login" element={<SuperAdminLogin />} />
@@ -56,6 +65,7 @@ function App() {
             <Route path="/superadmin/admins" element={<SuperAdminsManagement />} />
             <Route path="/superadmin/users" element={<UsersManagement />} />
             <Route path="/superadmin/logs" element={<ActivityLogs />} />
+            <Route path="/superadmin/password-resets" element={<PasswordResetManagement />} />
 
             {/* Routes publiques - Booking (Réservation client) */}
             <Route path="/book/:slug" element={<BookingLanding />} />

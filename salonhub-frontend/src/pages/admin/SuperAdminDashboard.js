@@ -16,6 +16,7 @@ import {
   ClipboardDocumentListIcon,
   ChevronRightIcon,
   PauseCircleIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 import Toast from "../../components/common/Toast";
 import { useToast } from "../../hooks/useToast";
@@ -407,6 +408,22 @@ function SuperAdminDashboard() {
               <div className="text-left">
                 <p className="font-semibold text-gray-900">Utilisateurs</p>
                 <p className="text-sm text-gray-500">Voir tous les users</p>
+              </div>
+            </div>
+            <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition" />
+          </button>
+
+          <button
+            onClick={() => navigate("/superadmin/password-resets")}
+            className="bg-white hover:bg-gray-50 rounded-lg shadow p-4 transition flex items-center justify-between group"
+          >
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mr-4">
+                <KeyIcon className="w-6 h-6 text-amber-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-gray-900">Mots de passe</p>
+                <p className="text-sm text-gray-500">Réinitialisations</p>
               </div>
             </div>
             <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition" />

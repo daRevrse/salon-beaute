@@ -339,6 +339,114 @@ class EmailService {
   }
 
   /**
+   * Email de réinitialisation de mot de passe
+   */
+  async sendPasswordResetEmail({ to, firstName, resetLink, tenantName, expiresInMinutes = 60 }) {
+    const subject = `🔒 Réinitialisation de votre mot de passe - ${tenantName}`;
+
+    const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
+                🔒 Réinitialisation de mot de passe
+              </h1>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 20px; color: #333333; font-size: 16px;">
+                Bonjour <strong>${firstName}</strong>,
+              </p>
+
+              <p style="margin: 0 0 25px; color: #555555; font-size: 15px; line-height: 1.6;">
+                Vous avez demandé la réinitialisation de votre mot de passe pour votre compte <strong>${tenantName}</strong> sur SalonHub.
+              </p>
+
+              <p style="margin: 0 0 25px; color: #555555; font-size: 15px; line-height: 1.6;">
+                Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe :
+              </p>
+
+              <!-- Bouton CTA -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);">
+                      🔑 Réinitialiser mon mot de passe
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Avertissement de sécurité -->
+              <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                <p style="margin: 0 0 10px; color: #856404; font-size: 14px; font-weight: 600;">
+                  ⚠️ Important
+                </p>
+                <p style="margin: 0; color: #856404; font-size: 13px; line-height: 1.6;">
+                  Ce lien est valide pendant <strong>${expiresInMinutes} minutes</strong> et ne peut être utilisé qu'une seule fois.
+                </p>
+              </div>
+
+              <p style="margin: 25px 0 0; color: #555555; font-size: 14px; line-height: 1.6;">
+                Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :
+              </p>
+              <p style="margin: 10px 0 0; color: #667eea; font-size: 13px; word-break: break-all; line-height: 1.6;">
+                ${resetLink}
+              </p>
+
+              <div style="background-color: #f8f9fa; padding: 20px; margin: 30px 0; border-radius: 8px; border: 1px solid #e9ecef;">
+                <p style="margin: 0 0 10px; color: #333333; font-size: 14px; font-weight: 600;">
+                  Vous n'avez pas demandé cette réinitialisation ?
+                </p>
+                <p style="margin: 0; color: #555555; font-size: 13px; line-height: 1.6;">
+                  Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email. Votre mot de passe restera inchangé et ce lien expirera automatiquement.
+                </p>
+              </div>
+
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
+              <p style="margin: 0; color: #999999; font-size: 12px;">
+                ${tenantName}<br>
+                Propulsé par SalonHub
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+        <!-- Note légale -->
+        <p style="margin: 20px 0 0; color: #999999; font-size: 11px; text-align: center; line-height: 1.5;">
+          Cet email a été envoyé automatiquement, merci de ne pas y répondre.<br>
+          © ${new Date().getFullYear()} SalonHub. Tous droits réservés.
+        </p>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    return await this.sendEmail({ to, subject, html });
+  }
+
+  /**
    * Email de confirmation de rendez-vous
    */
   async sendAppointmentConfirmation({ to, firstName, appointmentDate, appointmentTime, serviceName, salonName, price }) {

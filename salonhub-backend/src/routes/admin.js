@@ -752,4 +752,106 @@ router.get(
   }
 );
 
+// ==========================================
+// GESTION DES RÉINITIALISATIONS MOT DE PASSE
+// ==========================================
+
+/**
+ * GET /api/admin/password-resets
+ * Liste des demandes de réinitialisation de mot de passe
+ */
+router.get(
+  "/password-resets",
+  superAdminAuth,
+  requirePermission("system", "view_logs"),
+  async (req, res) => {
+    try {
+      const { limit = 100, offset = 0, status, tenant_id } = req.query;
+
+      let query = `
+      SELECT
+        prt.*,
+        u.first_name as user_first_name,
+        u.last_name as user_last_name,
+        u.email as user_email,
+        t.name as tenant_name
+      FROM password_reset_tokens prt
+      JOIN users u ON prt.user_id = u.id
+      JOIN tenants t ON prt.tenant_id = t.id
+      WHERE 1=1
+    `;
+
+      const params = [];
+
+      // Filtre par statut
+      if (status === "active") {
+        query += ` AND prt.used = FALSE AND prt.expires_at > NOW()`;
+      } else if (status === "used") {
+        query += ` AND prt.used = TRUE`;
+      } else if (status === "expired") {
+        query += ` AND prt.used = FALSE AND prt.expires_at <= NOW()`;
+      }
+
+      // Filtre par tenant
+      if (tenant_id) {
+        query += ` AND prt.tenant_id = ?`;
+        params.push(tenant_id);
+      }
+
+      query += ` ORDER BY prt.created_at DESC LIMIT ? OFFSET ?`;
+      params.push(parseInt(limit), parseInt(offset));
+
+      const [tokens] = await pool.query(query, params);
+
+      res.json({
+        success: true,
+        tokens,
+      });
+    } catch (error) {
+      console.error("Erreur GET /password-resets:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+/**
+ * DELETE /api/admin/password-resets/cleanup
+ * Nettoyer les tokens expirés et utilisés
+ */
+router.delete(
+  "/password-resets/cleanup",
+  superAdminAuth,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      // Supprimer les tokens expirés et utilisés depuis plus de 7 jours
+      const [result] = await pool.query(
+        `DELETE FROM password_reset_tokens
+         WHERE expires_at < NOW()
+            OR (used = TRUE AND used_at < DATE_SUB(NOW(), INTERVAL 7 DAY))`
+      );
+
+      // Logger l'action
+      await logAdminActivity(req.superAdmin.id, "password_tokens_cleanup", {
+        description: `Nettoyage des tokens de réinitialisation: ${result.affectedRows} supprimés`,
+        req,
+      });
+
+      res.json({
+        success: true,
+        deleted_count: result.affectedRows,
+      });
+    } catch (error) {
+      console.error("Erreur DELETE /password-resets/cleanup:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
 module.exports = router;

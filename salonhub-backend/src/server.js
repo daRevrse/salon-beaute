@@ -98,6 +98,9 @@ app.use("/api/currency", require("./routes/currency"));
 // Routes Uploads (protégées)
 app.use("/api/uploads", require("./routes/uploads")); // <-- NOUVEAU
 
+// Routes Password Reset (publiques - réinitialisation mot de passe)
+app.use("/api/password", require("./routes/password-reset"));
+
 // Routes protégées (nécessitent authentification)
 app.use("/api/clients", require("./routes/clients"));
 app.use("/api/services", require("./routes/services"));

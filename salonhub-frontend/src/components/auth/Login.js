@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   EnvelopeIcon,
@@ -16,6 +16,7 @@ import {
 
 const Login = () => {
   const navigate = useNavigate();
+  const { tenant } = useParams();
   const { login, loading } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -124,12 +125,12 @@ const Login = () => {
                 >
                   Mot de passe
                 </label>
-                <a
-                  href="#"
+                <Link
+                  to={tenant ? `/${tenant}/forgot-password` : "/forgot-password"}
                   className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
                 >
-                  Oublié ?
-                </a>
+                  Mot de passe oublié ?
+                </Link>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -218,7 +219,7 @@ const Login = () => {
           <p className="text-gray-600">
             Pas encore de compte ?{" "}
             <Link
-              to="/register"
+              to={tenant ? `/${tenant}/register` : "/register"}
               className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors"
             >
               Créer un compte gratuitement
