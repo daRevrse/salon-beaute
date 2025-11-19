@@ -79,15 +79,20 @@ const Profile = () => {
         });
 
         // Charger les statistiques (si staff ou owner)
-        if (user.role === "staff" || user.role === "owner" || user.role === "admin") {
+        if (
+          user.role === "staff" ||
+          user.role === "owner" ||
+          user.role === "admin"
+        ) {
           const appointmentsRes = await api.get("/appointments");
           const allAppointments = appointmentsRes.data.data || [];
 
           // Pour owner/admin : tous les RDV du salon
           // Pour staff : uniquement ses RDV assignés
-          const userAppointments = user.role === "staff"
-            ? allAppointments.filter((apt) => apt.staff_id === user.id)
-            : allAppointments;
+          const userAppointments =
+            user.role === "staff"
+              ? allAppointments.filter((apt) => apt.staff_id === user.id)
+              : allAppointments;
 
           const completed = userAppointments.filter(
             (a) => a.status === "completed"
@@ -248,7 +253,7 @@ const Profile = () => {
             <div className="flex-shrink-0">
               {formData.avatar_url ? (
                 <img
-                  src={formData.avatar_url?.replace("/api", "")}
+                  src={formData.avatar_url?.replace("api/", "")}
                   alt="Avatar"
                   className="h-24 w-24 rounded-full border-4 border-white shadow-lg object-cover"
                 />
@@ -362,7 +367,7 @@ const Profile = () => {
                   <div>
                     <ImageUploader
                       target="user-avatar"
-                      imageUrl={formData.avatar_url?.replace("/api", "")}
+                      imageUrl={formData.avatar_url?.replace("api/", "")}
                       onImageUpload={(url) =>
                         setFormData({ ...formData, avatar_url: url })
                       }
@@ -533,7 +538,9 @@ const Profile = () => {
                       disabled={saving}
                       className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                     >
-                      {saving ? "Enregistrement..." : "Modifier le mot de passe"}
+                      {saving
+                        ? "Enregistrement..."
+                        : "Modifier le mot de passe"}
                     </button>
                   </div>
                 </form>

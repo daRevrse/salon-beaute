@@ -71,7 +71,7 @@ const Navbar = () => {
       icon: <TagIcon className="h-5 w-5" />,
       visible: can.viewSettings, // Admins et Owners uniquement
     },
-  ].filter(link => link.visible);
+  ].filter((link) => link.visible);
 
   return (
     <nav className="bg-white border-b border-gray-200 shadow-sm">
@@ -84,7 +84,7 @@ const Navbar = () => {
             <Link to="/dashboard" className="flex items-center group">
               {tenant?.logo_url ? (
                 <img
-                  src={tenant.logo_url?.replace("/api", "")}
+                  src={tenant.logo_url?.replace("api/", "")}
                   alt="logo"
                   className="h-9 w-9 rounded-lg object-cover group-hover:shadow-md transition"
                 />
@@ -132,7 +132,7 @@ const Navbar = () => {
               >
                 {user?.avatar_url ? (
                   <ImageWithFallback
-                    src={user.avatar_url?.replace("/api", "")}
+                    src={user.avatar_url?.replace("api/", "")}
                     alt={`${user.first_name} ${user.last_name}`}
                     fallbackType="avatar"
                     className="h-9 w-9 rounded-full object-cover border border-indigo-200"

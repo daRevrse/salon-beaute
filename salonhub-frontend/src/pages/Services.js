@@ -361,7 +361,7 @@ const Services = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 flex items-center">
                       <CurrencyDollarIcon className="h-4 w-4 mr-1" />
-                      Prix *
+                      Prix en Euro *
                     </label>
                     <input
                       type="number"

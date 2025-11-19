@@ -6,24 +6,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import {
-  BuildingStorefrontIcon,
-  UsersIcon,
-  CheckCircleIcon,
-  SparklesIcon,
-  ShieldCheckIcon,
-  ChartBarIcon,
-  ClipboardDocumentListIcon,
-  ChevronRightIcon,
-  PauseCircleIcon,
-} from "@heroicons/react/24/outline";
-import Toast from "../../components/common/Toast";
-import { useToast } from "../../hooks/useToast";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
 // Composants utilitaires
-function StatCard({ title, value, IconComponent, color }) {
+function StatCard({ title, value, icon, color }) {
   const colorClasses = {
     blue: "from-blue-500 to-blue-600",
     green: "from-green-500 to-green-600",
@@ -40,7 +27,7 @@ function StatCard({ title, value, IconComponent, color }) {
           <p className="text-sm opacity-90">{title}</p>
           <p className="text-3xl font-bold mt-1">{value}</p>
         </div>
-        <IconComponent className="w-12 h-12 opacity-80" />
+        <div className="text-4xl opacity-80">{icon}</div>
       </div>
     </div>
   );
@@ -113,7 +100,7 @@ function MonthBar({ month, count }) {
   );
 }
 
-function StatusCard({ label, count, color, IconComponent }) {
+function StatusCard({ label, count, color, icon }) {
   const colorClasses = {
     green: "bg-green-50 text-green-700 border-green-200",
     blue: "bg-blue-50 text-blue-700 border-blue-200",
@@ -130,7 +117,7 @@ function StatusCard({ label, count, color, IconComponent }) {
           <p className="text-sm font-medium opacity-80">{label}</p>
           <p className="text-2xl font-bold mt-1">{count}</p>
         </div>
-        <IconComponent className="w-10 h-10" />
+        <div className="text-3xl">{icon}</div>
       </div>
     </div>
   );
@@ -147,7 +134,6 @@ function SuperAdminDashboard() {
   const [monthlyGrowth, setMonthlyGrowth] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const { toast, hideToast, success, error: showError } = useToast();
 
   // Récupérer le token
   const getToken = () => localStorage.getItem("superadmin_token");
@@ -251,11 +237,11 @@ function SuperAdminDashboard() {
         }
       );
 
-      success("Salon suspendu avec succès");
+      alert("Salon suspendu avec succès");
       loadData();
     } catch (error) {
       console.error("Erreur suspension:", error);
-      showError("Erreur lors de la suspension");
+      alert("Erreur lors de la suspension");
     }
   };
 
@@ -271,11 +257,11 @@ function SuperAdminDashboard() {
         }
       );
 
-      success("Salon réactivé avec succès");
+      alert("Salon réactivé avec succès");
       loadData();
     } catch (error) {
       console.error("Erreur activation:", error);
-      showError("Erreur lors de l'activation");
+      alert("Erreur lors de l'activation");
     }
   };
 
@@ -300,7 +286,7 @@ function SuperAdminDashboard() {
               <div className="flex-shrink-0">
                 <div className="flex items-center">
                   <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center mr-3">
-                    <ShieldCheckIcon className="w-6 h-6 text-white" />
+                    <span className="text-white font-bold text-xl">👑</span>
                   </div>
                   <div>
                     <h1 className="text-xl font-bold">SuperAdmin Portal</h1>
@@ -338,46 +324,58 @@ function SuperAdminDashboard() {
             <StatCard
               title="Total Salons"
               value={stats.total_tenants}
-              IconComponent={BuildingStorefrontIcon}
+              icon="🏪"
               color="blue"
             />
             <StatCard
               title="Salons Actifs"
               value={stats.active_tenants}
-              IconComponent={CheckCircleIcon}
+              icon="✅"
               color="green"
             />
             <StatCard
               title="En essai"
               value={stats.trial_tenants}
-              IconComponent={SparklesIcon}
+              icon="🆓"
               color="yellow"
             />
             <StatCard
               title="Nouveaux (30j)"
               value={stats.new_tenants_30d}
-              IconComponent={SparklesIcon}
+              icon="🆕"
               color="purple"
             />
           </div>
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <button
             onClick={() => navigate("/superadmin/admins")}
             className="bg-white hover:bg-gray-50 rounded-lg shadow p-4 transition flex items-center justify-between group"
           >
             <div className="flex items-center">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
-                <ShieldCheckIcon className="w-6 h-6 text-purple-600" />
+                <span className="text-2xl">👑</span>
               </div>
               <div className="text-left">
                 <p className="font-semibold text-gray-900">SuperAdmins</p>
                 <p className="text-sm text-gray-500">Gérer les admins</p>
               </div>
             </div>
-            <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition" />
+            <svg
+              className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
           </button>
 
           <button
@@ -386,30 +384,26 @@ function SuperAdminDashboard() {
           >
             <div className="flex items-center">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                <ClipboardDocumentListIcon className="w-6 h-6 text-blue-600" />
+                <span className="text-2xl">📊</span>
               </div>
               <div className="text-left">
                 <p className="font-semibold text-gray-900">Logs d'activité</p>
                 <p className="text-sm text-gray-500">Historique des actions</p>
               </div>
             </div>
-            <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition" />
-          </button>
-
-          <button
-            onClick={() => navigate("/superadmin/users")}
-            className="bg-white hover:bg-gray-50 rounded-lg shadow p-4 transition flex items-center justify-between group"
-          >
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-4">
-                <UsersIcon className="w-6 h-6 text-indigo-600" />
-              </div>
-              <div className="text-left">
-                <p className="font-semibold text-gray-900">Utilisateurs</p>
-                <p className="text-sm text-gray-500">Voir tous les users</p>
-              </div>
-            </div>
-            <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition" />
+            <svg
+              className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
           </button>
 
           <button
@@ -418,14 +412,26 @@ function SuperAdminDashboard() {
           >
             <div className="flex items-center">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                <BuildingStorefrontIcon className="w-6 h-6 text-green-600" />
+                <span className="text-2xl">🏪</span>
               </div>
               <div className="text-left">
                 <p className="font-semibold text-gray-900">Tous les salons</p>
                 <p className="text-sm text-gray-500">Voir la liste complète</p>
               </div>
             </div>
-            <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition" />
+            <svg
+              className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
           </button>
         </div>
 
@@ -557,14 +563,8 @@ function SuperAdminDashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div className="space-y-1">
-                          <div className="flex items-center">
-                            <UsersIcon className="w-4 h-4 mr-1" />
-                            {tenant.total_users} users
-                          </div>
-                          <div className="flex items-center">
-                            <ClipboardDocumentListIcon className="w-4 h-4 mr-1" />
-                            {tenant.total_appointments} RDV
-                          </div>
+                          <div>👥 {tenant.total_users} users</div>
+                          <div>📋 {tenant.total_appointments} RDV</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -683,41 +683,31 @@ function SuperAdminDashboard() {
                   label="Actifs"
                   count={stats.active_tenants}
                   color="green"
-                  IconComponent={CheckCircleIcon}
+                  icon="✅"
                 />
                 <StatusCard
                   label="Essai"
                   count={stats.trial_tenants}
                   color="blue"
-                  IconComponent={SparklesIcon}
+                  icon="🆓"
                 />
                 <StatusCard
                   label="Suspendus"
                   count={stats.suspended_tenants || 0}
                   color="red"
-                  IconComponent={PauseCircleIcon}
+                  icon="⏸️"
                 />
                 <StatusCard
                   label="Nouveaux (30j)"
                   count={stats.new_tenants_30d}
                   color="purple"
-                  IconComponent={ChartBarIcon}
+                  icon="🆕"
                 />
               </div>
             </div>
           </div>
         )}
       </main>
-
-      {/* Toast Notifications */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={hideToast}
-          duration={toast.duration}
-        />
-      )}
     </div>
   );
 }

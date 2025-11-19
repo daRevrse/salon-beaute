@@ -33,6 +33,10 @@ import BookingConfirmation from "./pages/public/BookingConfirmation";
 // Pages SuperAdmin
 import SuperAdminLogin from "./pages/admin/SuperAdminLogin";
 import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
+import TenantDetails from "./pages/admin/TenantDetails";
+import SuperAdminsManagement from "./pages/admin/SuperAdminsManagement";
+import ActivityLogs from "./pages/admin/ActivityLogs";
+import UsersManagement from "./pages/admin/UsersManagement";
 
 function App() {
   return (
@@ -48,6 +52,10 @@ function App() {
             {/* Routes SuperAdmin */}
             <Route path="/superadmin/login" element={<SuperAdminLogin />} />
             <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
+            <Route path="/superadmin/tenants/:id" element={<TenantDetails />} />
+            <Route path="/superadmin/admins" element={<SuperAdminsManagement />} />
+            <Route path="/superadmin/users" element={<UsersManagement />} />
+            <Route path="/superadmin/logs" element={<ActivityLogs />} />
 
             {/* Routes publiques - Booking (Réservation client) */}
             <Route path="/book/:slug" element={<BookingLanding />} />

@@ -603,6 +603,98 @@ router.post("/superadmins", superAdminAuth, requireSuperAdmin, async (req, res) 
 });
 
 // ==========================================
+// GESTION DES UTILISATEURS
+// ==========================================
+
+/**
+ * GET /api/admin/users
+ * Liste de tous les utilisateurs (tous tenants)
+ */
+router.get(
+  "/users",
+  superAdminAuth,
+  requirePermission("users", "view_all"),
+  async (req, res) => {
+    try {
+      const { role, tenant_id, search, limit = 100, offset = 0 } = req.query;
+
+      let query = `
+        SELECT
+          u.*,
+          t.name as tenant_name,
+          t.slug as tenant_slug
+        FROM users u
+        LEFT JOIN tenants t ON u.tenant_id = t.id
+        WHERE 1=1
+      `;
+
+      const params = [];
+
+      if (role) {
+        query += ` AND u.role = ?`;
+        params.push(role);
+      }
+
+      if (tenant_id) {
+        query += ` AND u.tenant_id = ?`;
+        params.push(tenant_id);
+      }
+
+      if (search) {
+        query += ` AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)`;
+        const searchTerm = `%${search}%`;
+        params.push(searchTerm, searchTerm, searchTerm);
+      }
+
+      query += ` ORDER BY u.created_at DESC LIMIT ? OFFSET ?`;
+      params.push(parseInt(limit), parseInt(offset));
+
+      const [users] = await pool.query(query, params);
+
+      // Compter le total
+      let countQuery = `SELECT COUNT(*) as total FROM users WHERE 1=1`;
+      const countParams = [];
+
+      if (role) {
+        countQuery += ` AND role = ?`;
+        countParams.push(role);
+      }
+
+      if (tenant_id) {
+        countQuery += ` AND tenant_id = ?`;
+        countParams.push(tenant_id);
+      }
+
+      if (search) {
+        countQuery += ` AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ?)`;
+        const searchTerm = `%${search}%`;
+        countParams.push(searchTerm, searchTerm, searchTerm);
+      }
+
+      const [countResult] = await pool.query(countQuery, countParams);
+      const total = countResult[0].total;
+
+      res.json({
+        success: true,
+        users,
+        pagination: {
+          total,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          has_more: parseInt(offset) + users.length < total,
+        },
+      });
+    } catch (error) {
+      console.error("Erreur GET /users:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+// ==========================================
 // LOGS D'ACTIVITÉ
 // ==========================================
 

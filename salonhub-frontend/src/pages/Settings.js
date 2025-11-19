@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import DashboardLayout from "../components/common/DashboardLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { useCurrency, CURRENCIES } from "../contexts/CurrencyContext";
@@ -40,13 +40,18 @@ const DAYS = [
 
 const Settings = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { tenant, refreshTenant, refreshUser } = useAuth();
   const { currency, changeCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("general");
+
+  // Lire le paramètre d'URL pour déterminer l'onglet actif
+  const urlParams = new URLSearchParams(location.search);
+  const tabFromUrl = urlParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "general");
 
   const [businessHours, setBusinessHours] = useState({
     monday: { open: "09:00", close: "18:00", closed: false },
@@ -468,7 +473,7 @@ const Settings = () => {
                     <div>
                       <ImageUploader
                         target="tenant-logo"
-                        imageUrl={logoUrl?.replace("/api", "")}
+                        imageUrl={logoUrl?.replace("api/", "")}
                         onImageUpload={setLogoUrl}
                         onDelete={() => setLogoUrl(null)}
                         label="Logo du Salon"
@@ -483,14 +488,15 @@ const Settings = () => {
                     <div>
                       <ImageUploader
                         target="tenant-banner"
-                        imageUrl={bannerUrl?.replace("/api", "")}
+                        imageUrl={bannerUrl?.replace("api/", "")}
                         onImageUpload={setBannerUrl}
                         onDelete={() => setBannerUrl(null)}
                         label="Bannière du Salon"
                         aspectRatio="aspect-[16/9]"
                       />
                       <p className="mt-2 text-sm text-gray-500">
-                        Bannière large qui apparaîtra sur votre page de réservation.
+                        Bannière large qui apparaîtra sur votre page de
+                        réservation.
                       </p>
                     </div>
                   </div>
@@ -797,7 +803,7 @@ const Settings = () => {
                               <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
                                 {member.avatar_url ? (
                                   <img
-                                    src={member.avatar_url?.replace("/api", "")}
+                                    src={member.avatar_url?.replace("api/", "")}
                                     alt={member.first_name}
                                     className="h-full w-full rounded-full object-cover"
                                   />
@@ -1059,4 +1065,4 @@ const Settings = () => {
 };
 
 // Protéger la page avec les permissions
-export default withPermission(Settings, 'viewSettings');
+export default withPermission(Settings, "viewSettings");
