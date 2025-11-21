@@ -177,14 +177,16 @@ router.post("/register", async (req, res) => {
     });
 
     // Envoyer l'email de bienvenue (async, sans bloquer la réponse)
-    emailService.sendWelcomeEmail({
-      to: email,
-      firstName: first_name,
-      tenantSlug: finalSlug
-    }).catch(error => {
-      console.error('Erreur envoi email de bienvenue:', error.message);
-      // Ne pas bloquer l'inscription si l'email échoue
-    });
+    emailService
+      .sendWelcomeEmail({
+        to: email,
+        firstName: first_name,
+        tenantSlug: finalSlug,
+      })
+      .catch((error) => {
+        console.error("Erreur envoi email de bienvenue:", error.message);
+        // Ne pas bloquer l'inscription si l'email échoue
+      });
 
     res.status(201).json({
       success: true,
@@ -233,6 +235,7 @@ router.post("/login", async (req, res) => {
     const [user] = await query(
       `SELECT 
         u.*,
+        t.id as tenant_id,
         t.name as tenant_name,
         t.slug as tenant_slug,
         t.subscription_status,
@@ -354,6 +357,7 @@ router.get("/me", authMiddleware, async (req, res) => {
       `SELECT 
         u.id, u.email, u.first_name, u.last_name, u.phone, u.role, 
         u.is_active, u.last_login_at, u.created_at, u.avatar_url,
+        t.id as tenant_id,
         t.name as tenant_name,
         t.slug as tenant_slug,
         t.subscription_plan,

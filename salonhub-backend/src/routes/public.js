@@ -589,6 +589,20 @@ router.post("/appointments", async (req, res) => {
     }
     // === FIN MODIFICATION PHASE 4 ===
 
+    // === DÉBUT MODIFICATION PHASE 3 ===
+    // Notifier le dashboard du salon en temps réel
+    try {
+      // On émet l'événement uniquement vers la "room" de ce salon spécifique
+      req.io.to(`tenant_${tenantId}`).emit("new_appointment", {
+        appointment: newApt,
+        message: `Nouveau RDV : ${newApt.client_first_name} ${newApt.client_last_name}`,
+      });
+      console.log(`📡 Notification temps réel envoyée au salon ${tenantId}`);
+    } catch (socketError) {
+      console.error("❌ Erreur socket:", socketError);
+    }
+    // === FIN MODIFICATION PHASE 3 ===
+
     res.status(201).json({
       success: true,
       appointment: newApt,

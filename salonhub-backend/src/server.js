@@ -7,14 +7,63 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
+const http = require("http");
+const { Server } = require("socket.io");
+
 const { testConnection } = require("./config/database");
+const scheduler = require("./services/scheduler");
 
 // Initialiser Express
 const app = express();
 
+// Créer le serveur HTTP (wrapper)
+const server = http.createServer(app);
+
+// Initialiser Socket.io
+const io = new Server(server, {
+  // <--- AJOUT 4
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
+// Gestion des connexions Socket.io
+io.on("connection", (socket) => {
+  console.log(`⚡ Client connecté: ${socket.id}`);
+
+  // Rejoindre la "room" du salon spécifique (pour isolation multi-tenant)
+  socket.on("join_tenant", (tenantId) => {
+    if (tenantId) {
+      socket.join(`tenant_${tenantId}`);
+      console.log(`🔌 Socket ${socket.id} a rejoint le salon ${tenantId}`);
+
+      // Confirmer au client qu'il a bien rejoint la room
+      socket.emit("joined", {
+        tenantId,
+        socketId: socket.id,
+        message: `Vous avez rejoint le salon ${tenantId}`,
+      });
+    } else {
+      console.warn(`⚠️  Socket ${socket.id} a essayé de rejoindre sans tenantId`);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`🔌 Client déconnecté: ${socket.id}`);
+  });
+});
+
 // ==========================================
 // MIDDLEWARES GLOBAUX
 // ==========================================
+
+app.use((req, res, next) => {
+  // <--- AJOUT 5
+  req.io = io;
+  next();
+});
 
 // CORS - Autoriser frontend
 app.use(
@@ -101,6 +150,9 @@ app.use("/api/uploads", require("./routes/uploads")); // <-- NOUVEAU
 // Routes Password Reset (publiques - réinitialisation mot de passe)
 app.use("/api/password", require("./routes/password-reset"));
 
+// Routes Push Notifications (partiellement publiques)
+app.use("/api/push", require("./routes/push"));
+
 // Routes protégées (nécessitent authentification)
 app.use("/api/clients", require("./routes/clients"));
 app.use("/api/services", require("./routes/services"));
@@ -108,6 +160,7 @@ app.use("/api/appointments", require("./routes/appointments"));
 app.use("/api/settings", require("./routes/settings"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/promotions", require("./routes/promotions"));
+app.use("/api/scheduler", require("./routes/scheduler"));
 
 // Routes SuperAdmin (système SaaS)
 app.use("/api/admin", require("./routes/admin"));
@@ -153,8 +206,11 @@ const startServer = async () => {
       process.exit(1);
     }
 
+    // Démarrer le scheduler (Cron Jobs)
+    scheduler.start();
+
     // Démarrer serveur
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log("");
       console.log("🚀 ================================");
       console.log(`🚀 SalonHub Backend démarré !`);
@@ -200,10 +256,12 @@ startServer();
 // Gestion arrêt gracieux
 process.on("SIGTERM", () => {
   console.log("👋 Arrêt du serveur...");
+  scheduler.stop();
   process.exit(0);
 });
 
 process.on("SIGINT", () => {
   console.log("👋 Arrêt du serveur...");
+  scheduler.stop();
   process.exit(0);
 });

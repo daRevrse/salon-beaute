@@ -275,6 +275,9 @@ class EmailService {
     appointmentTime,
     serviceName,
     salonName,
+    salonPhone,
+    salonAddress,
+    hoursBeforeText = "bientôt",
   }) {
     const subject = `⏰ Rappel: Votre rendez-vous chez ${salonName}`;
 
@@ -306,7 +309,7 @@ class EmailService {
               </p>
 
               <p style="margin: 0 0 25px; color: #555555; font-size: 15px; line-height: 1.6;">
-                Nous vous rappelons que vous avez un rendez-vous prévu :
+                Nous vous rappelons que vous avez un rendez-vous prévu <strong>${hoursBeforeText}</strong> :
               </p>
 
               <div style="background-color: #f8f9fa; border-left: 4px solid #f5576c; padding: 20px; margin: 25px 0; border-radius: 4px;">
@@ -319,13 +322,29 @@ class EmailService {
                 <p style="margin: 0 0 10px; color: #333333; font-size: 15px;">
                   <strong>💇 Service :</strong> ${serviceName}
                 </p>
-                <p style="margin: 0; color: #333333; font-size: 15px;">
+                <p style="margin: 0 0 10px; color: #333333; font-size: 15px;">
                   <strong>🏢 Salon :</strong> ${salonName}
                 </p>
+                ${
+                  salonAddress
+                    ? `<p style="margin: 0 0 10px; color: #333333; font-size: 15px;">
+                  <strong>📍 Adresse :</strong> ${salonAddress}
+                </p>`
+                    : ""
+                }
+                ${
+                  salonPhone
+                    ? `<p style="margin: 0; color: #333333; font-size: 15px;">
+                  <strong>📞 Téléphone :</strong> ${salonPhone}
+                </p>`
+                    : ""
+                }
               </div>
 
               <p style="margin: 25px 0 0; color: #555555; font-size: 14px; line-height: 1.6;">
-                En cas d'empêchement, merci de nous prévenir au plus tôt.
+                En cas d'empêchement, merci de nous prévenir au plus tôt${
+                  salonPhone ? ` au ${salonPhone}` : ""
+                }.
               </p>
 
               <p style="margin: 25px 0 0; color: #555555; font-size: 14px;">

@@ -11,18 +11,37 @@ import {
   BellIcon,
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
+import { useSocket } from "../../contexts/SocketContext";
 
 const NotificationBell = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const socket = useSocket();
 
+  // Charger les notifications au montage et toutes les 5 minutes
   useEffect(() => {
     fetchNotifications();
-    // Rafraîchir toutes les 5 minutes
     const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Écouter les nouveaux rendez-vous en temps réel via WebSocket
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewAppointment = (data) => {
+      console.log("🔔 Nouveau RDV reçu via WebSocket:", data);
+      // Recharger les notifications
+      fetchNotifications();
+    };
+
+    socket.on("new_appointment", handleNewAppointment);
+
+    return () => {
+      socket.off("new_appointment", handleNewAppointment);
+    };
+  }, [socket]);
 
   const fetchNotifications = async () => {
     try {

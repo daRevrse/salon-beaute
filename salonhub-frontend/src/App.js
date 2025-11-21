@@ -41,6 +41,7 @@ import SuperAdminsManagement from "./pages/admin/SuperAdminsManagement";
 import ActivityLogs from "./pages/admin/ActivityLogs";
 import UsersManagement from "./pages/admin/UsersManagement";
 import PasswordResetManagement from "./pages/admin/PasswordResetManagement";
+import { SocketProvider } from "./contexts/SocketContext";
 
 function App() {
   return (
@@ -48,117 +49,149 @@ function App() {
       <AuthProvider>
         <PermissionProvider>
           <CurrencyProvider>
-            <Routes>
-            {/* Routes publiques - Authentification */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/:tenant/login" element={<Login />} />
-            <Route path="/:tenant/register" element={<Register />} />
-            <Route path="/:tenant/forgot-password" element={<ForgotPassword />} />
-            <Route path="/:tenant/reset-password" element={<ResetPassword />} />
+            <SocketProvider>
+              <Routes>
+                {/* Routes publiques - Authentification */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/:tenant/login" element={<Login />} />
+                <Route path="/:tenant/register" element={<Register />} />
+                <Route
+                  path="/:tenant/forgot-password"
+                  element={<ForgotPassword />}
+                />
+                <Route
+                  path="/:tenant/reset-password"
+                  element={<ResetPassword />}
+                />
 
-            {/* Routes SuperAdmin */}
-            <Route path="/superadmin/login" element={<SuperAdminLogin />} />
-            <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
-            <Route path="/superadmin/tenants/:id" element={<TenantDetails />} />
-            <Route path="/superadmin/admins" element={<SuperAdminsManagement />} />
-            <Route path="/superadmin/users" element={<UsersManagement />} />
-            <Route path="/superadmin/logs" element={<ActivityLogs />} />
-            <Route path="/superadmin/password-resets" element={<PasswordResetManagement />} />
+                {/* Routes SuperAdmin */}
+                <Route path="/superadmin/login" element={<SuperAdminLogin />} />
+                <Route
+                  path="/superadmin/dashboard"
+                  element={<SuperAdminDashboard />}
+                />
+                <Route
+                  path="/superadmin/tenants/:id"
+                  element={<TenantDetails />}
+                />
+                <Route
+                  path="/superadmin/admins"
+                  element={<SuperAdminsManagement />}
+                />
+                <Route path="/superadmin/users" element={<UsersManagement />} />
+                <Route path="/superadmin/logs" element={<ActivityLogs />} />
+                <Route
+                  path="/superadmin/password-resets"
+                  element={<PasswordResetManagement />}
+                />
 
-            {/* Routes publiques - Booking (Réservation client) */}
-            <Route path="/book/:slug" element={<BookingLanding />} />
-            <Route path="/book/:slug/datetime" element={<BookingDateTime />} />
-            <Route path="/book/:slug/info" element={<BookingClientInfo />} />
-            <Route
-              path="/book/:slug/confirmation"
-              element={<BookingConfirmation />}
-            />
+                {/* Routes publiques - Booking (Réservation client) */}
+                <Route path="/book/:slug" element={<BookingLanding />} />
+                <Route
+                  path="/book/:slug/datetime"
+                  element={<BookingDateTime />}
+                />
+                <Route
+                  path="/book/:slug/info"
+                  element={<BookingClientInfo />}
+                />
+                <Route
+                  path="/book/:slug/confirmation"
+                  element={<BookingConfirmation />}
+                />
 
-            {/* Routes protégées - Admin */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
+                {/* Routes protégées - Admin */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
 
-            <Route
-              path="/clients"
-              element={
-                <ProtectedRoute>
-                  <Clients />
-                </ProtectedRoute>
-              }
-            />
+                <Route
+                  path="/clients"
+                  element={
+                    <ProtectedRoute>
+                      <Clients />
+                    </ProtectedRoute>
+                  }
+                />
 
-            <Route
-              path="/services"
-              element={
-                <ProtectedRoute>
-                  <Services />
-                </ProtectedRoute>
-              }
-            />
+                <Route
+                  path="/services"
+                  element={
+                    <ProtectedRoute>
+                      <Services />
+                    </ProtectedRoute>
+                  }
+                />
 
-            <Route
-              path="/appointments"
-              element={
-                <ProtectedRoute>
-                  <Appointments />
-                </ProtectedRoute>
-              }
-            />
+                <Route
+                  path="/appointments"
+                  element={
+                    <ProtectedRoute>
+                      <Appointments />
+                    </ProtectedRoute>
+                  }
+                />
 
-            <Route
-              path="/promotions"
-              element={
-                <ProtectedRoute>
-                  <Promotions />
-                </ProtectedRoute>
-              }
-            />
+                <Route
+                  path="/promotions"
+                  element={
+                    <ProtectedRoute>
+                      <Promotions />
+                    </ProtectedRoute>
+                  }
+                />
 
-            <Route
-              path="/billing"
-              element={
-                <ProtectedRoute>
-                  <Billing />
-                </ProtectedRoute>
-              }
-            />
+                <Route
+                  path="/billing"
+                  element={
+                    <ProtectedRoute>
+                      <Billing />
+                    </ProtectedRoute>
+                  }
+                />
 
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  }
+                />
 
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
 
-            {/* Redirect root vers dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                {/* Redirect root vers dashboard */}
+                <Route
+                  path="/"
+                  element={<Navigate to="/dashboard" replace />}
+                />
 
-            {/* 404 */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
+                {/* 404 */}
+                <Route
+                  path="*"
+                  element={<Navigate to="/dashboard" replace />}
+                />
+              </Routes>
 
-            {/* Bannière de mise à jour PWA */}
-            <UpdateBanner />
+              {/* Bannière de mise à jour PWA */}
+              <UpdateBanner />
+            </SocketProvider>
           </CurrencyProvider>
         </PermissionProvider>
       </AuthProvider>

@@ -12,6 +12,8 @@ import AppointmentCalendar from "../components/appointments/AppointmentCalendar"
 import { useClients } from "../hooks/useClients";
 import { useServices } from "../hooks/useServices";
 import api from "../services/api";
+import { useSocket } from "../contexts/SocketContext";
+import { useToast } from "../hooks/useToast";
 
 const Appointments = () => {
   const { formatPrice } = useCurrency();
@@ -25,6 +27,9 @@ const Appointments = () => {
   } = useAppointments();
   const { clients } = useClients();
   const { services } = useServices();
+
+  const socket = useSocket();
+  const { showToast } = useToast();
 
   const [view, setView] = useState("list"); // 'list' or 'calendar'
   const [showModal, setShowModal] = useState(false);
@@ -41,6 +46,28 @@ const Appointments = () => {
     start_time: "",
     notes: "",
   });
+
+  // Effet pour écouter les nouveaux RDV
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewAppointment = (data) => {
+      // 1. Notification visuelle
+      showToast(data.message || "Nouveau rendez-vous reçu !", "success");
+
+      // 2. Recharger la liste des RDV
+      fetchAppointments();
+
+      // Optionnel : Jouer un son
+      // new Audio('/notification.mp3').play().catch(e => {});
+    };
+
+    socket.on("new_appointment", handleNewAppointment);
+
+    return () => {
+      socket.off("new_appointment", handleNewAppointment);
+    };
+  }, [socket, fetchAppointments]);
 
   // Charger le staff
   useEffect(() => {
