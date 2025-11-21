@@ -6,6 +6,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../config/database");
+const emailService = require("../services/emailService");
 
 // ===== ROUTES PUBLIQUES (BOOKING CLIENT) =====
 
@@ -543,17 +544,54 @@ router.post("/appointments", async (req, res) => {
          c.email as client_email,
          s.name as service_name,
          s.duration as service_duration,
-         s.price as service_price
+         s.price as service_price,
+         t.name as salon_name
        FROM appointments a
        JOIN clients c ON a.client_id = c.id
        JOIN services s ON a.service_id = s.id
+       JOIN tenants t ON a.tenant_id = t.id
        WHERE a.id = ?`,
       [appointment.insertId]
     );
 
+    const newApt = createdAppointment[0];
+
+    // === DÉBUT MODIFICATION PHASE 4 ===
+    // Envoyer l'email d'accusé de réception (si le client a un email)
+    if (newApt.client_email) {
+      // On ne 'await' pas obligatoirement pour ne pas ralentir la réponse HTTP
+      // Mais on log l'erreur au cas où
+      const formattedDate = new Date(
+        newApt.appointment_date
+      ).toLocaleDateString("fr-FR", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      const formattedTime = newApt.start_time.substring(0, 5);
+
+      emailService
+        .sendBookingRequestReceived({
+          to: newApt.client_email,
+          firstName: newApt.client_first_name,
+          appointmentDate: formattedDate,
+          appointmentTime: formattedTime,
+          serviceName: newApt.service_name,
+          salonName: newApt.salon_name || "Le Salon", // Fallback si le nom n'est pas récupéré
+        })
+        .catch((err) =>
+          console.error("❌ Erreur envoi accusé réception:", err)
+        );
+
+      console.log(`✉️ Accusé de réception envoyé à ${newApt.client_email}`);
+    }
+    // === FIN MODIFICATION PHASE 4 ===
+
     res.status(201).json({
       success: true,
-      appointment: createdAppointment[0],
+      appointment: newApt,
       message:
         "Votre rendez-vous a été enregistré avec succès. Vous recevrez une confirmation prochainement.",
     });

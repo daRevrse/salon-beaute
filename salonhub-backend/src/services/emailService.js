@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+const nodemailer = require("nodemailer");
 
 /**
  * Service d'envoi d'emails pour SalonHub
@@ -18,17 +18,19 @@ class EmailService {
       // Configuration SMTP depuis les variables d'environnement
       const config = {
         host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true', // true pour port 465, false pour les autres
+        port: parseInt(process.env.SMTP_PORT || "587"),
+        secure: process.env.SMTP_SECURE === "true", // true pour port 465, false pour les autres
         auth: {
           user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASSWORD
-        }
+          pass: process.env.SMTP_PASSWORD,
+        },
       };
 
       // Vérifier que la configuration existe
       if (!config.host || !config.auth.user || !config.auth.pass) {
-        console.warn('⚠️  Configuration SMTP manquante - Les emails ne seront pas envoyés');
+        console.warn(
+          "⚠️  Configuration SMTP manquante - Les emails ne seront pas envoyés"
+        );
         this.initialized = false;
         return false;
       }
@@ -37,11 +39,14 @@ class EmailService {
 
       // Vérifier la connexion
       await this.transporter.verify();
-      console.log('✓ Service email initialisé avec succès');
+      console.log("✓ Service email initialisé avec succès");
       this.initialized = true;
       return true;
     } catch (error) {
-      console.error('❌ Erreur lors de l\'initialisation du service email:', error.message);
+      console.error(
+        "❌ Erreur lors de l'initialisation du service email:",
+        error.message
+      );
       this.initialized = false;
       return false;
     }
@@ -65,28 +70,29 @@ class EmailService {
 
     // Si toujours pas initialisé, simuler l'envoi
     if (!this.initialized) {
-      console.log('📧 [SIMULATION] Email:', {
-        from: from || process.env.SMTP_FROM || 'noreply@salonhub.com',
+      console.log("📧 [SIMULATION] Email:", {
+        from: from || process.env.SMTP_FROM || "noreply@salonhub.com",
         to,
-        subject
+        subject,
       });
-      return { simulated: true, messageId: 'simulated-' + Date.now() };
+      return { simulated: true, messageId: "simulated-" + Date.now() };
     }
 
     try {
       const mailOptions = {
-        from: from || process.env.SMTP_FROM || '"SalonHub" <noreply@salonhub.com>',
+        from:
+          from || process.env.SMTP_FROM || '"SalonHub" <noreply@salonhub.com>',
         to,
         subject,
         html,
-        text: text || this.stripHtml(html) // Convertir HTML en texte si non fourni
+        text: text || this.stripHtml(html), // Convertir HTML en texte si non fourni
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('✓ Email envoyé:', info.messageId, 'à', to);
+      console.log("✓ Email envoyé:", info.messageId, "à", to);
       return info;
     } catch (error) {
-      console.error('❌ Erreur lors de l\'envoi de l\'email:', error.message);
+      console.error("❌ Erreur lors de l'envoi de l'email:", error.message);
       throw error;
     }
   }
@@ -98,10 +104,10 @@ class EmailService {
    */
   stripHtml(html) {
     return html
-      .replace(/<style[^>]*>.*<\/style>/gm, '')
-      .replace(/<script[^>]*>.*<\/script>/gm, '')
-      .replace(/<[^>]+>/gm, '')
-      .replace(/\s+/g, ' ')
+      .replace(/<style[^>]*>.*<\/style>/gm, "")
+      .replace(/<script[^>]*>.*<\/script>/gm, "")
+      .replace(/<[^>]+>/gm, "")
+      .replace(/\s+/g, " ")
       .trim();
   }
 
@@ -109,10 +115,13 @@ class EmailService {
    * Email de bienvenue pour nouvel utilisateur (essai 14 jours)
    */
   async sendWelcomeEmail({ to, firstName, tenantSlug }) {
-    const platformUrl = process.env.FRONTEND_URL || 'https://app.salonhub.flowkraftagency.com';
-    const supportEmail = process.env.SUPPORT_EMAIL || 'support@flowkraftagency.com';
+    const platformUrl =
+      process.env.FRONTEND_URL || "https://app.salonhub.flowkraftagency.com";
+    const supportEmail =
+      process.env.SUPPORT_EMAIL || "support@flowkraftagency.com";
 
-    const subject = '🎉 Bienvenue sur SalonHub – Votre essai gratuit de 14 jours est activé !';
+    const subject =
+      "🎉 Bienvenue sur SalonHub – Votre essai gratuit de 14 jours est activé !";
 
     const html = `
 <!DOCTYPE html>
@@ -259,7 +268,14 @@ class EmailService {
   /**
    * Email de rappel de rendez-vous
    */
-  async sendAppointmentReminder({ to, firstName, appointmentDate, appointmentTime, serviceName, salonName }) {
+  async sendAppointmentReminder({
+    to,
+    firstName,
+    appointmentDate,
+    appointmentTime,
+    serviceName,
+    salonName,
+  }) {
     const subject = `⏰ Rappel: Votre rendez-vous chez ${salonName}`;
 
     const html = `
@@ -341,7 +357,13 @@ class EmailService {
   /**
    * Email de réinitialisation de mot de passe
    */
-  async sendPasswordResetEmail({ to, firstName, resetLink, tenantName, expiresInMinutes = 60 }) {
+  async sendPasswordResetEmail({
+    to,
+    firstName,
+    resetLink,
+    tenantName,
+    expiresInMinutes = 60,
+  }) {
     const subject = `🔒 Réinitialisation de votre mot de passe - ${tenantName}`;
 
     const html = `
@@ -449,7 +471,15 @@ class EmailService {
   /**
    * Email de confirmation de rendez-vous
    */
-  async sendAppointmentConfirmation({ to, firstName, appointmentDate, appointmentTime, serviceName, salonName, price }) {
+  async sendAppointmentConfirmation({
+    to,
+    firstName,
+    appointmentDate,
+    appointmentTime,
+    serviceName,
+    salonName,
+    price,
+  }) {
     const subject = `✅ Confirmation: Votre rendez-vous chez ${salonName}`;
 
     const html = `
@@ -499,9 +529,13 @@ class EmailService {
                 <p style="margin: 0 0 10px; color: #333333; font-size: 15px;">
                   <strong>🏢 Salon :</strong> ${salonName}
                 </p>
-                ${price ? `<p style="margin: 0; color: #333333; font-size: 15px;">
+                ${
+                  price
+                    ? `<p style="margin: 0; color: #333333; font-size: 15px;">
                   <strong>💰 Prix :</strong> ${price}
-                </p>` : ''}
+                </p>`
+                    : ""
+                }
               </div>
 
               <p style="margin: 25px 0 0; color: #555555; font-size: 14px; line-height: 1.6;">
@@ -510,6 +544,98 @@ class EmailService {
 
               <p style="margin: 25px 0 0; color: #555555; font-size: 14px;">
                 À très bientôt ! ✨
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
+              <p style="margin: 0; color: #999999; font-size: 12px;">
+                ${salonName}<br>
+                Propulsé par SalonHub
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    return await this.sendEmail({ to, subject, html });
+  }
+
+  /**
+   * Email d'accusé de réception de demande de RDV (avant validation)
+   */
+  async sendBookingRequestReceived({
+    to,
+    firstName,
+    appointmentDate,
+    appointmentTime,
+    serviceName,
+    salonName,
+  }) {
+    const subject = `⏳ Demande reçue : Votre rendez-vous chez ${salonName}`;
+
+    const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+          <tr>
+            <td style="background: linear-gradient(135deg, #f6d365 0%, #fda085 100%); padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                ⏳ Demande reçue
+              </h1>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 20px; color: #333333; font-size: 16px;">
+                Bonjour <strong>${firstName}</strong>,
+              </p>
+
+              <p style="margin: 0 0 25px; color: #555555; font-size: 15px; line-height: 1.6;">
+                Nous avons bien reçu votre demande de rendez-vous ! L'équipe du salon va vérifier la disponibilité et valider votre créneau très prochainement.
+              </p>
+
+              <div style="background-color: #fffaf0; border: 1px solid #feebc8; padding: 25px; margin: 25px 0; border-radius: 8px;">
+                <h3 style="margin: 0 0 15px; color: #c05621; font-size: 17px; font-weight: 600;">
+                  Détails de la demande
+                </h3>
+                <p style="margin: 0 0 10px; color: #333333; font-size: 15px;">
+                  <strong>📅 Date :</strong> ${appointmentDate}
+                </p>
+                <p style="margin: 0 0 10px; color: #333333; font-size: 15px;">
+                  <strong>🕐 Heure :</strong> ${appointmentTime}
+                </p>
+                <p style="margin: 0 0 10px; color: #333333; font-size: 15px;">
+                  <strong>💇 Service :</strong> ${serviceName}
+                </p>
+                <p style="margin: 0; color: #333333; font-size: 15px;">
+                  <strong>🏢 Salon :</strong> ${salonName}
+                </p>
+              </div>
+
+              <p style="margin: 25px 0 0; color: #555555; font-size: 14px; line-height: 1.6;">
+                Vous recevrez un nouvel email dès que le rendez-vous sera confirmé ✅.
+              </p>
+
+              <p style="margin: 25px 0 0; color: #555555; font-size: 14px;">
+                À très vite !
               </p>
             </td>
           </tr>
