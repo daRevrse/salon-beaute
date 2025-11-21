@@ -11,6 +11,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCurrency, CURRENCIES } from "../contexts/CurrencyContext";
 import { withPermission } from "../components/common/PermissionGate";
 import ImageUploader from "../components/common/ImageUploader";
+import PWASettings from "../components/settings/PWASettings";
 import {
   ClockIcon,
   CalendarDaysIcon,
@@ -24,6 +25,7 @@ import {
   PlusIcon,
   TrashIcon,
   PencilIcon,
+  BellIcon,
 } from "@heroicons/react/24/outline";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -377,17 +379,16 @@ const Settings = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
         {/* Header */}
-        <div className="mb-8 flex items-center">
-          <Cog6ToothIcon className="h-8 w-8 text-gray-900 mr-3" />
+        <div className="mb-6 sm:mb-8 flex items-start sm:items-center">
+          <Cog6ToothIcon className="h-6 w-6 sm:h-8 sm:w-8 text-gray-900 mr-2 sm:mr-3 flex-shrink-0 mt-1 sm:mt-0" />
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
               Paramètres du salon
             </h1>
-            <p className="mt-2 text-gray-600">
-              Configurez l'identité, la facturation et les horaires de votre
-              salon
+            <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">
+              Configurez l'identité, la facturation et les horaires de votre salon
             </p>
           </div>
         </div>
@@ -409,62 +410,76 @@ const Settings = () => {
 
         {/* Onglets */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
+          <div className="border-b border-gray-200 overflow-x-auto">
+            <nav className="flex -mb-px min-w-max sm:min-w-0">
               <button
                 onClick={() => setActiveTab("general")}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "general"
                     ? "border-indigo-500 text-indigo-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                <BuildingStorefrontIcon className="h-5 w-5 inline mr-2" />
-                Général
+                <BuildingStorefrontIcon className="h-4 w-4 sm:h-5 sm:w-5 inline mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Général</span>
+                <span className="sm:hidden">Général</span>
               </button>
               <button
                 onClick={() => setActiveTab("billing")}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "billing"
                     ? "border-indigo-500 text-indigo-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                <CreditCardIcon className="h-5 w-5 inline mr-2" />
-                Facturation
+                <CreditCardIcon className="h-4 w-4 sm:h-5 sm:w-5 inline mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Facturation</span>
+                <span className="sm:hidden">Fact.</span>
               </button>
               <button
                 onClick={() => setActiveTab("hours")}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "hours"
                     ? "border-indigo-500 text-indigo-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                <ClockIcon className="h-5 w-5 inline mr-2" />
+                <ClockIcon className="h-4 w-4 sm:h-5 sm:w-5 inline mr-1 sm:mr-2" />
                 Horaires
               </button>
               <button
                 onClick={() => setActiveTab("staff")}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "staff"
                     ? "border-indigo-500 text-indigo-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                <UsersIcon className="h-5 w-5 inline mr-2" />
+                <UsersIcon className="h-4 w-4 sm:h-5 sm:w-5 inline mr-1 sm:mr-2" />
                 Staff
+              </button>
+              <button
+                onClick={() => setActiveTab("pwa")}
+                className={`flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "pwa"
+                    ? "border-indigo-500 text-indigo-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                <BellIcon className="h-4 w-4 sm:h-5 sm:w-5 inline mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Notifications</span>
+                <span className="sm:hidden">Notif.</span>
               </button>
             </nav>
           </div>
 
-          <div className="p-8">
+          <div className="p-4 sm:p-6 md:p-8">
             {/* Onglet Général */}
             {activeTab === "general" && (
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center border-b pb-3">
-                    <BuildingStorefrontIcon className="h-6 w-6 text-indigo-600 mr-3" />
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center border-b pb-2 sm:pb-3">
+                    <BuildingStorefrontIcon className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 mr-2 sm:mr-3" />
                     Identité du salon
                   </h2>
 
@@ -550,10 +565,10 @@ const Settings = () => {
 
             {/* Onglet Facturation */}
             {activeTab === "billing" && (
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center border-b pb-3">
-                    <CurrencyDollarIcon className="h-6 w-6 text-indigo-600 mr-3" />
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center border-b pb-2 sm:pb-3">
+                    <CurrencyDollarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 mr-2 sm:mr-3" />
                     Configuration de la facturation
                   </h2>
 
@@ -646,10 +661,10 @@ const Settings = () => {
 
             {/* Onglet Horaires */}
             {activeTab === "hours" && (
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center border-b pb-3">
-                    <ClockIcon className="h-6 w-6 text-indigo-600 mr-3" />
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center border-b pb-2 sm:pb-3">
+                    <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 mr-2 sm:mr-3" />
                     Planning et Créneaux
                   </h2>
 
@@ -761,33 +776,34 @@ const Settings = () => {
 
             {/* Onglet Staff */}
             {activeTab === "staff" && (
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8">
                 <div>
-                  <div className="flex items-center justify-between mb-6 border-b pb-3">
-                    <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                      <UsersIcon className="h-6 w-6 text-indigo-600 mr-3" />
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 border-b pb-3">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center mb-3 sm:mb-0">
+                      <UsersIcon className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 mr-2 sm:mr-3" />
                       Gestion du personnel
                     </h2>
                     <button
                       onClick={() => handleOpenStaffModal()}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center"
+                      className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center justify-center"
                     >
                       <PlusIcon className="h-5 w-5 mr-2" />
-                      Ajouter un employé
+                      <span className="hidden sm:inline">Ajouter un employé</span>
+                      <span className="sm:hidden">Ajouter</span>
                     </button>
                   </div>
 
                   {/* Liste du staff */}
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {staff.length === 0 ? (
-                      <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-                        <UsersIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-600">
+                      <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg border border-gray-200">
+                        <UsersIcon className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                        <p className="text-sm sm:text-base text-gray-600">
                           Aucun employé pour le moment
                         </p>
                         <button
                           onClick={() => handleOpenStaffModal()}
-                          className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium"
+                          className="mt-3 sm:mt-4 text-sm sm:text-base text-indigo-600 hover:text-indigo-800 font-medium"
                         >
                           Ajouter le premier employé
                         </button>
@@ -796,11 +812,11 @@ const Settings = () => {
                       staff.map((member) => (
                         <div
                           key={member.id}
-                          className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                          className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4 flex-1">
-                              <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                            <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                              <div className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 rounded-full bg-indigo-100 flex items-center justify-center">
                                 {member.avatar_url ? (
                                   <img
                                     src={member.avatar_url?.replace("api/", "")}
@@ -808,28 +824,45 @@ const Settings = () => {
                                     className="h-full w-full rounded-full object-cover"
                                   />
                                 ) : (
-                                  <span className="text-indigo-700 font-semibold text-lg">
+                                  <span className="text-indigo-700 font-semibold text-sm sm:text-lg">
                                     {member.first_name?.charAt(0)}
                                     {member.last_name?.charAt(0)}
                                   </span>
                                 )}
                               </div>
-                              <div className="flex-1">
-                                <h3 className="font-semibold text-gray-900">
-                                  {member.first_name} {member.last_name}
-                                </h3>
-                                <p className="text-sm text-gray-600">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between sm:block">
+                                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 truncate">
+                                    {member.first_name} {member.last_name}
+                                  </h3>
+                                  <span
+                                    className={`sm:hidden ml-2 px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
+                                      member.role === "owner"
+                                        ? "bg-purple-100 text-purple-800"
+                                        : member.role === "admin"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : "bg-gray-100 text-gray-800"
+                                    }`}
+                                  >
+                                    {member.role === "owner"
+                                      ? "Proprio"
+                                      : member.role === "admin"
+                                      ? "Admin"
+                                      : "Employé"}
+                                  </span>
+                                </div>
+                                <p className="text-xs sm:text-sm text-gray-600 truncate">
                                   {member.email}
                                 </p>
                                 {member.phone && (
-                                  <p className="text-sm text-gray-500">
+                                  <p className="text-xs sm:text-sm text-gray-500 truncate">
                                     {member.phone}
                                   </p>
                                 )}
                               </div>
-                              <div>
+                              <div className="hidden sm:block">
                                 <span
-                                  className={`px-3 py-1 text-xs font-medium rounded-full ${
+                                  className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
                                     member.role === "owner"
                                       ? "bg-purple-100 text-purple-800"
                                       : member.role === "admin"
@@ -847,7 +880,7 @@ const Settings = () => {
                             </div>
 
                             {member.role !== "owner" && (
-                              <div className="flex items-center space-x-2 ml-4">
+                              <div className="flex items-center justify-between sm:justify-start space-x-2 sm:ml-4 pt-2 sm:pt-0 border-t sm:border-t-0">
                                 <label className="flex items-center cursor-pointer">
                                   <input
                                     type="checkbox"
@@ -860,24 +893,26 @@ const Settings = () => {
                                     }
                                     className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                   />
-                                  <span className="ml-2 text-sm text-gray-600">
+                                  <span className="ml-2 text-xs sm:text-sm text-gray-600">
                                     Actif
                                   </span>
                                 </label>
-                                <button
-                                  onClick={() => handleOpenStaffModal(member)}
-                                  className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-                                  title="Modifier"
-                                >
-                                  <PencilIcon className="h-5 w-5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteStaff(member.id)}
-                                  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                  title="Supprimer"
-                                >
-                                  <TrashIcon className="h-5 w-5" />
-                                </button>
+                                <div className="flex items-center space-x-1 sm:space-x-2">
+                                  <button
+                                    onClick={() => handleOpenStaffModal(member)}
+                                    className="p-1.5 sm:p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                    title="Modifier"
+                                  >
+                                    <PencilIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteStaff(member.id)}
+                                    className="p-1.5 sm:p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    title="Supprimer"
+                                  >
+                                    <TrashIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                                  </button>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -888,22 +923,29 @@ const Settings = () => {
                 </div>
               </div>
             )}
+
+            {/* Onglet PWA et Notifications */}
+            {activeTab === "pwa" && (
+              <div>
+                <PWASettings />
+              </div>
+            )}
           </div>
 
           {/* Actions - Toujours visibles */}
-          <div className="px-8 py-6 bg-gray-50 border-t border-gray-200 flex justify-end space-x-4">
+          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-3 sm:space-x-4">
             <button
               onClick={() => navigate("/dashboard")}
-              className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 font-medium transition-colors"
+              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 rounded-lg text-sm sm:text-base text-gray-700 hover:bg-gray-100 font-medium transition-colors order-2 sm:order-1"
             >
               Annuler
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-colors"
+              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-colors text-sm sm:text-base order-1 sm:order-2"
             >
-              {saving ? "Enregistrement..." : "Enregistrer les paramètres"}
+              {saving ? "Enregistrement..." : "Enregistrer"}
             </button>
           </div>
         </div>

@@ -19,6 +19,11 @@ import {
   DocumentTextIcon,
   CurrencyDollarIcon,
   SparklesIcon,
+  ShieldCheckIcon,
+  ArrowPathRoundedSquareIcon,
+  ChatBubbleLeftRightIcon,
+  BoltIcon,
+  StarIcon,
 } from '@heroicons/react/24/outline';
 
 const Billing = () => {
@@ -53,7 +58,7 @@ const Billing = () => {
         const response = await api.post('/stripe/verify-session', { sessionId });
 
         if (response.data.success) {
-          alert('✅ Abonnement activé avec succès !');
+          alert('Abonnement activé avec succès !');
           window.history.replaceState({}, document.title, '/billing');
           loadData();
         } else {
@@ -254,7 +259,8 @@ const Billing = () => {
           )}
 
           {subscription?.status === 'trial' && (
-            <div className="mt-6 bg-white bg-opacity-20 rounded-lg p-4">
+            <div className="mt-6 bg-white bg-opacity-20 rounded-lg p-4 flex items-start">
+              <SparklesIcon className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
               <p className="text-sm">
                 <strong>Essai gratuit actif !</strong> Profitez de toutes les fonctionnalités jusqu'au{' '}
                 {formatDate(subscription.trialEndsAt)}. Aucune carte requise.
@@ -282,8 +288,9 @@ const Billing = () => {
                   }`}
                 >
                   {key === 'professional' && (
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center py-2 text-sm font-semibold">
-                      ⭐ Recommandé
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center py-2 text-sm font-semibold flex items-center justify-center">
+                      <StarIcon className="h-5 w-5 mr-1" />
+                      Recommandé
                     </div>
                   )}
 
@@ -337,21 +344,33 @@ const Billing = () => {
         <div className="mt-12 bg-gray-50 rounded-xl p-8 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Informations importantes</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-600">
-            <div>
-              <p className="font-medium text-gray-900 mb-2">💳 Paiement sécurisé</p>
-              <p>Tous les paiements sont traités de manière sécurisée via Stripe.</p>
+            <div className="flex items-start">
+              <ShieldCheckIcon className="h-6 w-6 text-indigo-600 mr-3 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-900 mb-2">Paiement sécurisé</p>
+                <p>Tous les paiements sont traités de manière sécurisée via Stripe.</p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium text-gray-900 mb-2">🔄 Annulation facile</p>
-              <p>Vous pouvez annuler votre abonnement à tout moment, sans frais cachés.</p>
+            <div className="flex items-start">
+              <ArrowPathRoundedSquareIcon className="h-6 w-6 text-indigo-600 mr-3 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-900 mb-2">Annulation facile</p>
+                <p>Vous pouvez annuler votre abonnement à tout moment, sans frais cachés.</p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium text-gray-900 mb-2">📧 Support client</p>
-              <p>Notre équipe est disponible pour vous aider à tout moment.</p>
+            <div className="flex items-start">
+              <ChatBubbleLeftRightIcon className="h-6 w-6 text-indigo-600 mr-3 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-900 mb-2">Support client</p>
+                <p>Notre équipe est disponible pour vous aider à tout moment.</p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium text-gray-900 mb-2">✨ Mises à jour incluses</p>
-              <p>Accédez à toutes les nouvelles fonctionnalités automatiquement.</p>
+            <div className="flex items-start">
+              <BoltIcon className="h-6 w-6 text-indigo-600 mr-3 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-900 mb-2">Mises à jour incluses</p>
+                <p>Accédez à toutes les nouvelles fonctionnalités automatiquement.</p>
+              </div>
             </div>
           </div>
         </div>

@@ -155,7 +155,7 @@ const Register = () => {
         </div>
 
         {/* Progress Steps */}
-        <div className="mb-8">
+        <div className="mb-8 px-4">
           <div className="flex items-center justify-between max-w-md mx-auto">
             {STEPS.map((step, index) => {
               const Icon = step.icon;
@@ -166,7 +166,7 @@ const Register = () => {
                 <React.Fragment key={step.id}>
                   <div className="flex flex-col items-center flex-1">
                     <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${
+                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 transition-all ${
                         isCompleted
                           ? "bg-green-500 border-green-500"
                           : isCurrent
@@ -175,17 +175,17 @@ const Register = () => {
                       }`}
                     >
                       {isCompleted ? (
-                        <CheckCircleSolid className="w-6 h-6 text-white" />
+                        <CheckCircleSolid className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                       ) : (
                         <Icon
-                          className={`w-6 h-6 ${
+                          className={`w-5 h-5 sm:w-6 sm:h-6 ${
                             isCurrent ? "text-white" : "text-gray-400"
                           }`}
                         />
                       )}
                     </div>
                     <span
-                      className={`mt-2 text-sm font-medium ${
+                      className={`mt-2 text-xs sm:text-sm font-medium ${
                         isCurrent ? "text-indigo-600" : "text-gray-500"
                       }`}
                     >
@@ -194,7 +194,7 @@ const Register = () => {
                   </div>
                   {index < STEPS.length - 1 && (
                     <div
-                      className={`flex-1 h-0.5 mx-4 mb-6 transition-all ${
+                      className={`flex-1 h-0.5 mx-2 sm:mx-4 mb-6 transition-all ${
                         currentStep > step.id ? "bg-green-500" : "bg-gray-300"
                       }`}
                     />

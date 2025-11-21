@@ -143,7 +143,7 @@ const BookingDateTime = () => {
 
           {/* Sélection de date */}
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
-            <label className="block text-lg font-semibold text-gray-700 mb-4 flex items-center">
+            <label className="flex items-center text-lg font-semibold text-gray-700 mb-4">
               <CalendarDaysIcon className="w-6 h-6 mr-2 text-indigo-600" />
               Sélectionnez une date
             </label>
@@ -183,7 +183,7 @@ const BookingDateTime = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Créneaux disponibles ({availableSlots.length})
               </h3>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {availableSlots.map((slot, index) => (
                   <button
                     key={index}

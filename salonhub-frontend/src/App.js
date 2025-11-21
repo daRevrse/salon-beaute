@@ -9,6 +9,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { CurrencyProvider } from "./contexts/CurrencyContext";
 import { PermissionProvider } from "./contexts/PermissionContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import UpdateBanner from "./components/common/UpdateBanner";
 
 // Auth
 import Login from "./components/auth/Login";
@@ -155,6 +156,9 @@ function App() {
             {/* 404 */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
+
+            {/* Bannière de mise à jour PWA */}
+            <UpdateBanner />
           </CurrencyProvider>
         </PermissionProvider>
       </AuthProvider>

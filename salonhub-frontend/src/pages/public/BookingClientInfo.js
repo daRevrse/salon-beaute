@@ -245,12 +245,12 @@ const BookingClientInfo = () => {
 
           {/* Récapitulatif - Enhanced Box Style */}
           {service && date && slot && (
-            <div className="bg-white border border-indigo-200 rounded-xl shadow-lg p-6 mb-8 space-y-4">
-              <h3 className="font-semibold text-gray-900 text-xl border-b pb-3 mb-4 flex items-center">
-                <CalendarDaysIcon className="w-6 h-6 mr-2 text-indigo-600" />
+            <div className="bg-white border border-indigo-200 rounded-xl shadow-lg p-4 sm:p-6 mb-8 space-y-4">
+              <h3 className="font-semibold text-gray-900 text-lg sm:text-xl border-b pb-3 mb-4 flex items-center">
+                <CalendarDaysIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-indigo-600" />
                 Votre Réservation
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Service</p>
                   <p className="font-medium text-gray-900">{service.name}</p>
@@ -274,9 +274,9 @@ const BookingClientInfo = () => {
                     </p>
                   )}
                 </div>
-                <div>
+                <div className="sm:col-span-2">
                   <p className="text-sm text-gray-500">Date & Heure</p>
-                  <p className="font-medium text-gray-900 flex items-center">
+                  <p className="font-medium text-gray-900">
                     {formatDate(date)} à {slot.time}
                   </p>
                 </div>
@@ -292,7 +292,7 @@ const BookingClientInfo = () => {
           )}
 
           {/* Formulaire */}
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100">
             <form onSubmit={handleSubmit} className="space-y-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center border-b pb-3">
                 <UserCircleIcon className="w-5 h-5 mr-2 text-indigo-600" />
@@ -418,7 +418,7 @@ const BookingClientInfo = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Comment souhaitez-vous être notifié ? *
                 </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {/* Email Option */}
                   <button
                     type="button"

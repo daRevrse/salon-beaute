@@ -93,7 +93,7 @@ const Navbar = () => {
                   SH
                 </div>
               )}
-              <span className="ml-3 text-xl font-semibold text-gray-900">
+              <span className="ml-3 text-lg sm:text-xl font-semibold text-gray-900 truncate max-w-[150px] sm:max-w-none">
                 {tenant?.name || "SalonHub"}
               </span>
             </Link>
@@ -232,7 +232,8 @@ const Navbar = () => {
           {/* -------------------------------------------------- */}
           {/* MOBILE MENU BUTTON                                  */}
           {/* -------------------------------------------------- */}
-          <div className="flex items-center sm:hidden">
+          <div className="flex items-center gap-3 sm:hidden">
+            <NotificationBell />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"

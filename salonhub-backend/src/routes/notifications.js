@@ -9,6 +9,7 @@ const { query } = require("../config/database");
 const { authMiddleware } = require("../middleware/auth");
 const { tenantMiddleware } = require("../middleware/tenant");
 const emailService = require("../services/emailService");
+const whatsappService = require("../services/whatsappService");
 
 // Appliquer middlewares sur toutes les routes
 router.use(authMiddleware);
@@ -94,11 +95,22 @@ router.post("/send", async (req, res) => {
       }
     }
 
-    // Envoyer le SMS si demandé (simulation pour l'instant)
+    // Générer le lien WhatsApp si demandé
+    let whatsappLink = null;
     if (send_via === "sms" || send_via === "both") {
-      console.log(`📱 [SIMULATION SMS] To: ${client.phone}, Message: ${message}`);
-      // TODO: Intégrer Twilio ou Vonage pour les SMS réels
-      smsSent = true; // Marqué comme envoyé en simulation
+      try {
+        const result = await whatsappService.sendCustomMessage({
+          to: client.phone,
+          firstName: client.first_name,
+          lastName: client.last_name,
+          message: message
+        });
+        whatsappLink = result.link;
+        smsSent = true;
+        console.log(`✓ Lien WhatsApp généré pour ${client.phone}`);
+      } catch (error) {
+        console.error(`❌ Erreur génération lien WhatsApp:`, error.message);
+      }
     }
 
     // Déterminer le statut final
@@ -138,6 +150,7 @@ router.post("/send", async (req, res) => {
         email_sent: emailSent,
         sms_sent: smsSent,
         status: notificationStatus,
+        whatsapp_link: whatsappLink, // Retourner le lien WhatsApp
       },
     });
   } catch (error) {
@@ -241,12 +254,26 @@ router.post("/appointment-reminder", async (req, res) => {
       }
     }
 
-    // Envoyer le SMS si demandé (simulation)
+    // Envoyer le WhatsApp/SMS si demandé
     if (send_via.includes("sms")) {
-      const smsMessage = `Bonjour ${appointment.client_first_name}, rappel de votre RDV ${appointment.service_name} le ${date} à ${appointment.start_time}. ${appointment.salon_name}`;
-      console.log(`📱 [SIMULATION SMS] To: ${appointment.client_phone}, Message: ${smsMessage}`);
-      // TODO: Intégrer Twilio pour les SMS
-      smsSent = true;
+      try {
+        await whatsappService.sendAppointmentReminder({
+          to: appointment.client_phone,
+          firstName: appointment.client_first_name,
+          serviceName: appointment.service_name,
+          date: date,
+          time: appointment.start_time,
+          salonName: appointment.salon_name
+        });
+        smsSent = true;
+        console.log(`✓ Rappel WhatsApp envoyé à ${appointment.client_phone}`);
+      } catch (error) {
+        console.error(`❌ Erreur envoi rappel WhatsApp:`, error.message);
+        // En cas d'erreur, on marque quand même comme envoyé si c'est en mode simulation
+        if (error.message.includes('simulation')) {
+          smsSent = true;
+        }
+      }
     }
 
     // Déterminer le statut

@@ -386,17 +386,17 @@ const Dashboard = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-center dashboard-header">
+        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 dashboard-header">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="mt-2 text-gray-600">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="mt-2 text-sm sm:text-base text-gray-600">
               Bienvenue, {user?.first_name} ! Voici un aperçu de votre activité.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={startTutorial}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-1 sm:flex-none"
               title="Relancer le tutoriel"
             >
               <svg
@@ -412,21 +412,22 @@ const Dashboard = () => {
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
+              <span className="ml-2 hidden sm:inline">Aide</span>
             </button>
             <Link
               to={`/book/${tenant?.slug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="view-public-page-btn inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="view-public-page-btn inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-1 sm:flex-none"
             >
-              Voir la page publique
+              <span className="truncate">Page publique</span>
             </Link>
             <button
               onClick={() => setShowShareModal(true)}
-              className="share-btn inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="share-btn inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-1 sm:flex-none"
             >
-              <ShareIcon className="h-5 w-5 mr-2" />
-              Partager
+              <ShareIcon className="h-5 w-5 sm:mr-2" />
+              <span className="ml-2 sm:ml-0">Partager</span>
             </button>
           </div>
         </div>
@@ -615,89 +616,89 @@ const Dashboard = () => {
         {/* Stats Cards - Ligne 1 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* RDV aujourd'hui */}
-          <div className="stats-today bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="stats-today bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-indigo-100 text-sm font-medium">
+                <p className="text-indigo-100 text-xs sm:text-sm font-medium">
                   RDV aujourd'hui
                 </p>
-                <p className="mt-2 text-4xl font-bold">
+                <p className="mt-2 text-3xl sm:text-4xl font-bold">
                   {stats.todayAppointments}
                 </p>
                 <Link
                   to="/appointments"
-                  className="mt-3 text-sm text-indigo-100 hover:text-white inline-flex items-center"
+                  className="mt-3 text-xs sm:text-sm text-indigo-100 hover:text-white inline-flex items-center"
                 >
                   Voir le planning →
                 </Link>
               </div>
-              <div className="p-3 bg-white bg-opacity-20 rounded-lg">
-                <CalendarDaysIcon className="h-10 w-10" />
+              <div className="p-2 sm:p-3 bg-white bg-opacity-20 rounded-lg">
+                <CalendarDaysIcon className="h-8 w-8 sm:h-10 sm:w-10" />
               </div>
             </div>
           </div>
 
           {/* Total clients */}
-          <div className="stats-clients bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="stats-clients bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm font-medium">
+                <p className="text-green-100 text-xs sm:text-sm font-medium">
                   Total clients
                 </p>
-                <p className="mt-2 text-4xl font-bold">{stats.totalClients}</p>
+                <p className="mt-2 text-3xl sm:text-4xl font-bold">{stats.totalClients}</p>
                 <Link
                   to="/clients"
-                  className="mt-3 text-sm text-green-100 hover:text-white inline-flex items-center"
+                  className="mt-3 text-xs sm:text-sm text-green-100 hover:text-white inline-flex items-center"
                 >
                   Gérer les clients →
                 </Link>
               </div>
-              <div className="p-3 bg-white bg-opacity-20 rounded-lg">
-                <UserGroupIcon className="h-10 w-10" />
+              <div className="p-2 sm:p-3 bg-white bg-opacity-20 rounded-lg">
+                <UserGroupIcon className="h-8 w-8 sm:h-10 sm:w-10" />
               </div>
             </div>
           </div>
 
           {/* Services actifs */}
-          <div className="stats-services bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="stats-services bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium">
+                <p className="text-purple-100 text-xs sm:text-sm font-medium">
                   Services actifs
                 </p>
-                <p className="mt-2 text-4xl font-bold">{stats.totalServices}</p>
+                <p className="mt-2 text-3xl sm:text-4xl font-bold">{stats.totalServices}</p>
                 <Link
                   to="/services"
-                  className="mt-3 text-sm text-purple-100 hover:text-white inline-flex items-center"
+                  className="mt-3 text-xs sm:text-sm text-purple-100 hover:text-white inline-flex items-center"
                 >
                   Gérer les services →
                 </Link>
               </div>
-              <div className="p-3 bg-white bg-opacity-20 rounded-lg">
-                <ScissorsIcon className="h-10 w-10" />
+              <div className="p-2 sm:p-3 bg-white bg-opacity-20 rounded-lg">
+                <ScissorsIcon className="h-8 w-8 sm:h-10 sm:w-10" />
               </div>
             </div>
           </div>
 
           {/* En attente */}
-          <div className="stats-pending bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="stats-pending bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-yellow-100 text-sm font-medium">
+                <p className="text-yellow-100 text-xs sm:text-sm font-medium">
                   En attente
                 </p>
-                <p className="mt-2 text-4xl font-bold">
+                <p className="mt-2 text-3xl sm:text-4xl font-bold">
                   {stats.pendingAppointments}
                 </p>
                 <Link
                   to="/appointments?status=pending"
-                  className="mt-3 text-sm text-yellow-100 hover:text-white inline-flex items-center"
+                  className="mt-3 text-xs sm:text-sm text-yellow-100 hover:text-white inline-flex items-center"
                 >
                   Valider les RDV →
                 </Link>
               </div>
-              <div className="p-3 bg-white bg-opacity-20 rounded-lg">
-                <ClockIcon className="h-10 w-10" />
+              <div className="p-2 sm:p-3 bg-white bg-opacity-20 rounded-lg">
+                <ClockIcon className="h-8 w-8 sm:h-10 sm:w-10" />
               </div>
             </div>
           </div>
@@ -706,19 +707,19 @@ const Dashboard = () => {
         {/* Stats Cards - Ligne 2: Revenus et performance */}
         <div className="revenue-section grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Revenu aujourd'hui */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-lg transition-shadow">
+          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-gray-600">
+              <p className="text-xs sm:text-sm font-medium text-gray-600">
                 Revenu aujourd'hui
               </p>
-              <CurrencyDollarIcon className="h-6 w-6 text-green-500" />
+              <CurrencyDollarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900">
               {formatPrice(stats.todayRevenue)}
             </p>
-            <div className="mt-2 flex items-center text-sm text-green-600">
+            <div className="mt-2 flex items-center text-xs sm:text-sm text-green-600">
               <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-              Basé sur les RDV complétés
+              <span className="truncate">RDV complétés</span>
             </div>
           </div>
 
@@ -807,25 +808,27 @@ const Dashboard = () => {
                       key={apt.id}
                       className="px-6 py-4 hover:bg-gray-50 transition-colors"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4 flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex items-center space-x-3 sm:space-x-4 flex-1">
                           <div className="flex-shrink-0">
-                            <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
-                              <span className="text-indigo-700 font-medium text-lg">
+                            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                              <span className="text-indigo-700 font-medium text-base sm:text-lg">
                                 {apt.client_first_name?.charAt(0)}
                                 {apt.client_last_name?.charAt(0)}
                               </span>
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900">
+                            <p className="text-sm font-medium text-gray-900 truncate">
                               {apt.client_first_name} {apt.client_last_name}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 truncate">
                               {apt.service_name}
                             </p>
                           </div>
-                          <div className="text-sm text-gray-500">
+                        </div>
+                        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+                          <div className="text-sm text-gray-500 whitespace-nowrap">
                             <span className="font-medium">
                               {apt.start_time?.substring(0, 5)}
                             </span>

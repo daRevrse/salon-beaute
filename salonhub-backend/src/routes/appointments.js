@@ -8,6 +8,8 @@ const router = express.Router();
 const { query } = require("../config/database");
 const { authMiddleware } = require("../middleware/auth");
 const { tenantMiddleware } = require("../middleware/tenant");
+const whatsappService = require("../services/whatsappService");
+const emailService = require("../services/emailService");
 
 // Appliquer middlewares
 router.use(authMiddleware);
@@ -509,6 +511,86 @@ router.patch("/:id/status", async (req, res) => {
     params.push(id, req.tenantId);
 
     await query(updateSql, params);
+
+    // Si le rendez-vous est confirmé, envoyer une notification au client
+    if (status === "confirmed") {
+      try {
+        // Récupérer les détails complets du rendez-vous avec infos client
+        const [fullAppointment] = await query(
+          `SELECT
+            a.*,
+            c.first_name as client_first_name,
+            c.last_name as client_last_name,
+            c.email as client_email,
+            c.phone as client_phone,
+            c.preferred_contact_method,
+            s.name as service_name,
+            s.duration as service_duration,
+            t.name as salon_name
+          FROM appointments a
+          JOIN clients c ON a.client_id = c.id
+          JOIN services s ON a.service_id = s.id
+          JOIN tenants t ON a.tenant_id = t.id
+          WHERE a.id = ?`,
+          [id]
+        );
+
+        if (fullAppointment) {
+          // Formater la date
+          const appointmentDate = new Date(fullAppointment.appointment_date).toLocaleDateString(
+            "fr-FR",
+            {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }
+          );
+
+          // Envoyer par WhatsApp si c'est la méthode préférée ou si le client a un téléphone
+          if (fullAppointment.client_phone &&
+              (fullAppointment.preferred_contact_method === 'sms' ||
+               fullAppointment.preferred_contact_method === 'both')) {
+            try {
+              await whatsappService.sendAppointmentConfirmation({
+                to: fullAppointment.client_phone,
+                firstName: fullAppointment.client_first_name,
+                serviceName: fullAppointment.service_name,
+                date: appointmentDate,
+                time: fullAppointment.start_time,
+                salonName: fullAppointment.salon_name
+              });
+              console.log(`✓ Confirmation WhatsApp envoyée à ${fullAppointment.client_phone}`);
+            } catch (error) {
+              console.error(`❌ Erreur envoi confirmation WhatsApp:`, error.message);
+            }
+          }
+
+          // Envoyer par Email si c'est la méthode préférée ou si pas de téléphone
+          if (fullAppointment.client_email &&
+              (fullAppointment.preferred_contact_method === 'email' ||
+               fullAppointment.preferred_contact_method === 'both' ||
+               !fullAppointment.client_phone)) {
+            try {
+              await emailService.sendAppointmentConfirmation({
+                to: fullAppointment.client_email,
+                firstName: fullAppointment.client_first_name,
+                appointmentDate: appointmentDate,
+                appointmentTime: fullAppointment.start_time,
+                serviceName: fullAppointment.service_name,
+                salonName: fullAppointment.salon_name
+              });
+              console.log(`✓ Confirmation email envoyée à ${fullAppointment.client_email}`);
+            } catch (error) {
+              console.error(`❌ Erreur envoi confirmation email:`, error.message);
+            }
+          }
+        }
+      } catch (error) {
+        // On log l'erreur mais on ne bloque pas la réponse
+        console.error('Erreur envoi notification confirmation:', error);
+      }
+    }
 
     res.json({
       success: true,

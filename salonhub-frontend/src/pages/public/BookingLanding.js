@@ -116,27 +116,27 @@ const BookingLanding = () => {
               "https://placehold.net/4.png"
             }
             alt="Salon Logo"
-            className="h-24 w-24 md:h-32 md:w-32 rounded-full border-4 border-white shadow-lg object-cover mb-4 bg-white p-2"
+            className="h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 rounded-full border-4 border-white shadow-lg object-cover mb-4 bg-white p-2"
           />
-          <h1 className="text-4xl md:text-6xl font-bold drop-shadow-xl">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold drop-shadow-xl">
             {salon?.name || "Votre salon de beauté"}
           </h1>
 
-          <p className="mt-4 text-lg md:text-xl text-white/90 max-w-2xl drop-shadow-md">
+          <p className="mt-4 text-base sm:text-lg md:text-xl text-white/90 max-w-2xl drop-shadow-md px-4">
             Réservez votre prestation en quelques clics. Professionnalisme,
             confort et expertise.
           </p>
 
           {salon?.phone && (
-            <div className="flex items-center gap-2 mt-6 text-white/90">
-              <PhoneIcon className="w-5 h-5" />
+            <div className="flex items-center justify-center gap-2 mt-6 text-white/90 text-sm sm:text-base">
+              <PhoneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>{salon.phone}</span>
             </div>
           )}
 
           {salon?.address && (
-            <div className="flex items-center gap-2 text-white/90 mt-1">
-              <MapPinIcon className="w-5 h-5" />
+            <div className="flex items-center justify-center gap-2 text-white/90 mt-1 text-sm sm:text-base px-4 text-center">
+              <MapPinIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
               <span>
                 {salon.address} {salon.city && `, ${salon.city}`}
               </span>
@@ -150,7 +150,7 @@ const BookingLanding = () => {
       {/* ------------------------------------------------------ */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
             Choisissez votre prestation
           </h2>
           <p className="text-gray-600">
@@ -187,8 +187,8 @@ const BookingLanding = () => {
                 </div>
 
                 {/* CONTENT */}
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                <div className="p-4 sm:p-6">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1">
                     {service.name}
                   </h3>
 
@@ -199,7 +199,7 @@ const BookingLanding = () => {
                   )}
 
                   <div className="flex justify-between items-center border-t pt-3 mt-3">
-                    <span className="text-indigo-600 text-xl font-bold">
+                    <span className="text-indigo-600 text-lg sm:text-xl font-bold">
                       {formatPrice(service.price)}
                     </span>
 
@@ -216,7 +216,7 @@ const BookingLanding = () => {
                   )}
                 </div>
 
-                <div className="bg-indigo-50 px-6 py-3 flex items-center justify-between">
+                <div className="bg-indigo-50 px-4 sm:px-6 py-3 flex items-center justify-between">
                   <span className="text-indigo-600 font-medium text-sm">
                     Réserver ce service
                   </span>
