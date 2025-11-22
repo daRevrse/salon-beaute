@@ -617,4 +617,107 @@ router.post("/appointments", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/public/promotions/validate
+ * Valider un code promo publiquement (sans authentification)
+ */
+router.post("/promotions/validate", async (req, res) => {
+  try {
+    const { code, salon_slug, order_amount, service_ids } = req.body;
+
+    if (!code || !salon_slug) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Code et salon requis" });
+    }
+
+    // 1. Récupérer l'ID du salon (Tenant) via le slug
+    const tenant = await db.query(
+      "SELECT id FROM tenants WHERE slug = ? AND subscription_status IN ('trial', 'active')",
+      [salon_slug]
+    );
+
+    if (tenant.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Salon introuvable" });
+    }
+
+    const tenantId = tenant[0].id;
+    const amount = parseFloat(order_amount);
+
+    // 2. Chercher la promotion active pour ce salon
+    const [promotion] = await db.query(
+      `SELECT * FROM promotions
+       WHERE tenant_id = ? AND code = ? AND is_active = TRUE
+       AND valid_from <= NOW() AND valid_until >= NOW()`,
+      [tenantId, code.toUpperCase()]
+    );
+
+    if (!promotion) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Code promo invalide ou expiré" });
+    }
+
+    // 3. Vérifications logiques (Montant min, limites...)
+    if (
+      promotion.min_purchase_amount &&
+      amount < promotion.min_purchase_amount
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: `Montant minimum de ${promotion.min_purchase_amount}€ requis`,
+      });
+    }
+
+    if (promotion.usage_limit) {
+      const [usageCount] = await db.query(
+        "SELECT COUNT(*) as count FROM promotion_usages WHERE promotion_id = ?",
+        [promotion.id]
+      );
+      if (usageCount.count >= promotion.usage_limit) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            error: "Ce code a atteint sa limite d'utilisation",
+          });
+      }
+    }
+
+    // 4. Calculer la réduction
+    let discountAmount = 0;
+    if (promotion.discount_type === "percentage") {
+      discountAmount = (amount * parseFloat(promotion.discount_value)) / 100;
+    } else {
+      discountAmount = parseFloat(promotion.discount_value);
+    }
+
+    // Plafonner si nécessaire
+    if (
+      promotion.max_discount_amount &&
+      discountAmount > parseFloat(promotion.max_discount_amount)
+    ) {
+      discountAmount = parseFloat(promotion.max_discount_amount);
+    }
+    if (discountAmount > amount) discountAmount = amount;
+
+    // 5. Renvoyer le résultat
+    res.json({
+      success: true,
+      data: {
+        promotion_id: promotion.id,
+        code: promotion.code,
+        title: promotion.title,
+        discount_amount: parseFloat(discountAmount.toFixed(2)),
+        final_amount: parseFloat((amount - discountAmount).toFixed(2)),
+      },
+    });
+  } catch (error) {
+    console.error("Erreur validation promo publique:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
 module.exports = router;

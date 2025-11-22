@@ -8,10 +8,9 @@ import DashboardLayout from "../components/common/DashboardLayout";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { usePermissions } from "../contexts/PermissionContext";
 import { useServices } from "../hooks/useServices";
-import ImageUploader from "../components/common/ImageUploader"; // <-- IMPORT NOUVEAU
+import ImageUploader from "../components/common/ImageUploader";
 import { ImageWithFallback } from "../utils/imageUtils";
 import {
-  // <-- Import Heroicons
   ScissorsIcon,
   PencilSquareIcon,
   TrashIcon,
@@ -22,6 +21,11 @@ import {
   XMarkIcon,
   CheckIcon,
 } from "@heroicons/react/24/outline";
+
+// --- NOUVEAUX IMPORTS ---
+import { useToast } from "../hooks/useToast";
+import Toast from "../components/common/Toast";
+import ConfirmModal from "../components/common/ConfirmModal";
 
 const Services = () => {
   const { formatPrice: formatCurrency } = useCurrency();
@@ -36,9 +40,17 @@ const Services = () => {
     fetchServices,
   } = useServices();
 
+  // --- HOOK TOAST ---
+  const { toast, success, error, hideToast } = useToast();
+
   const [showModal, setShowModal] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [filterCategory, setFilterCategory] = useState("");
+
+  // --- ETAT POUR CONFIRMATION SUPPRESSION ---
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState(null);
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -46,7 +58,7 @@ const Services = () => {
     price: "",
     category: "",
     is_active: true,
-    image_url: "", // <-- NOUVEAU
+    image_url: "",
   });
 
   // Catégories uniques
@@ -64,7 +76,7 @@ const Services = () => {
         price: service.price,
         category: service.category || "",
         is_active: service.is_active,
-        image_url: service.image_url || "", // <-- NOUVEAU
+        image_url: service.image_url || "",
       });
     } else {
       setEditingService(null);
@@ -75,7 +87,7 @@ const Services = () => {
         price: "",
         category: "",
         is_active: true,
-        image_url: "", // <-- NOUVEAU
+        image_url: "",
       });
     }
     setShowModal(true);
@@ -107,31 +119,45 @@ const Services = () => {
     if (editingService) {
       const result = await updateService(editingService.id, serviceData);
       if (result.success) {
+        success("Service modifié avec succès");
         handleCloseModal();
       } else {
-        alert(result.error);
+        error(result.error || "Erreur lors de la modification");
       }
     } else {
       const result = await createService(serviceData);
       if (result.success) {
+        success("Service créé avec succès");
         handleCloseModal();
       } else {
-        alert(result.error);
+        error(result.error || "Erreur lors de la création");
       }
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce service ?")) {
-      const result = await deleteService(id);
-      if (!result.success) {
-        alert(result.error);
+  // --- GESTION SUPPRESSION ---
+  const initiateDelete = (id) => {
+    setServiceToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (serviceToDelete) {
+      const result = await deleteService(serviceToDelete);
+      if (result.success) {
+        success("Service supprimé avec succès");
+        setShowDeleteConfirm(false);
+        setServiceToDelete(null);
+      } else {
+        error(result.error || "Erreur lors de la suppression");
       }
     }
   };
 
   const handleToggle = async (id) => {
-    await toggleService(id);
+    const result = await toggleService(id);
+    // Optionnel: afficher un toast aussi pour le toggle
+    // if (result.success) success("Statut mis à jour");
   };
 
   const handleFilter = (category) => {
@@ -139,7 +165,6 @@ const Services = () => {
     fetchServices({ category: category || undefined });
   };
 
-  // Utiliser la fonction formatCurrency du contexte
   const formatPrice = (price) => {
     return formatCurrency(price);
   };
@@ -150,6 +175,27 @@ const Services = () => {
 
   return (
     <DashboardLayout>
+      {/* TOAST CONTAINER */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+          duration={toast.duration}
+        />
+      )}
+
+      {/* MODALE CONFIRMATION SUPPRESSION */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Supprimer le service"
+        message="Êtes-vous sûr de vouloir supprimer ce service ? Cette action est irréversible."
+        confirmText="Supprimer"
+        type="danger"
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
@@ -162,7 +208,7 @@ const Services = () => {
           {can.createService && (
             <button
               onClick={() => handleOpenModal()}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center shadow-md"
             >
               <PlusIcon className="h-5 w-5 mr-1" />
               Nouveau service
@@ -274,7 +320,7 @@ const Services = () => {
                     </button>
                     {can.deleteService && (
                       <button
-                        onClick={() => handleDelete(service.id)}
+                        onClick={() => initiateDelete(service.id)}
                         className="px-3 py-2 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 flex items-center justify-center"
                       >
                         <TrashIcon className="h-4 w-4 mr-1" />
@@ -288,10 +334,10 @@ const Services = () => {
           )}
         </div>
 
-        {/* Modal */}
+        {/* Modal (inchangée sauf style mineur) */}
         {showModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+            <div className="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white animate-scale-in">
               <div className="mb-4">
                 <h3 className="text-lg font-medium text-gray-900">
                   {editingService ? "Modifier le service" : "Nouveau service"}

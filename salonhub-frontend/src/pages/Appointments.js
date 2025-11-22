@@ -12,8 +12,11 @@ import AppointmentCalendar from "../components/appointments/AppointmentCalendar"
 import { useClients } from "../hooks/useClients";
 import { useServices } from "../hooks/useServices";
 import api from "../services/api";
-import { useSocket } from "../contexts/SocketContext";
+
+// --- NOUVEAUX IMPORTS ---
 import { useToast } from "../hooks/useToast";
+import Toast from "../components/common/Toast";
+import ConfirmModal from "../components/common/ConfirmModal";
 
 const Appointments = () => {
   const { formatPrice } = useCurrency();
@@ -28,15 +31,25 @@ const Appointments = () => {
   const { clients } = useClients();
   const { services } = useServices();
 
-  const socket = useSocket();
-  const { showToast } = useToast();
+  // --- HOOK TOAST ---
+  const { toast, success, error, hideToast } = useToast();
 
-  const [view, setView] = useState("list"); // 'list' or 'calendar'
+  const [view, setView] = useState("list");
   const [showModal, setShowModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [staff, setStaff] = useState([]);
+
+  // --- NOUVEAUX ÉTATS POUR LES MODALES ---
+  // État pour la suppression
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState(null);
+
+  // État pour l'annulation (remplace le prompt)
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   const [formData, setFormData] = useState({
     client_id: "",
@@ -47,28 +60,6 @@ const Appointments = () => {
     notes: "",
   });
 
-  // Effet pour écouter les nouveaux RDV
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleNewAppointment = (data) => {
-      // 1. Notification visuelle
-      showToast(data.message || "Nouveau rendez-vous reçu !", "success");
-
-      // 2. Recharger la liste des RDV
-      fetchAppointments();
-
-      // Optionnel : Jouer un son
-      // new Audio('/notification.mp3').play().catch(e => {});
-    };
-
-    socket.on("new_appointment", handleNewAppointment);
-
-    return () => {
-      socket.off("new_appointment", handleNewAppointment);
-    };
-  }, [socket, fetchAppointments]);
-
   // Charger le staff
   useEffect(() => {
     const loadStaff = async () => {
@@ -77,6 +68,7 @@ const Appointments = () => {
         setStaff(response.data.data);
       } catch (err) {
         console.error("Erreur chargement staff:", err);
+        // On évite d'afficher une erreur toast au chargement initial pour ne pas spammer
       }
     };
     loadStaff();
@@ -105,55 +97,44 @@ const Appointments = () => {
       [name]: value,
     });
 
-    // Si service change, calculer end_time automatiquement
+    // Logique de calcul automatique de l'heure de fin (inchangée)
     if (name === "service_id" && value) {
       const selectedService = services.find((s) => s.id === parseInt(value));
       if (selectedService && formData.start_time) {
-        const [hours, minutes] = formData.start_time.split(":");
-        const startDate = new Date();
-        startDate.setHours(parseInt(hours), parseInt(minutes));
-        startDate.setMinutes(startDate.getMinutes() + selectedService.duration);
-
-        const endTime = `${String(startDate.getHours()).padStart(
-          2,
-          "0"
-        )}:${String(startDate.getMinutes()).padStart(2, "0")}`;
-        setFormData((prev) => ({
-          ...prev,
-          end_time: endTime,
-        }));
+        updateEndTime(formData.start_time, selectedService.duration);
       }
     }
 
-    // Calculer end_time quand start_time change
     if (name === "start_time" && value && formData.service_id) {
       const selectedService = services.find(
         (s) => s.id === parseInt(formData.service_id)
       );
       if (selectedService) {
-        const [hours, minutes] = value.split(":");
-        const startDate = new Date();
-        startDate.setHours(parseInt(hours), parseInt(minutes));
-        startDate.setMinutes(startDate.getMinutes() + selectedService.duration);
-
-        const endTime = `${String(startDate.getHours()).padStart(
-          2,
-          "0"
-        )}:${String(startDate.getMinutes()).padStart(2, "0")}`;
-        setFormData((prev) => ({
-          ...prev,
-          end_time: endTime,
-        }));
+        updateEndTime(value, selectedService.duration);
       }
     }
+  };
+
+  const updateEndTime = (startTime, duration) => {
+    const [hours, minutes] = startTime.split(":");
+    const startDate = new Date();
+    startDate.setHours(parseInt(hours), parseInt(minutes));
+    startDate.setMinutes(startDate.getMinutes() + duration);
+
+    const endTime = `${String(startDate.getHours()).padStart(2, "0")}:${String(
+      startDate.getMinutes()
+    ).padStart(2, "0")}`;
+    setFormData((prev) => ({
+      ...prev,
+      end_time: endTime,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Calculer end_time si pas déjà fait
+    // Calculer end_time si manquant
     let appointmentData = { ...formData };
-
     if (
       !appointmentData.end_time &&
       appointmentData.service_id &&
@@ -167,7 +148,6 @@ const Appointments = () => {
         const startDate = new Date();
         startDate.setHours(parseInt(hours), parseInt(minutes));
         startDate.setMinutes(startDate.getMinutes() + selectedService.duration);
-
         appointmentData.end_time = `${String(startDate.getHours()).padStart(
           2,
           "0"
@@ -178,33 +158,65 @@ const Appointments = () => {
     const result = await createAppointment(appointmentData);
 
     if (result.success) {
+      success("Rendez-vous créé avec succès !"); // Toast succès
       handleCloseModal();
     } else {
-      alert(result.error + (result.message ? "\n" + result.message : ""));
+      error(result.error || "Erreur lors de la création"); // Toast erreur
     }
   };
 
-  const handleStatusChange = async (id, newStatus) => {
-    let reason = null;
+  // --- GESTION STATUTS ---
+
+  const initiateStatusChange = (id, newStatus) => {
     if (newStatus === "cancelled") {
-      reason = prompt("Raison de l'annulation (optionnel):");
-    }
-
-    const result = await updateStatus(id, newStatus, reason);
-    if (!result.success) {
-      alert(result.error);
+      // Ouvrir la modale d'annulation personnalisée
+      setAppointmentToCancel(id);
+      setCancelReason("");
+      setShowCancelModal(true);
+    } else {
+      // Changement direct pour les autres status
+      handleStatusChange(id, newStatus);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce rendez-vous ?")) {
-      const result = await deleteAppointment(id);
-      if (!result.success) {
-        alert(result.error);
+  const handleStatusChange = async (id, newStatus, reason = null) => {
+    const result = await updateStatus(id, newStatus, reason);
+    if (result.success) {
+      success(`Statut mis à jour : ${newStatus}`);
+      // Fermer la modale d'annulation si elle était ouverte
+      if (showCancelModal) setShowCancelModal(false);
+    } else {
+      error(result.error || "Impossible de mettre à jour le statut");
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    if (appointmentToCancel) {
+      handleStatusChange(appointmentToCancel, "cancelled", cancelReason);
+    }
+  };
+
+  // --- GESTION SUPPRESSION ---
+
+  const initiateDelete = (id) => {
+    setAppointmentToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (appointmentToDelete) {
+      const result = await deleteAppointment(appointmentToDelete);
+      if (result.success) {
+        success("Rendez-vous supprimé");
+        setShowDeleteConfirm(false);
+        setAppointmentToDelete(null);
+      } else {
+        error(result.error || "Erreur lors de la suppression");
       }
     }
   };
 
+  // --- FILTRES ET DETAILS ---
   const handleFilterDate = (e) => {
     setFilterDate(e.target.value);
     fetchAppointments({ date: e.target.value, status: filterStatus });
@@ -260,7 +272,10 @@ const Appointments = () => {
       actions.push(
         <button
           key="confirm"
-          onClick={() => handleStatusChange(appointment.id, "confirmed")}
+          onClick={(e) => {
+            e.stopPropagation();
+            initiateStatusChange(appointment.id, "confirmed");
+          }}
           className="text-green-600 hover:text-green-900 text-sm"
         >
           Confirmer
@@ -272,7 +287,10 @@ const Appointments = () => {
       actions.push(
         <button
           key="cancel"
-          onClick={() => handleStatusChange(appointment.id, "cancelled")}
+          onClick={(e) => {
+            e.stopPropagation();
+            initiateStatusChange(appointment.id, "cancelled");
+          }}
           className="text-red-600 hover:text-red-900 text-sm"
         >
           Annuler
@@ -282,7 +300,10 @@ const Appointments = () => {
       actions.push(
         <button
           key="complete"
-          onClick={() => handleStatusChange(appointment.id, "completed")}
+          onClick={(e) => {
+            e.stopPropagation();
+            initiateStatusChange(appointment.id, "completed");
+          }}
           className="text-indigo-600 hover:text-indigo-900 text-sm"
         >
           Terminer
@@ -293,7 +314,6 @@ const Appointments = () => {
     return actions;
   };
 
-  // Trier par date et heure
   const sortedAppointments = [...appointments].sort((a, b) => {
     const dateA = new Date(`${a.appointment_date} ${a.start_time}`);
     const dateB = new Date(`${b.appointment_date} ${b.start_time}`);
@@ -302,6 +322,27 @@ const Appointments = () => {
 
   return (
     <DashboardLayout>
+      {/* AFFICHER LE COMPOSANT TOAST */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+          duration={toast.duration}
+        />
+      )}
+
+      {/* MODALE DE CONFIRMATION SUPPRESSION */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Supprimer le rendez-vous"
+        message="Êtes-vous sûr de vouloir supprimer ce rendez-vous ? Cette action est irréversible."
+        confirmText="Supprimer"
+        type="danger"
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
@@ -313,13 +354,14 @@ const Appointments = () => {
           </div>
           <button
             onClick={handleOpenModal}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
           >
             + Nouveau rendez-vous
           </button>
         </div>
+
         {/* Filtres */}
-        <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4">
+        <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -375,7 +417,7 @@ const Appointments = () => {
 
         {/* View Switcher */}
         <div className="mb-6 flex justify-end">
-          <div className="flex rounded-md border border-gray-300">
+          <div className="flex rounded-md border border-gray-300 shadow-sm">
             <button
               onClick={() => setView("list")}
               className={`px-4 py-2 text-sm font-medium rounded-l-md transition-colors ${
@@ -399,9 +441,9 @@ const Appointments = () => {
           </div>
         </div>
 
-        {/* Content: List or Calendar */}
+        {/* Content */}
         {view === "list" && (
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
             {loading ? (
               <div className="p-8 text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
@@ -439,7 +481,7 @@ const Appointments = () => {
                     {sortedAppointments.map((apt) => (
                       <tr
                         key={apt.id}
-                        className="hover:bg-gray-50 cursor-pointer"
+                        className="hover:bg-gray-50 cursor-pointer transition-colors"
                         onClick={() => handleOpenDetails(apt)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -479,13 +521,13 @@ const Appointments = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                           <div
-                            className="flex justify-end space-x-2"
+                            className="flex justify-end space-x-3"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {getStatusActions(apt)}
                             <button
-                              onClick={() => handleDelete(apt.id)}
-                              className="text-red-600 hover:text-red-900"
+                              onClick={() => initiateDelete(apt.id)}
+                              className="text-red-600 hover:text-red-900 font-medium"
                             >
                               Supprimer
                             </button>
@@ -507,10 +549,10 @@ const Appointments = () => {
           />
         )}
 
-        {/* Modal Création */}
+        {/* MODALE DE CRÉATION (inchangée sauf style mineur) */}
         {showModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white animate-scale-in">
               <div className="mb-4">
                 <h3 className="text-lg font-medium text-gray-900">
                   Nouveau rendez-vous
@@ -518,6 +560,7 @@ const Appointments = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Form fields - inchangés */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Client *
@@ -537,7 +580,6 @@ const Appointments = () => {
                     ))}
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Service *
@@ -560,10 +602,9 @@ const Appointments = () => {
                       ))}
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Employé (optionnel)
+                    Employé
                   </label>
                   <select
                     name="staff_id"
@@ -579,7 +620,6 @@ const Appointments = () => {
                     ))}
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Date *
@@ -594,7 +634,6 @@ const Appointments = () => {
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Heure de début *
@@ -608,7 +647,6 @@ const Appointments = () => {
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Notes
@@ -636,7 +674,7 @@ const Appointments = () => {
                     disabled={loading}
                     className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                   >
-                    {loading ? "Création..." : "Créer le rendez-vous"}
+                    {loading ? "Création..." : "Créer"}
                   </button>
                 </div>
               </form>
@@ -644,7 +682,51 @@ const Appointments = () => {
           </div>
         )}
 
-        {/* Modal Détails Rendez-vous */}
+        {/* MODALE D'ANNULATION (Remplace le prompt) */}
+        {showCancelModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+            <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full animate-scale-in">
+              <div className="mb-4">
+                <h3 className="text-lg font-bold text-red-600 flex items-center">
+                  <span className="mr-2">⚠️</span> Annuler le rendez-vous
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Voulez-vous indiquer une raison pour l'annulation ?
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Raison de l'annulation (Optionnel)
+                </label>
+                <textarea
+                  rows="3"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
+                  placeholder="Ex: Client malade, imprévu..."
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Retour
+                </button>
+                <button
+                  onClick={handleConfirmCancel}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+                >
+                  Confirmer l'annulation
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODALE DETAILS (inchangée) */}
         {selectedAppointment && (
           <AppointmentDetails
             appointment={selectedAppointment}

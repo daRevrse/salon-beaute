@@ -23,6 +23,11 @@ import {
   ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
 
+// --- NOUVEAUX IMPORTS ---
+import { useToast } from "../hooks/useToast";
+import Toast from "../components/common/Toast";
+import ConfirmModal from "../components/common/ConfirmModal";
+
 const Clients = () => {
   const {
     clients,
@@ -34,6 +39,9 @@ const Clients = () => {
   } = useClients();
   const { can } = usePermissions();
 
+  // --- HOOK TOAST ---
+  const { toast, success, error, info, hideToast } = useToast();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -43,6 +51,11 @@ const Clients = () => {
   const [messagingClient, setMessagingClient] = useState(null);
   const [historyClient, setHistoryClient] = useState(null);
   const [detailClient, setDetailClient] = useState(null);
+
+  // --- ETAT POUR CONFIRMATION SUPPRESSION ---
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState(null);
+
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -113,25 +126,42 @@ const Clients = () => {
     if (editingClient) {
       const result = await updateClient(editingClient.id, formData);
       if (result.success) {
+        success("Client modifié avec succès");
         handleCloseModal();
+        // Mettre à jour le détail si ouvert
+        if (detailClient && detailClient.id === editingClient.id) {
+          setDetailClient({ ...detailClient, ...formData });
+        }
       } else {
-        alert(result.error);
+        error(result.error || "Erreur lors de la modification");
       }
     } else {
       const result = await createClient(formData);
       if (result.success) {
+        success("Client créé avec succès");
         handleCloseModal();
       } else {
-        alert(result.error);
+        error(result.error || "Erreur lors de la création");
       }
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce client ?")) {
-      const result = await deleteClient(id);
-      if (!result.success) {
-        alert(result.error);
+  // --- GESTION SUPPRESSION ---
+  const initiateDelete = (id) => {
+    setClientToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (clientToDelete) {
+      const result = await deleteClient(clientToDelete);
+      if (result.success) {
+        success("Client supprimé avec succès");
+        setShowDeleteConfirm(false);
+        setClientToDelete(null);
+        if (showDetailModal) setShowDetailModal(false);
+      } else {
+        error(result.error || "Erreur lors de la suppression");
       }
     }
   };
@@ -178,22 +208,19 @@ const Clients = () => {
       });
 
       if (response.data.success) {
-        // Si un lien WhatsApp est retourné, l'ouvrir dans un nouvel onglet
         if (response.data.data?.whatsapp_link) {
-          window.open(response.data.data.whatsapp_link, '_blank');
-          alert("Email envoyé ! WhatsApp va s'ouvrir dans un nouvel onglet.");
-        } else if (response.data.data?.email_sent) {
-          alert("Email envoyé avec succès !");
+          window.open(response.data.data.whatsapp_link, "_blank");
+          info("WhatsApp va s'ouvrir dans un nouvel onglet", 5000);
         } else {
-          alert("Message envoyé avec succès !");
+          success("Message envoyé avec succès !");
         }
         handleCloseMessageModal();
       } else {
-        alert(response.data.error || "Erreur lors de l'envoi");
+        error(response.data.error || "Erreur lors de l'envoi");
       }
     } catch (err) {
       console.error("Erreur envoi message:", err);
-      alert(err.response?.data?.error || "Erreur lors de l'envoi");
+      error(err.response?.data?.error || "Erreur lors de l'envoi");
     } finally {
       setSending(false);
     }
@@ -201,6 +228,27 @@ const Clients = () => {
 
   return (
     <DashboardLayout>
+      {/* TOAST CONTAINER */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+          duration={toast.duration}
+        />
+      )}
+
+      {/* MODALE CONFIRMATION SUPPRESSION */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Supprimer le client"
+        message="Êtes-vous sûr de vouloir supprimer ce client ? Son historique de rendez-vous sera également supprimé."
+        confirmText="Supprimer définitivement"
+        type="danger"
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
@@ -260,7 +308,6 @@ const Clients = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Créé le
                   </th>
-                  {/* Colonne Actions supprimée */}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -312,7 +359,6 @@ const Clients = () => {
                         )}
                       </div>
                     </td>
-                    {/* Cellule Actions supprimée */}
                   </tr>
                 ))}
               </tbody>
@@ -321,10 +367,10 @@ const Clients = () => {
         </div>
       </div>
 
-      {/* Modal Édition/Création */}
+      {/* Modal Édition/Création (inchangée) */}
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white animate-scale-in">
             <div className="mb-4">
               <h3 className="text-lg font-medium text-gray-900">
                 {editingClient ? "Modifier le client" : "Nouveau client"}
@@ -422,10 +468,10 @@ const Clients = () => {
         </div>
       )}
 
-      {/* Modal Messagerie */}
+      {/* Modal Messagerie (inchangée) */}
       {showMessageModal && messagingClient && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-6 border w-[500px] shadow-xl rounded-lg bg-white">
+          <div className="relative top-20 mx-auto p-6 border w-[500px] shadow-xl rounded-lg bg-white animate-scale-in">
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center">
                 <ChatBubbleLeftRightIcon className="h-6 w-6 text-indigo-600 mr-3" />
@@ -483,7 +529,7 @@ const Clients = () => {
                       }`}
                     >
                       <ChatBubbleLeftRightIcon className="h-4 w-4 inline mr-1" />
-                      WhatsApp/SMS
+                      WhatsApp
                     </button>
                   )}
                   {messagingClient.email && messagingClient.phone && (
@@ -542,14 +588,20 @@ const Clients = () => {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start">
                 <ExclamationCircleIcon className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-blue-800">
-                  {messageData.send_via === 'email' && (
+                  {messageData.send_via === "email" && (
                     <p>L'email sera envoyé immédiatement au client.</p>
                   )}
-                  {messageData.send_via === 'sms' && (
-                    <p>WhatsApp s'ouvrira dans un nouvel onglet avec le message pré-rempli.</p>
+                  {messageData.send_via === "sms" && (
+                    <p>
+                      WhatsApp s'ouvrira dans un nouvel onglet avec le message
+                      pré-rempli.
+                    </p>
                   )}
-                  {messageData.send_via === 'both' && (
-                    <p>L'email sera envoyé et WhatsApp s'ouvrira dans un nouvel onglet.</p>
+                  {messageData.send_via === "both" && (
+                    <p>
+                      L'email sera envoyé et WhatsApp s'ouvrira dans un nouvel
+                      onglet.
+                    </p>
                   )}
                 </div>
               </div>
@@ -587,10 +639,10 @@ const Clients = () => {
         />
       )}
 
-      {/* Modal Détails Client */}
+      {/* Modal Détails Client (Modifié pour delete via state) */}
       {showDetailModal && detailClient && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-0 border w-full max-w-2xl shadow-2xl rounded-xl bg-white">
+          <div className="relative top-10 mx-auto p-0 border w-full max-w-2xl shadow-2xl rounded-xl bg-white animate-scale-in">
             {/* Header */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-6 rounded-t-xl">
               <div className="flex items-center justify-between">
@@ -728,10 +780,7 @@ const Clients = () => {
 
                   {can.deleteClient && (
                     <button
-                      onClick={() => {
-                        setShowDetailModal(false);
-                        handleDelete(detailClient.id);
-                      }}
+                      onClick={() => initiateDelete(detailClient.id)}
                       className="flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium shadow-md"
                     >
                       <TrashIcon className="h-5 w-5 mr-2" />

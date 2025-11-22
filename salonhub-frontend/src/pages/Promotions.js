@@ -21,15 +21,28 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
+// --- NOUVEAUX IMPORTS ---
+import { useToast } from "../hooks/useToast";
+import Toast from "../components/common/Toast";
+import ConfirmModal from "../components/common/ConfirmModal";
+
 const Promotions = () => {
   const { can } = usePermissions();
   const { formatPrice } = useCurrency();
+
+  // --- HOOK TOAST ---
+  const { toast, success, error, hideToast } = useToast();
+
   const [promotions, setPromotions] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState(null);
-  const [filterActive, setFilterActive] = useState("all"); // 'all', 'active', 'expired'
+  const [filterActive, setFilterActive] = useState("all");
+
+  // --- ETAT POUR CONFIRMATION SUPPRESSION ---
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [promotionToDelete, setPromotionToDelete] = useState(null);
 
   const [formData, setFormData] = useState({
     code: "",
@@ -59,8 +72,9 @@ const Promotions = () => {
     try {
       const response = await api.get("/promotions");
       setPromotions(response.data.data);
-    } catch (error) {
-      console.error("Erreur chargement promotions:", error);
+    } catch (err) {
+      console.error("Erreur chargement promotions:", err);
+      error("Impossible de charger les promotions");
     } finally {
       setLoading(false);
     }
@@ -70,8 +84,8 @@ const Promotions = () => {
     try {
       const response = await api.get("/promotions/stats/summary");
       setStats(response.data.data);
-    } catch (error) {
-      console.error("Erreur chargement stats:", error);
+    } catch (err) {
+      console.error("Erreur chargement stats:", err);
     }
   };
 
@@ -139,34 +153,38 @@ const Promotions = () => {
     try {
       if (editingPromotion) {
         await api.put(`/promotions/${editingPromotion.id}`, formData);
-        alert("Promotion modifiée avec succès !");
+        success("Promotion modifiée avec succès !");
       } else {
         await api.post("/promotions", formData);
-        alert("Promotion créée avec succès !");
+        success("Promotion créée avec succès !");
       }
 
       handleCloseModal();
       loadPromotions();
       loadStats();
-    } catch (error) {
-      alert(error.response?.data?.error || "Erreur lors de la sauvegarde");
+    } catch (err) {
+      error(err.response?.data?.error || "Erreur lors de la sauvegarde");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (
-      !window.confirm("Êtes-vous sûr de vouloir supprimer cette promotion ?")
-    ) {
-      return;
-    }
+  // --- GESTION SUPPRESSION ---
+  const initiateDelete = (id) => {
+    setPromotionToDelete(id);
+    setShowDeleteConfirm(true);
+  };
 
-    try {
-      await api.delete(`/promotions/${id}`);
-      alert("Promotion supprimée avec succès !");
-      loadPromotions();
-      loadStats();
-    } catch (error) {
-      alert(error.response?.data?.error || "Erreur lors de la suppression");
+  const handleConfirmDelete = async () => {
+    if (promotionToDelete) {
+      try {
+        await api.delete(`/promotions/${promotionToDelete}`);
+        success("Promotion supprimée avec succès !");
+        loadPromotions();
+        loadStats();
+        setShowDeleteConfirm(false);
+        setPromotionToDelete(null);
+      } catch (err) {
+        error(err.response?.data?.error || "Erreur lors de la suppression");
+      }
     }
   };
 
@@ -176,8 +194,11 @@ const Promotions = () => {
         is_active: !promotion.is_active,
       });
       loadPromotions();
-    } catch (error) {
-      alert(error.response?.data?.error || "Erreur lors de la modification");
+      success(
+        promotion.is_active ? "Promotion désactivée" : "Promotion activée"
+      );
+    } catch (err) {
+      error(err.response?.data?.error || "Erreur lors de la modification");
     }
   };
 
@@ -210,6 +231,27 @@ const Promotions = () => {
 
   return (
     <DashboardLayout>
+      {/* TOAST CONTAINER */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+          duration={toast.duration}
+        />
+      )}
+
+      {/* MODALE CONFIRMATION SUPPRESSION */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Supprimer la promotion"
+        message="Êtes-vous sûr de vouloir supprimer cette promotion ? Cette action est irréversible."
+        confirmText="Supprimer"
+        type="danger"
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -233,7 +275,7 @@ const Promotions = () => {
           )}
         </div>
 
-        {/* Statistiques */}
+        {/* Statistiques (inchangé) */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
@@ -457,7 +499,7 @@ const Promotions = () => {
 
                         {can.deleteService && (
                           <button
-                            onClick={() => handleDelete(promo.id)}
+                            onClick={() => initiateDelete(promo.id)}
                             className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm font-medium transition-colors"
                           >
                             <TrashIcon className="h-4 w-4" />
@@ -472,10 +514,10 @@ const Promotions = () => {
           </div>
         )}
 
-        {/* Modal de création/édition */}
+        {/* Modal de création/édition (inchangée) */}
         {showModal && (
           <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4 overflow-y-auto">
-            <div className="bg-white rounded-xl max-w-2xl w-full mx-4 shadow-2xl my-8">
+            <div className="bg-white rounded-xl max-w-2xl w-full mx-4 shadow-2xl my-8 animate-scale-in">
               <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
                 <h3 className="text-xl font-bold">
                   {editingPromotion

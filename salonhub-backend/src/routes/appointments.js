@@ -537,20 +537,21 @@ router.patch("/:id/status", async (req, res) => {
 
         if (fullAppointment) {
           // Formater la date
-          const appointmentDate = new Date(fullAppointment.appointment_date).toLocaleDateString(
-            "fr-FR",
-            {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            }
-          );
+          const appointmentDate = new Date(
+            fullAppointment.appointment_date
+          ).toLocaleDateString("fr-FR", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
 
           // Envoyer par WhatsApp si c'est la méthode préférée ou si le client a un téléphone
-          if (fullAppointment.client_phone &&
-              (fullAppointment.preferred_contact_method === 'sms' ||
-               fullAppointment.preferred_contact_method === 'both')) {
+          if (
+            fullAppointment.client_phone &&
+            (fullAppointment.preferred_contact_method === "sms" ||
+              fullAppointment.preferred_contact_method === "both")
+          ) {
             try {
               await whatsappService.sendAppointmentConfirmation({
                 to: fullAppointment.client_phone,
@@ -558,19 +559,26 @@ router.patch("/:id/status", async (req, res) => {
                 serviceName: fullAppointment.service_name,
                 date: appointmentDate,
                 time: fullAppointment.start_time,
-                salonName: fullAppointment.salon_name
+                salonName: fullAppointment.salon_name,
               });
-              console.log(`✓ Confirmation WhatsApp envoyée à ${fullAppointment.client_phone}`);
+              console.log(
+                `✓ Confirmation WhatsApp envoyée à ${fullAppointment.client_phone}`
+              );
             } catch (error) {
-              console.error(`❌ Erreur envoi confirmation WhatsApp:`, error.message);
+              console.error(
+                `❌ Erreur envoi confirmation WhatsApp:`,
+                error.message
+              );
             }
           }
 
           // Envoyer par Email si c'est la méthode préférée ou si pas de téléphone
-          if (fullAppointment.client_email &&
-              (fullAppointment.preferred_contact_method === 'email' ||
-               fullAppointment.preferred_contact_method === 'both' ||
-               !fullAppointment.client_phone)) {
+          if (
+            fullAppointment.client_email &&
+            (fullAppointment.preferred_contact_method === "email" ||
+              fullAppointment.preferred_contact_method === "both" ||
+              !fullAppointment.client_phone)
+          ) {
             try {
               await emailService.sendAppointmentConfirmation({
                 to: fullAppointment.client_email,
@@ -578,17 +586,22 @@ router.patch("/:id/status", async (req, res) => {
                 appointmentDate: appointmentDate,
                 appointmentTime: fullAppointment.start_time,
                 serviceName: fullAppointment.service_name,
-                salonName: fullAppointment.salon_name
+                salonName: fullAppointment.salon_name,
               });
-              console.log(`✓ Confirmation email envoyée à ${fullAppointment.client_email}`);
+              console.log(
+                `✓ Confirmation email envoyée à ${fullAppointment.client_email}`
+              );
             } catch (error) {
-              console.error(`❌ Erreur envoi confirmation email:`, error.message);
+              console.error(
+                `❌ Erreur envoi confirmation email:`,
+                error.message
+              );
             }
           }
         }
       } catch (error) {
         // On log l'erreur mais on ne bloque pas la réponse
-        console.error('Erreur envoi notification confirmation:', error);
+        console.error("Erreur envoi notification confirmation:", error);
       }
     }
 
@@ -714,10 +727,10 @@ router.post("/:id/send-confirmation", async (req, res) => {
     const { send_via } = req.body; // 'email', 'whatsapp', ou 'both'
 
     // Validation
-    if (!send_via || !['email', 'whatsapp', 'both'].includes(send_via)) {
+    if (!send_via || !["email", "whatsapp", "both"].includes(send_via)) {
       return res.status(400).json({
         success: false,
-        error: "send_via doit être: email, whatsapp ou both"
+        error: "send_via doit être: email, whatsapp ou both",
       });
     }
 
@@ -749,7 +762,7 @@ router.post("/:id/send-confirmation", async (req, res) => {
     if (!appointment) {
       return res.status(404).json({
         success: false,
-        error: "Rendez-vous introuvable"
+        error: "Rendez-vous introuvable",
       });
     }
 
@@ -760,29 +773,29 @@ router.post("/:id/send-confirmation", async (req, res) => {
       clientName: `${appointment.client_first_name} ${appointment.client_last_name}`,
       salonName: appointment.salon_name,
       serviceName: appointment.service_name,
-      date: new Date(appointment.appointment_date).toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+      date: new Date(appointment.appointment_date).toLocaleDateString("fr-FR", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       }),
       time: appointment.start_time.substring(0, 5),
-      staffName: appointment.staff_first_name ?
-        `${appointment.staff_first_name} ${appointment.staff_last_name}` :
-        "Un membre de notre équipe",
+      staffName: appointment.staff_first_name
+        ? `${appointment.staff_first_name} ${appointment.staff_last_name}`
+        : "Un membre de notre équipe",
       duration: appointment.service_duration,
-      salonPhone: appointment.salon_phone
+      salonPhone: appointment.salon_phone,
     };
 
     let emailSent = false;
     let whatsappSent = false;
 
     // Envoyer par email
-    if (send_via === 'email' || send_via === 'both') {
+    if (send_via === "email" || send_via === "both") {
       if (!appointment.client_email) {
         return res.status(400).json({
           success: false,
-          error: "Le client n'a pas d'adresse email"
+          error: "Le client n'a pas d'adresse email",
         });
       }
 
@@ -814,7 +827,7 @@ router.post("/:id/send-confirmation", async (req, res) => {
                 ${confirmationData.salonName}
               </p>
             </div>
-          `
+          `,
         });
         emailSent = true;
       } catch (error) {
@@ -823,11 +836,11 @@ router.post("/:id/send-confirmation", async (req, res) => {
     }
 
     // Envoyer par WhatsApp (simulation pour l'instant)
-    if (send_via === 'whatsapp' || send_via === 'both') {
+    if (send_via === "whatsapp" || send_via === "both") {
       if (!appointment.client_phone) {
         return res.status(400).json({
           success: false,
-          error: "Le client n'a pas de numéro de téléphone"
+          error: "Le client n'a pas de numéro de téléphone",
         });
       }
 
@@ -867,13 +880,13 @@ Nous vous attendons avec plaisir ! 😊
         req.tenantId,
         appointment.client_id,
         appointment.id,
-        'appointment_confirmation',
-        'Confirmation de rendez-vous',
+        "appointment_confirmation",
+        "Confirmation de rendez-vous",
         `Rendez-vous confirmé le ${confirmationData.date} à ${confirmationData.time}`,
         send_via,
-        (emailSent || whatsappSent) ? 'sent' : 'failed',
+        emailSent || whatsappSent ? "sent" : "failed",
         req.user.id,
-        new Date()
+        new Date(),
       ]
     );
 
@@ -882,14 +895,14 @@ Nous vous attendons avec plaisir ! 😊
       message: "Confirmation envoyée avec succès",
       data: {
         emailSent,
-        whatsappSent
-      }
+        whatsappSent,
+      },
     });
   } catch (error) {
     console.error("Erreur envoi confirmation:", error);
     res.status(500).json({
       success: false,
-      error: "Erreur lors de l'envoi de la confirmation"
+      error: "Erreur lors de l'envoi de la confirmation",
     });
   }
 });

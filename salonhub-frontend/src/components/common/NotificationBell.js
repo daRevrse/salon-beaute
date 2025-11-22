@@ -1,9 +1,9 @@
 /**
  * Composant Cloche de Notifications
- * Affiche les notifications de rendez-vous du jour
+ * Affiche TOUS les rendez-vous du jour (passés et futurs)
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   XMarkIcon,
   CalendarDaysIcon,
@@ -17,89 +17,138 @@ const NotificationBell = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [animate, setAnimate] = useState(false);
+
   const socket = useSocket();
 
-  // Charger les notifications au montage et toutes les 5 minutes
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // Helper pour obtenir la date locale YYYY-MM-DD
+  const getLocalDateString = () => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localDate = new Date(now.getTime() - offset);
+    return localDate.toISOString().split("T")[0];
+  };
 
-  // Écouter les nouveaux rendez-vous en temps réel via WebSocket
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleNewAppointment = (data) => {
-      console.log("🔔 Nouveau RDV reçu via WebSocket:", data);
-      // Recharger les notifications
-      fetchNotifications();
-    };
-
-    socket.on("new_appointment", handleNewAppointment);
-
-    return () => {
-      socket.off("new_appointment", handleNewAppointment);
-    };
-  }, [socket]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
-      // Récupérer les rendez-vous du jour
-      const today = new Date().toISOString().split("T")[0];
+      // const today = getLocalDateString();
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000; // Décalage en millisecondes
+      const localDate = new Date(now.getTime() - offset);
+      const today = localDate.toISOString().split("T")[0]; // "YYYY-MM-DD" local
+
+      console.log("📅 Date demandée à l'API:", today); // Pour vérifier dans la console
+      // On demande au backend les RDV de la date locale "aujourd'hui"
       const response = await api.get(`/appointments?date=${today}`);
+
+      console.log("response", response);
 
       if (response.data.success) {
         const todayAppointments = response.data.data || [];
-
-        // Filtrer les rendez-vous à venir (pending et confirmed)
-        const upcoming = todayAppointments.filter(
-          (apt) =>
-            (apt.status === "pending" || apt.status === "confirmed") &&
-            new Date(`${apt.appointment_date} ${apt.start_time}`) > new Date()
-        );
-
-        setNotifications(upcoming);
-        setUnreadCount(upcoming.length);
+        processAppointments(todayAppointments);
       }
     } catch (err) {
       console.error("Erreur chargement notifications:", err);
     }
+  }, []);
+
+  const processAppointments = (appointmentsList) => {
+    const todayStr = getLocalDateString();
+
+    // Filtrage assoupli : On garde tous les RDV du jour (pending/confirmed)
+    const daysAppointments = appointmentsList.filter((apt) => {
+      // 1. Statut valide
+      if (apt.status !== "pending" && apt.status !== "confirmed") return false;
+
+      // 2. Vérification de la date (sécurité)
+      const aptDateStr =
+        typeof apt.appointment_date === "string"
+          ? apt.appointment_date.substring(0, 10)
+          : new Date(apt.appointment_date).toISOString().split("T")[0];
+
+      // On s'assure que c'est bien la date d'aujourd'hui
+      return aptDateStr === todayStr;
+    });
+
+    // Trier par heure (du matin au soir)
+    daysAppointments.sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+    setNotifications(daysAppointments);
+    // Le badge rouge indique le nombre total de RDV du jour
+    setUnreadCount(daysAppointments.length);
   };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  // Écoute Temps Réel
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewData = (data) => {
+      console.log("🔔 WS Event:", data);
+      setAnimate(true);
+      setTimeout(() => setAnimate(false), 1000);
+
+      // On recharge tout pour être sûr d'avoir l'état exact
+      fetchNotifications();
+    };
+
+    socket.on("new_appointment", handleNewData);
+    socket.on("appointment_updated", handleNewData); // Écouter aussi les mises à jour
+
+    return () => {
+      socket.off("new_appointment", handleNewData);
+      socket.off("appointment_updated", handleNewData);
+    };
+  }, [socket, fetchNotifications]);
 
   const formatTime = (timeStr) => {
     if (!timeStr) return "";
     return timeStr.substring(0, 5);
   };
 
+  // Helper pour savoir si le RDV est passé (pour le style visuel uniquement)
+  const isPast = (timeStr) => {
+    const now = new Date();
+    const [hours, minutes] = timeStr.split(":");
+    const aptTime = new Date();
+    aptTime.setHours(hours, minutes, 0);
+    return aptTime < now;
+  };
+
   return (
     <div className="relative">
-      {/* Bouton cloche */}
       <button
         type="button"
         onClick={() => setShowNotifications(!showNotifications)}
         className="relative p-2 rounded-full text-gray-500 hover:text-indigo-600 hover:bg-gray-100 transition"
       >
-        <BellIcon className="h-6 w-6" />
+        <BellIcon
+          className={`h-6 w-6 ${
+            animate ? "animate-swing text-indigo-600" : ""
+          }`}
+        />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-semibold">
+          <span className="absolute top-1 right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-semibold animate-pulse">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown notifications */}
       {showNotifications && (
         <>
           <div
             className="fixed inset-0 z-40"
             onClick={() => setShowNotifications(false)}
           ></div>
-          <div className="absolute right-0 mt-2 w-80 bg-white shadow-xl rounded-lg border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col">
-            {/* Header */}
+          <div className="absolute right-0 mt-2 w-80 bg-white shadow-xl rounded-lg border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col animate-fade-in-down">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
               <h3 className="text-sm font-semibold text-gray-900">
-                Rendez-vous du jour
+                Planning du jour
               </h3>
               <button
                 onClick={() => setShowNotifications(false)}
@@ -109,57 +158,80 @@ const NotificationBell = () => {
               </button>
             </div>
 
-            {/* Liste */}
             <div className="overflow-y-auto flex-1">
               {notifications.length === 0 ? (
                 <div className="p-8 text-center">
                   <BellIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
                   <p className="text-gray-500 text-sm">
-                    Aucun rendez-vous à venir aujourd'hui
+                    Aucun rendez-vous aujourd'hui
                   </p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {notifications.map((apt) => (
-                    <div
-                      key={apt.id}
-                      className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                            <CalendarDaysIcon className="h-5 w-5 text-indigo-600" />
+                  {notifications.map((apt) => {
+                    const passed = isPast(apt.start_time);
+                    return (
+                      <div
+                        key={apt.id}
+                        className={`p-4 transition-colors cursor-pointer border-l-4 
+                          ${
+                            passed
+                              ? "bg-gray-50 border-gray-300 opacity-75"
+                              : "hover:bg-gray-50 border-transparent hover:border-indigo-500"
+                          }`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="flex-shrink-0">
+                            <div
+                              className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                                apt.status === "confirmed"
+                                  ? "bg-green-100 text-green-600"
+                                  : "bg-yellow-100 text-yellow-600"
+                              }`}
+                            >
+                              <CalendarDaysIcon className="h-5 w-5" />
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">
-                            {apt.client_first_name} {apt.client_last_name}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {apt.service_name}
-                          </p>
-                          <div className="mt-1 flex items-center text-xs text-gray-500">
-                            <ClockIcon className="h-4 w-4 mr-1" />
-                            {formatTime(apt.start_time)} -{" "}
-                            {formatTime(apt.end_time)}
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className={`text-sm font-medium truncate ${
+                                passed ? "text-gray-500" : "text-gray-900"
+                              }`}
+                            >
+                              {apt.client_first_name} {apt.client_last_name}
+                            </p>
+                            <p className="text-xs text-gray-500 mb-1">
+                              {apt.service_name}
+                            </p>
+                            <div
+                              className={`flex items-center text-xs font-semibold ${
+                                passed ? "text-gray-400" : "text-indigo-600"
+                              }`}
+                            >
+                              <ClockIcon className="h-3.5 w-3.5 mr-1" />
+                              {formatTime(apt.start_time)}
+                              <span className="mx-1 text-gray-300">|</span>
+                              <span
+                                className={
+                                  apt.status === "confirmed"
+                                    ? passed
+                                      ? "text-green-800"
+                                      : "text-green-600"
+                                    : passed
+                                    ? "text-yellow-800"
+                                    : "text-yellow-600"
+                                }
+                              >
+                                {apt.status === "confirmed"
+                                  ? "Confirmé"
+                                  : "En attente"}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        <div>
-                          <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              apt.status === "confirmed"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
-                          >
-                            {apt.status === "confirmed"
-                              ? "Confirmé"
-                              : "En attente"}
-                          </span>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -157,10 +157,11 @@ const BookingClientInfo = () => {
     }
 
     try {
-      const response = await api.post("/promotions/validate", {
+      const response = await api.post("/public/promotions/validate", {
         code: code,
-        service_id: service.id,
+        salon_slug: slug,
         order_amount: service.price,
+        service_id: service.id,
       });
 
       if (response.data.success) {

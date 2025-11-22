@@ -84,12 +84,14 @@ class ReminderService {
         WHERE a.status IN ('pending', 'confirmed')
           AND a.appointment_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
           AND a.start_time BETWEEN
-            TIME(DATE_ADD(NOW(), INTERVAL 23 HOUR 30 MINUTE))
-            AND TIME(DATE_ADD(NOW(), INTERVAL 24 HOUR 30 MINUTE))
+            TIME(DATE_ADD(NOW(), INTERVAL 1410 MINUTE)) 
+            AND TIME(DATE_ADD(NOW(), INTERVAL 1470 MINUTE))
         ORDER BY a.appointment_date, a.start_time`
       );
 
-      console.log(`📊 ${appointments.length} rendez-vous trouvés pour rappels 24h`);
+      console.log(
+        `📊 ${appointments.length} rendez-vous trouvés pour rappels 24h`
+      );
 
       let sent = 0;
       let skipped = 0;
@@ -111,15 +113,14 @@ class ReminderService {
         // Envoyer le rappel si le client a un email
         if (apt.client_email) {
           try {
-            const formattedDate = new Date(apt.appointment_date).toLocaleDateString(
-              "fr-FR",
-              {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              }
-            );
+            const formattedDate = new Date(
+              apt.appointment_date
+            ).toLocaleDateString("fr-FR", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
 
             const formattedTime = apt.start_time.substring(0, 5);
 
@@ -170,7 +171,10 @@ class ReminderService {
                 "sent"
               );
             } catch (pushError) {
-              console.error(`⚠️  Erreur push 24h pour RDV ${apt.appointment_id}:`, pushError.message);
+              console.error(
+                `⚠️  Erreur push 24h pour RDV ${apt.appointment_id}:`,
+                pushError.message
+              );
               // Ne pas bloquer si le push échoue
             }
 
@@ -242,12 +246,14 @@ class ReminderService {
         WHERE a.status IN ('pending', 'confirmed')
           AND a.appointment_date = CURDATE()
           AND a.start_time BETWEEN
-            TIME(DATE_ADD(NOW(), INTERVAL 1 HOUR 45 MINUTE))
-            AND TIME(DATE_ADD(NOW(), INTERVAL 2 HOUR 15 MINUTE))
+            TIME(DATE_ADD(NOW(), INTERVAL 105 MINUTE))
+            AND TIME(DATE_ADD(NOW(), INTERVAL 135 MINUTE))
         ORDER BY a.appointment_date, a.start_time`
       );
 
-      console.log(`📊 ${appointments.length} rendez-vous trouvés pour rappels 2h`);
+      console.log(
+        `📊 ${appointments.length} rendez-vous trouvés pour rappels 2h`
+      );
 
       let sent = 0;
       let skipped = 0;
@@ -267,15 +273,14 @@ class ReminderService {
 
         if (apt.client_email) {
           try {
-            const formattedDate = new Date(apt.appointment_date).toLocaleDateString(
-              "fr-FR",
-              {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              }
-            );
+            const formattedDate = new Date(
+              apt.appointment_date
+            ).toLocaleDateString("fr-FR", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
 
             const formattedTime = apt.start_time.substring(0, 5);
 
@@ -327,7 +332,10 @@ class ReminderService {
                 "sent"
               );
             } catch (pushError) {
-              console.error(`⚠️  Erreur push 2h pour RDV ${apt.appointment_id}:`, pushError.message);
+              console.error(
+                `⚠️  Erreur push 2h pour RDV ${apt.appointment_id}:`,
+                pushError.message
+              );
               // Ne pas bloquer si le push échoue
             }
 
@@ -376,7 +384,9 @@ class ReminderService {
          WHERE sent_at < DATE_SUB(NOW(), INTERVAL 90 DAY)`
       );
 
-      console.log(`🧹 ${result.affectedRows} anciens logs de rappels supprimés`);
+      console.log(
+        `🧹 ${result.affectedRows} anciens logs de rappels supprimés`
+      );
       return result.affectedRows;
     } catch (error) {
       console.error("❌ Erreur lors du nettoyage des logs:", error);
