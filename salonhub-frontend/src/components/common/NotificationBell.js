@@ -1,6 +1,6 @@
 /**
  * Composant Cloche de Notifications
- * Affiche TOUS les rendez-vous du jour (passés et futurs)
+ * Affiche les RDV du jour avec gestion "Lu / Non lu"
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -9,6 +9,7 @@ import {
   CalendarDaysIcon,
   ClockIcon,
   BellIcon,
+  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import { useSocket } from "../../contexts/SocketContext";
@@ -19,9 +20,22 @@ const NotificationBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [animate, setAnimate] = useState(false);
 
+  // État pour stocker les IDs des RDV déjà vus
+  const [readIds, setReadIds] = useState(() => {
+    const saved = localStorage.getItem("salonhub_read_notifications");
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const socket = useSocket();
 
-  // Helper pour obtenir la date locale YYYY-MM-DD
+  // Sauvegarder les IDs lus dans le localStorage à chaque changement
+  useEffect(() => {
+    localStorage.setItem(
+      "salonhub_read_notifications",
+      JSON.stringify(readIds)
+    );
+  }, [readIds]);
+
   const getLocalDateString = () => {
     const now = new Date();
     const offset = now.getTimezoneOffset() * 60000;
@@ -31,17 +45,8 @@ const NotificationBell = () => {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      // const today = getLocalDateString();
-      const now = new Date();
-      const offset = now.getTimezoneOffset() * 60000; // Décalage en millisecondes
-      const localDate = new Date(now.getTime() - offset);
-      const today = localDate.toISOString().split("T")[0]; // "YYYY-MM-DD" local
-
-      console.log("📅 Date demandée à l'API:", today); // Pour vérifier dans la console
-      // On demande au backend les RDV de la date locale "aujourd'hui"
+      const today = getLocalDateString();
       const response = await api.get(`/appointments?date=${today}`);
-
-      console.log("response", response);
 
       if (response.data.success) {
         const todayAppointments = response.data.data || [];
@@ -50,32 +55,31 @@ const NotificationBell = () => {
     } catch (err) {
       console.error("Erreur chargement notifications:", err);
     }
-  }, []);
+  }, [readIds]); // Dépendance à readIds ajoutée pour recalculer le count
 
   const processAppointments = (appointmentsList) => {
     const todayStr = getLocalDateString();
 
-    // Filtrage assoupli : On garde tous les RDV du jour (pending/confirmed)
     const daysAppointments = appointmentsList.filter((apt) => {
-      // 1. Statut valide
       if (apt.status !== "pending" && apt.status !== "confirmed") return false;
 
-      // 2. Vérification de la date (sécurité)
       const aptDateStr =
         typeof apt.appointment_date === "string"
           ? apt.appointment_date.substring(0, 10)
           : new Date(apt.appointment_date).toISOString().split("T")[0];
 
-      // On s'assure que c'est bien la date d'aujourd'hui
       return aptDateStr === todayStr;
     });
 
-    // Trier par heure (du matin au soir)
     daysAppointments.sort((a, b) => a.start_time.localeCompare(b.start_time));
 
     setNotifications(daysAppointments);
-    // Le badge rouge indique le nombre total de RDV du jour
-    setUnreadCount(daysAppointments.length);
+
+    // Calculer le nombre de non-lus en excluant ceux présents dans readIds
+    const unread = daysAppointments.filter(
+      (apt) => !readIds.includes(apt.id)
+    ).length;
+    setUnreadCount(unread);
   };
 
   useEffect(() => {
@@ -84,34 +88,43 @@ const NotificationBell = () => {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  // Écoute Temps Réel
   useEffect(() => {
     if (!socket) return;
-
     const handleNewData = (data) => {
-      console.log("🔔 WS Event:", data);
       setAnimate(true);
       setTimeout(() => setAnimate(false), 1000);
-
-      // On recharge tout pour être sûr d'avoir l'état exact
       fetchNotifications();
     };
-
     socket.on("new_appointment", handleNewData);
-    socket.on("appointment_updated", handleNewData); // Écouter aussi les mises à jour
-
+    socket.on("appointment_updated", handleNewData);
     return () => {
       socket.off("new_appointment", handleNewData);
       socket.off("appointment_updated", handleNewData);
     };
   }, [socket, fetchNotifications]);
 
+  // --- NOUVELLES FONCTIONS "MARQUER LU" ---
+
+  const markAsRead = (id, e) => {
+    if (e) e.stopPropagation(); // Empêcher l'ouverture du détail si on clique juste sur "lu"
+    if (!readIds.includes(id)) {
+      setReadIds((prev) => [...prev, id]);
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+  };
+
+  const markAllAsRead = () => {
+    const allIds = notifications.map((n) => n.id);
+    // Fusionner avec les existants pour ne pas perdre l'historique récent
+    setReadIds((prev) => [...new Set([...prev, ...allIds])]);
+    setUnreadCount(0);
+  };
+
   const formatTime = (timeStr) => {
     if (!timeStr) return "";
     return timeStr.substring(0, 5);
   };
 
-  // Helper pour savoir si le RDV est passé (pour le style visuel uniquement)
   const isPast = (timeStr) => {
     const now = new Date();
     const [hours, minutes] = timeStr.split(":");
@@ -146,10 +159,23 @@ const NotificationBell = () => {
             onClick={() => setShowNotifications(false)}
           ></div>
           <div className="absolute right-0 mt-2 w-80 bg-white shadow-xl rounded-lg border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col animate-fade-in-down">
+            {/* Header avec bouton "Tout marquer comme lu" */}
             <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-              <h3 className="text-sm font-semibold text-gray-900">
-                Planning du jour
-              </h3>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Planning du jour
+                </h3>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center font-medium"
+                    title="Tout marquer comme lu"
+                  >
+                    <CheckCircleIcon className="h-3 w-3 mr-1" />
+                    Tout lire
+                  </button>
+                )}
+              </div>
               <button
                 onClick={() => setShowNotifications(false)}
                 className="text-gray-500 hover:text-gray-700"
@@ -170,16 +196,26 @@ const NotificationBell = () => {
                 <div className="divide-y divide-gray-100">
                   {notifications.map((apt) => {
                     const passed = isPast(apt.start_time);
+                    const isUnread = !readIds.includes(apt.id); // Vérifier si lu
+
                     return (
                       <div
                         key={apt.id}
-                        className={`p-4 transition-colors cursor-pointer border-l-4 
+                        onClick={() => markAsRead(apt.id)} // Marquer comme lu au clic
+                        className={`p-4 transition-colors cursor-pointer border-l-4 relative
                           ${
                             passed
                               ? "bg-gray-50 border-gray-300 opacity-75"
                               : "hover:bg-gray-50 border-transparent hover:border-indigo-500"
-                          }`}
+                          }
+                          ${isUnread ? "bg-indigo-50" : ""} 
+                        `}
                       >
+                        {/* Indicateur point bleu si non lu */}
+                        {isUnread && (
+                          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-indigo-600"></span>
+                        )}
+
                         <div className="flex items-start space-x-3">
                           <div className="flex-shrink-0">
                             <div
