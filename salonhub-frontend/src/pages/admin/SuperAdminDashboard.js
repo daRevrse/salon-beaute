@@ -17,6 +17,9 @@ import {
   ChevronRightIcon,
   PauseCircleIcon,
   KeyIcon,
+  CurrencyEuroIcon,
+  ArrowRightOnRectangleIcon,
+  HeartIcon,
 } from "@heroicons/react/24/outline";
 import Toast from "../../components/common/Toast";
 import { useToast } from "../../hooks/useToast";
@@ -366,6 +369,54 @@ function SuperAdminDashboard() {
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <button
+            onClick={() => navigate("/superadmin/billing")}
+            className="bg-white hover:bg-gray-50 rounded-lg shadow p-4 transition flex items-center justify-between group"
+          >
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                <CurrencyEuroIcon className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-gray-900">Billing</p>
+                <p className="text-sm text-gray-500">Revenus & facturation</p>
+              </div>
+            </div>
+            <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition" />
+          </button>
+
+          <button
+            onClick={() => navigate("/superadmin/analytics")}
+            className="bg-white hover:bg-gray-50 rounded-lg shadow p-4 transition flex items-center justify-between group"
+          >
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-4">
+                <ChartBarIcon className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-gray-900">Analytics+</p>
+                <p className="text-sm text-gray-500">Cohortes & health</p>
+              </div>
+            </div>
+            <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition" />
+          </button>
+
+          <button
+            onClick={() => navigate("/superadmin/impersonation")}
+            className="bg-white hover:bg-gray-50 rounded-lg shadow p-4 transition flex items-center justify-between group"
+          >
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mr-4">
+                <ArrowRightOnRectangleIcon className="w-6 h-6 text-orange-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-gray-900">Impersonation</p>
+                <p className="text-sm text-gray-500">Support client</p>
+              </div>
+            </div>
+            <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition" />
+          </button>
+
+          <button
             onClick={() => navigate("/superadmin/admins")}
             className="bg-white hover:bg-gray-50 rounded-lg shadow p-4 transition flex items-center justify-between group"
           >
@@ -402,8 +453,8 @@ function SuperAdminDashboard() {
             className="bg-white hover:bg-gray-50 rounded-lg shadow p-4 transition flex items-center justify-between group"
           >
             <div className="flex items-center">
-              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-4">
-                <UsersIcon className="w-6 h-6 text-indigo-600" />
+              <div className="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center mr-4">
+                <UsersIcon className="w-6 h-6 text-cyan-600" />
               </div>
               <div className="text-left">
                 <p className="font-semibold text-gray-900">Utilisateurs</p>
@@ -434,8 +485,8 @@ function SuperAdminDashboard() {
             className="bg-white hover:bg-gray-50 rounded-lg shadow p-4 transition flex items-center justify-between group"
           >
             <div className="flex items-center">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                <BuildingStorefrontIcon className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center mr-4">
+                <BuildingStorefrontIcon className="w-6 h-6 text-teal-600" />
               </div>
               <div className="text-left">
                 <p className="font-semibold text-gray-900">Tous les salons</p>

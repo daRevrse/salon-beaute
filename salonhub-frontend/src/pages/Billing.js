@@ -215,7 +215,11 @@ const Billing = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white bg-opacity-20 rounded-lg p-4">
               <p className="text-indigo-100 text-sm mb-1">Plan</p>
-              <p className="text-2xl font-bold capitalize">{subscription?.plan || '-'}</p>
+              <p className="text-2xl font-bold">
+                {subscription?.plan 
+                  ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)
+                  : '-'}
+              </p>
             </div>
 
             <div className="bg-white bg-opacity-20 rounded-lg p-4">
@@ -251,7 +255,10 @@ const Billing = () => {
                 <CreditCardIcon className="h-5 w-5 mr-2" />
                 Gérer mon abonnement
               </button>
-              <button className="px-6 py-3 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 font-medium inline-flex items-center">
+              <button
+                onClick={handleManageSubscription}
+                disabled={loading}
+                className="px-6 py-3 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 font-medium inline-flex items-center disabled:opacity-50">
                 <DocumentTextIcon className="h-5 w-5 mr-2" />
                 Voir les factures
               </button>

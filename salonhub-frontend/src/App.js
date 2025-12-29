@@ -41,7 +41,11 @@ import SuperAdminsManagement from "./pages/admin/SuperAdminsManagement";
 import ActivityLogs from "./pages/admin/ActivityLogs";
 import UsersManagement from "./pages/admin/UsersManagement";
 import PasswordResetManagement from "./pages/admin/PasswordResetManagement";
+import BillingDashboard from "./pages/admin/BillingDashboard";
+import ImpersonationManager from "./pages/admin/ImpersonationManager";
+import AdvancedAnalytics from "./pages/admin/AdvancedAnalytics";
 import { SocketProvider } from "./contexts/SocketContext";
+import ImpersonationBanner from "./components/common/ImpersonationBanner";
 
 function App() {
   return (
@@ -50,6 +54,7 @@ function App() {
         <PermissionProvider>
           <CurrencyProvider>
             <SocketProvider>
+              <ImpersonationBanner />
               <Routes>
                 {/* Routes publiques - Authentification */}
                 <Route path="/login" element={<Login />} />
@@ -86,6 +91,18 @@ function App() {
                 <Route
                   path="/superadmin/password-resets"
                   element={<PasswordResetManagement />}
+                />
+                <Route
+                  path="/superadmin/billing"
+                  element={<BillingDashboard />}
+                />
+                <Route
+                  path="/superadmin/impersonation"
+                  element={<ImpersonationManager />}
+                />
+                <Route
+                  path="/superadmin/analytics"
+                  element={<AdvancedAnalytics />}
                 />
 
                 {/* Routes publiques - Booking (Réservation client) */}

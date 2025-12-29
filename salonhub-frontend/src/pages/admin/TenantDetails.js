@@ -26,11 +26,23 @@ import {
 import Toast from "../../components/common/Toast";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import { useToast } from "../../hooks/useToast";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
+const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
 
 function TenantDetailsImproved() {
   const navigate = useNavigate();
@@ -40,8 +52,11 @@ function TenantDetailsImproved() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [showSuspendModal, setShowSuspendModal] = useState(false);
+    const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPlanChangeModal, setShowPlanChangeModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState("");
+  const [planChangeReason, setPlanChangeReason] = useState("");
   const [suspendReason, setSuspendReason] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
   const { toast, hideToast, success, error: showError } = useToast();
@@ -141,6 +156,41 @@ function TenantDetailsImproved() {
     } catch (error) {
       console.error("Erreur activation:", error);
       showError("Erreur lors de l'activation");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  
+  const handlePlanChange = async () => {
+    if (!selectedPlan) {
+      showError("Veuillez sélectionner un plan");
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const token = getToken();
+
+      await axios.put(
+        `${API_URL}/admin/tenants/${id}/change-plan`,
+        {
+          plan: selectedPlan,
+          reason: planChangeReason.trim() || "Changement manuel",
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      success(`Plan changé avec succès: ${selectedPlan}`);
+      setShowPlanChangeModal(false);
+      setSelectedPlan("");
+      setPlanChangeReason("");
+      await loadTenantData();
+    } catch (error) {
+      console.error("Erreur changement de plan:", error);
+      showError(error.response?.data?.error || "Erreur lors du changement de plan");
     } finally {
       setActionLoading(false);
     }
@@ -297,14 +347,29 @@ function TenantDetailsImproved() {
                 <XCircleIcon className="w-5 h-5 mr-2" />
                 Supprimer
               </button>
+              <button
+                onClick={() => setShowPlanChangeModal(true)}
+                className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+              >
+                <CogIcon className="w-5 h-5 mr-2" />
+                Changer le plan
+              </button>
             </div>
           </div>
 
           {/* Info Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <InfoItem icon={EnvelopeIcon} label="Email" value={tenant.email} />
-            <InfoItem icon={PhoneIcon} label="Téléphone" value={tenant.phone || "Non renseigné"} />
-            <InfoItem icon={MapPinIcon} label="Adresse" value={tenant.address || "Non renseigné"} />
+            <InfoItem
+              icon={PhoneIcon}
+              label="Téléphone"
+              value={tenant.phone || "Non renseigné"}
+            />
+            <InfoItem
+              icon={MapPinIcon}
+              label="Adresse"
+              value={tenant.address || "Non renseigné"}
+            />
             <InfoItem
               icon={CalendarIcon}
               label="Date de création"
@@ -404,7 +469,10 @@ function TenantDetailsImproved() {
                         dataKey="value"
                       >
                         {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -465,7 +533,10 @@ function TenantDetailsImproved() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {users.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                      <td
+                        colSpan="5"
+                        className="px-6 py-8 text-center text-gray-500"
+                      >
                         Aucun utilisateur trouvé
                       </td>
                     </tr>
@@ -476,14 +547,17 @@ function TenantDetailsImproved() {
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center">
                               <span className="text-indigo-600 font-semibold">
-                                {user.first_name?.[0]}{user.last_name?.[0]}
+                                {user.first_name?.[0]}
+                                {user.last_name?.[0]}
                               </span>
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">
                                 {user.first_name} {user.last_name}
                               </div>
-                              <div className="text-sm text-gray-500">ID: {user.id}</div>
+                              <div className="text-sm text-gray-500">
+                                ID: {user.id}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -508,7 +582,9 @@ function TenantDetailsImproved() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {user.last_login_at
-                            ? new Date(user.last_login_at).toLocaleDateString("fr-FR")
+                            ? new Date(user.last_login_at).toLocaleDateString(
+                                "fr-FR"
+                              )
                             : "Jamais"}
                         </td>
                       </tr>
@@ -530,7 +606,7 @@ function TenantDetailsImproved() {
             <div className="space-y-3">
               <ConfigItem
                 label="Booking public URL"
-                value={`${window.location.origin}/booking/${tenant.slug}`}
+                value={`${window.location.origin}/book/${tenant.slug}`}
               />
               <ConfigItem
                 label="Plan d'abonnement"
@@ -540,18 +616,9 @@ function TenantDetailsImproved() {
                 label="Statut d'abonnement"
                 value={tenant.subscription_status}
               />
-              <ConfigItem
-                label="Timezone"
-                value={tenant.timezone || "UTC"}
-              />
-              <ConfigItem
-                label="Devise"
-                value={tenant.currency || "EUR"}
-              />
-              <ConfigItem
-                label="Tenant ID"
-                value={tenant.id}
-              />
+              <ConfigItem label="Timezone" value={tenant.timezone || "UTC"} />
+              <ConfigItem label="Devise" value={tenant.currency || "EUR"} />
+              <ConfigItem label="Tenant ID" value={tenant.id} />
             </div>
           </div>
         )}
@@ -720,7 +787,9 @@ function RoleBadge({ role }) {
   const badge = badges[role] || badges.staff;
 
   return (
-    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${badge.color}`}>
+    <span
+      className={`px-2 py-1 text-xs font-semibold rounded-full ${badge.color}`}
+    >
       {badge.label}
     </span>
   );

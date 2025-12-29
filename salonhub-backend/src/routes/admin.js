@@ -387,6 +387,88 @@ router.put(
 );
 
 /**
+ * PUT /api/admin/tenants/:id/change-plan
+ * Manually change tenant subscription plan (SuperAdmin only)
+ */
+router.put(
+  "/tenants/:id/change-plan",
+  superAdminAuth,
+  requirePermission("tenants", "edit"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { plan, reason } = req.body;
+
+      // Validate plan
+      const validPlans = ["essential", "professional", "enterprise", "trial"];
+      if (!plan || !validPlans.includes(plan)) {
+        return res.status(400).json({
+          success: false,
+          error: "Plan invalide",
+          message: `Le plan doit être l'un des suivants: ${validPlans.join(", ")}`,
+        });
+      }
+
+      // Get current tenant
+      const [tenants] = await pool.query(
+        `SELECT * FROM tenants WHERE id = ?`,
+        [id]
+      );
+
+      if (tenants.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant non trouvé",
+        });
+      }
+
+      const tenant = tenants[0];
+      const previousPlan = tenant.subscription_plan;
+
+      // Update tenant plan
+      await pool.query(
+        `UPDATE tenants SET 
+          subscription_plan = ?,
+          subscription_status = 'active',
+          subscription_started_at = COALESCE(subscription_started_at, NOW())
+        WHERE id = ?`,
+        [plan, id]
+      );
+
+      // Log the activity
+      await logAdminActivity(req.superAdmin.id, "plan_changed", {
+        resource_type: "tenant",
+        resource_id: id,
+        description: `Changement de plan manuel pour ${tenant.name}: ${previousPlan} → ${plan}`,
+        metadata: {
+          previous_plan: previousPlan,
+          new_plan: plan,
+          reason: reason || "Changement manuel par SuperAdmin",
+        },
+        req,
+      });
+
+      res.json({
+        success: true,
+        message: `Plan mis à jour avec succès: ${plan}`,
+        data: {
+          tenant_id: id,
+          previous_plan: previousPlan,
+          new_plan: plan,
+        },
+      });
+    } catch (error) {
+      console.error("Erreur PUT /tenants/:id/change-plan:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+
+/**
  * DELETE /api/admin/tenants/:id
  * Supprimer définitivement un tenant (DANGER - Super Admin uniquement)
  */

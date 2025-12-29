@@ -14,6 +14,7 @@ import {
   CalendarDaysIcon,
   CurrencyDollarIcon,
   ArrowPathIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 
 const BookingDateTime = () => {
@@ -66,6 +67,54 @@ const BookingDateTime = () => {
 
   // Date minimum = aujourd'hui
   const today = new Date().toISOString().split("T")[0];
+
+  // Helper: Parser les horaires d'ouverture
+  const parseBusinessHours = () => {
+    if (!salon?.business_hours) return null;
+
+    try {
+      const hours = typeof salon.business_hours === 'string'
+        ? JSON.parse(salon.business_hours)
+        : salon.business_hours;
+
+      const daysMap = {
+        monday: 'Lundi',
+        tuesday: 'Mardi',
+        wednesday: 'Mercredi',
+        thursday: 'Jeudi',
+        friday: 'Vendredi',
+        saturday: 'Samedi',
+        sunday: 'Dimanche'
+      };
+
+      const schedule = [];
+
+      Object.entries(daysMap).forEach(([key, label]) => {
+        const dayHours = hours[key];
+        if (dayHours && dayHours.open && dayHours.close && !dayHours.closed) {
+          schedule.push({
+            day: label,
+            open: dayHours.open,
+            close: dayHours.close,
+            isOpen: true
+          });
+        } else {
+          schedule.push({
+            day: label,
+            isOpen: false
+          });
+        }
+      });
+
+      return schedule;
+    } catch (err) {
+      console.error('Erreur parsing business hours:', err);
+      return null;
+    }
+  };
+
+  const businessSchedule = parseBusinessHours();
+  const openDays = businessSchedule?.filter(d => d.isOpen) || [];
 
   return (
     <div className="min-h-screen relative">
@@ -141,6 +190,47 @@ const BookingDateTime = () => {
             </div>
           )}
 
+          {/* Horaires d'ouverture */}
+          {businessSchedule && openDays.length > 0 && (
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-5 mb-8 shadow-sm">
+              <div className="flex items-start">
+                <InformationCircleIcon className="w-6 h-6 text-indigo-600 mr-3 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    Horaires d'ouverture
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {businessSchedule.map((day, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-center justify-between py-2 px-3 rounded-lg ${
+                          day.isOpen
+                            ? 'bg-white/80 text-gray-900'
+                            : 'bg-gray-100/50 text-gray-400'
+                        }`}
+                      >
+                        <span className="font-medium text-sm">{day.day}</span>
+                        {day.isOpen ? (
+                          <span className="text-sm text-indigo-700 font-semibold">
+                            {day.open} - {day.close}
+                          </span>
+                        ) : (
+                          <span className="text-sm italic">Fermé</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {openDays.length < 7 && (
+                    <p className="text-xs text-gray-600 mt-3 italic">
+                      💡 Le salon est ouvert {openDays.length} jour{openDays.length > 1 ? 's' : ''} par semaine.
+                      Veuillez choisir une date correspondant aux jours d'ouverture.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Sélection de date */}
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
             <label className="flex items-center text-lg font-semibold text-gray-700 mb-4">
@@ -168,13 +258,23 @@ const BookingDateTime = () => {
 
           {!loading && selectedDate && availableSlots.length === 0 && (
             <div className="text-center py-12 bg-white rounded-xl shadow-md border border-gray-100">
-              <ClockIcon className="mx-auto h-12 w-12 text-red-400 mb-4" />
+              <ClockIcon className="mx-auto h-12 w-12 text-amber-400 mb-4" />
               <h3 className="text-xl font-medium text-gray-900 mb-2">
-                Salon fermé ou complet
+                Aucun créneau disponible
               </h3>
-              <p className="text-gray-600">
-                Veuillez choisir une autre date ou un autre service.
+              <p className="text-gray-600 mb-4">
+                Le salon est fermé ce jour ou tous les créneaux sont réservés.
               </p>
+              {openDays.length > 0 && (
+                <div className="inline-block bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 mt-2">
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    📅 Jours d'ouverture :
+                  </p>
+                  <p className="text-sm text-indigo-700 font-semibold">
+                    {openDays.map(d => d.day).join(', ')}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

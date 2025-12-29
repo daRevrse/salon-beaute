@@ -17,7 +17,13 @@
       "Bash(taskkill:*)",
       "Bash(dir:*)",
       "Bash(node scripts/run-migration.js:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(del update-stripe.js)",
+      "Bash(grep:*)",
+      "Bash(del fix-analytics.js)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(del test-appointments.js)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

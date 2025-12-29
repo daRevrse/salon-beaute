@@ -30,7 +30,26 @@ router.get("/salon/:slug", async (req, res) => {
       return res.status(404).json({ error: "Salon non trouvé ou inactif" });
     }
 
-    res.json(tenant[0]);
+    // Récupérer les business_hours depuis les settings
+    const settings = await db.query(
+      `SELECT setting_value FROM settings
+       WHERE tenant_id = ? AND setting_key = 'business_hours'`,
+      [tenant[0].id]
+    );
+
+    const salonData = { ...tenant[0] };
+
+    // Ajouter business_hours si disponible
+    if (settings.length > 0) {
+      try {
+        salonData.business_hours = JSON.parse(settings[0].setting_value);
+      } catch (e) {
+        console.error("Erreur parsing business_hours:", e);
+        salonData.business_hours = null;
+      }
+    }
+
+    res.json(salonData);
   } catch (error) {
     console.error("Erreur lors de la récupération du salon:", error);
     res.status(500).json({ error: "Erreur serveur" });

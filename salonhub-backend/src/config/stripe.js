@@ -7,32 +7,32 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // Plans d'abonnement SalonHub
 const PLANS = {
-  starter: {
-    name: "Starter",
-    price: 29,
-    priceId: process.env.STRIPE_PRICE_STARTER, // À créer dans Stripe Dashboard
-    features: ["100 clients maximum", "Gestion rendez-vous", "Support email"],
+  essential: {
+    name: "Essential",
+    price: 9.99,
+    priceId: process.env.STRIPE_PRICE_ESSENTIAL, // À créer dans Stripe Dashboard
+    features: ["100 clients maximum", "Gestion rendez-vous", "Réservations en ligne", "Support email"],
   },
   professional: {
     name: "Professional",
-    price: 59,
+    price: 29.99,
     priceId: process.env.STRIPE_PRICE_PROFESSIONAL,
     features: [
       "Clients illimités",
-      "Site web inclus",
-      "Rappels SMS",
+      "Personnel illimité",
+      "Statistiques avancées",
       "Support prioritaire",
     ],
   },
-  business: {
-    name: "Business",
-    price: 99,
-    priceId: process.env.STRIPE_PRICE_BUSINESS,
+  enterprise: {
+    name: "Enterprise",
+    price: 69.99,
+    priceId: process.env.STRIPE_PRICE_ENTERPRISE,
     features: [
-      "Multi-salons",
+      "Multi-établissements",
+      "API & intégrations",
       "Paiement en ligne",
-      "Statistiques avancées",
-      "Support téléphonique",
+      "Support dédié 24/7",
     ],
   },
 };

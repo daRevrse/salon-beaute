@@ -163,6 +163,12 @@ app.use("/api/promotions", require("./routes/promotions"));
 app.use("/api/scheduler", require("./routes/scheduler"));
 
 // Routes SuperAdmin (système SaaS)
+// IMPORTANT: Plus spécifiques d'abord, générales ensuite
+app.use("/api/admin/billing", require("./routes/billing"));
+app.use("/api/admin/impersonate", require("./routes/impersonation"));
+app.use("/api/admin/analytics", require("./routes/analytics-advanced"));
+app.use("/api/admin/alerts", require("./routes/alerts"));
+app.use("/api/admin/system", require("./routes/system-health"));
 app.use("/api/admin", require("./routes/admin"));
 
 // ==========================================

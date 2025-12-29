@@ -487,7 +487,7 @@ const Register = () => {
                     </span>
                     <div className="mt-4 mb-4">
                       <span className="text-3xl font-bold text-gray-900">
-                        {formatPrice(29)}
+                        {formatPrice(9.99)}
                       </span>
                       <span className="text-gray-600">/mois</span>
                     </div>
@@ -534,7 +534,7 @@ const Register = () => {
                     </span>
                     <div className="mt-4 mb-4">
                       <span className="text-3xl font-bold text-gray-900">
-                        {formatPrice(59)}
+                        {formatPrice(29.99)}
                       </span>
                       <span className="text-gray-600">/mois</span>
                     </div>
@@ -578,7 +578,7 @@ const Register = () => {
                     </span>
                     <div className="mt-4 mb-4">
                       <span className="text-3xl font-bold text-gray-900">
-                        {formatPrice(99)}
+                        {formatPrice(69.99)}
                       </span>
                       <span className="text-gray-600">/mois</span>
                     </div>
