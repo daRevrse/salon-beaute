@@ -1,31 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e:*)",
-      "Bash(sqlite3:*)",
-      "Bash(npm run build:*)",
-      "Bash(cat:*)",
-      "Bash(npm uninstall:*)",
-      "Bash(npm install:*)",
-      "Bash(mysql:*)",
-      "Bash(chmod:*)",
-      "Bash(npm run dev:*)",
-      "Bash(npm start)",
-      "Bash(node setup-promotions-db.js:*)",
-      "Bash(netstat:*)",
-      "Bash(findstr:*)",
-      "Bash(taskkill:*)",
-      "Bash(dir:*)",
-      "Bash(node scripts/run-migration.js:*)",
-      "Bash(node:*)",
-      "Bash(del update-stripe.js)",
-      "Bash(grep:*)",
-      "Bash(del fix-analytics.js)",
-      "Bash(timeout /t 3 /nobreak)",
-      "Bash(del test-appointments.js)",
-      "Bash(curl:*)"
-    ],
-    "deny": [],
-    "ask": []
+      "Bash(npx create-expo-app@latest salonhub-mobile --template blank)",
+      "Bash(npx expo start --clear --reset-cache)"
+    ]
   }
 }
