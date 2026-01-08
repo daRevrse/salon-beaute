@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npx create-expo-app@latest salonhub-mobile --template blank)",
-      "Bash(npx expo start --clear --reset-cache)"
+      "Bash(npx expo start --clear --reset-cache)",
+      "Bash(npx expo start:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill //F //PID 28488)",
+      "Bash(npm install:*)"
     ]
   }
 }

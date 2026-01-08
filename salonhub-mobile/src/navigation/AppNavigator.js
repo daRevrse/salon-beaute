@@ -8,11 +8,25 @@ import { useAuth } from '../contexts/AuthContext';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import PasswordResetSuccessScreen from '../screens/PasswordResetSuccessScreen';
+import PaymentScreen from '../screens/PaymentScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
+import AppointmentFormScreen from '../screens/AppointmentFormScreen';
+import AppointmentDetailScreen from '../screens/AppointmentDetailScreen';
 import ClientsScreen from '../screens/ClientsScreen';
+import ClientFormScreen from '../screens/ClientFormScreen';
+import ClientHistoryScreen from '../screens/ClientHistoryScreen';
 import ServicesScreen from '../screens/ServicesScreen';
+import ServiceFormScreen from '../screens/ServiceFormScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import BusinessHoursScreen from '../screens/BusinessHoursScreen';
+import BusinessSettingsScreen from '../screens/BusinessSettingsScreen';
+import StaffScreen from '../screens/StaffScreen';
+import BillingScreen from '../screens/BillingScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -98,9 +112,67 @@ const AppNavigator = () => {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="Main" component={TabNavigator} />
+          <>
+            <Stack.Screen name="Main" component={TabNavigator} />
+            <Stack.Screen
+              name="AppointmentForm"
+              component={AppointmentFormScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="AppointmentDetail"
+              component={AppointmentDetailScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ClientForm"
+              component={ClientFormScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ClientHistory"
+              component={ClientHistoryScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ServiceForm"
+              component={ServiceFormScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="BusinessHours"
+              component={BusinessHoursScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="BusinessSettings"
+              component={BusinessSettingsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Staff"
+              component={StaffScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Billing"
+              component={BillingScreen}
+              options={{ headerShown: false }}
+            />
+          </>
         ) : (
-          <Stack.Screen name="Login" component={LoginScreen} />
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="Payment" component={PaymentScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen name="PasswordResetSuccess" component={PasswordResetSuccessScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>
