@@ -22,9 +22,10 @@ const tenantMiddleware = (req, res, next) => {
     });
   }
 
-  // Injection du tenant_id dans la requête
-  // Accessible dans toutes les routes via req.tenantId
+  // Injection du tenant_id et user_id dans la requête
+  // Accessible dans toutes les routes via req.tenantId et req.userId
   req.tenantId = tenantId;
+  req.userId = req.user?.id;
 
   // Log en dev (pour debug)
   if (process.env.NODE_ENV === "development") {

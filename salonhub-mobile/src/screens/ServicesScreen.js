@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -10,19 +10,19 @@ import {
   ScrollView,
   Image,
   Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
-import FilterButton from '../components/FilterButton';
-import ActionButton from '../components/ActionButton';
-import EmptyState from '../components/EmptyState';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import api, { API_URL } from "../services/api";
+import FilterButton from "../components/FilterButton";
+import ActionButton from "../components/ActionButton";
+import EmptyState from "../components/EmptyState";
 
 const ServicesScreen = ({ navigation }) => {
   const [services, setServices] = useState([]);
   const [filteredServices, setFilteredServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -35,17 +35,20 @@ const ServicesScreen = ({ navigation }) => {
 
   const loadServices = async () => {
     try {
-      const response = await api.get('/services');
+      const response = await api.get("/services");
+      console.log("Services chargés:", response.data);
       if (response.data.success) {
         const servicesData = response.data.data;
         setServices(servicesData);
 
         // Extract unique categories
-        const uniqueCategories = [...new Set(servicesData.map(s => s.category).filter(Boolean))];
+        const uniqueCategories = [
+          ...new Set(servicesData.map((s) => s.category).filter(Boolean)),
+        ];
         setCategories(uniqueCategories);
       }
     } catch (error) {
-      console.error('Erreur chargement services:', error);
+      console.error("Erreur chargement services:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -53,10 +56,12 @@ const ServicesScreen = ({ navigation }) => {
   };
 
   const filterServices = () => {
-    if (selectedCategory === 'all') {
+    if (selectedCategory === "all") {
       setFilteredServices(services);
     } else {
-      setFilteredServices(services.filter(s => s.category === selectedCategory));
+      setFilteredServices(
+        services.filter((s) => s.category === selectedCategory)
+      );
     }
   };
 
@@ -70,33 +75,33 @@ const ServicesScreen = ({ navigation }) => {
       all: services.length,
     };
 
-    categories.forEach(category => {
-      counts[category] = services.filter(s => s.category === category).length;
+    categories.forEach((category) => {
+      counts[category] = services.filter((s) => s.category === category).length;
     });
 
     return counts;
   };
 
   const handleEdit = (service) => {
-    navigation.navigate('ServiceForm', { serviceId: service.id });
+    navigation.navigate("ServiceForm", { serviceId: service.id });
   };
 
   const handleDelete = (service) => {
     Alert.alert(
-      'Confirmer la suppression',
+      "Confirmer la suppression",
       `Êtes-vous sûr de vouloir supprimer "${service.name}" ?`,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: "Annuler", style: "cancel" },
         {
-          text: 'Supprimer',
-          style: 'destructive',
+          text: "Supprimer",
+          style: "destructive",
           onPress: async () => {
             try {
               await api.delete(`/services/${service.id}`);
-              Alert.alert('Succès', 'Service supprimé');
+              Alert.alert("Succès", "Service supprimé");
               loadServices();
             } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer le service');
+              Alert.alert("Erreur", "Impossible de supprimer le service");
             }
           },
         },
@@ -114,7 +119,7 @@ const ServicesScreen = ({ navigation }) => {
       <View style={styles.imageContainer}>
         {item.image_url ? (
           <Image
-            source={{ uri: item.image_url }}
+            source={{ uri: API_URL.replace("/api", "") + item.image_url }}
             style={styles.serviceImage}
             resizeMode="cover"
           />
@@ -209,7 +214,7 @@ const ServicesScreen = ({ navigation }) => {
         <Text style={styles.headerTitle}>Services</Text>
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => navigation.navigate('ServiceForm')}
+          onPress={() => navigation.navigate("ServiceForm")}
         >
           <Ionicons name="add" size={20} color="#fff" />
           <Text style={styles.addButtonText}>Nouveau</Text>
@@ -225,9 +230,9 @@ const ServicesScreen = ({ navigation }) => {
         >
           <FilterButton
             label="Tous"
-            active={selectedCategory === 'all'}
+            active={selectedCategory === "all"}
             count={categoryCounts.all}
-            onPress={() => setSelectedCategory('all')}
+            onPress={() => setSelectedCategory("all")}
           />
           {categories.map((category) => (
             <FilterButton
@@ -258,12 +263,12 @@ const ServicesScreen = ({ navigation }) => {
             icon="cut-outline"
             title="Aucun service"
             description={
-              selectedCategory === 'all'
+              selectedCategory === "all"
                 ? "Vous n'avez pas encore créé de services"
                 : `Aucun service dans la catégorie "${selectedCategory}"`
             }
             actionLabel="Créer un service"
-            onActionPress={() => navigation.navigate('ServiceForm')}
+            onActionPress={() => navigation.navigate("ServiceForm")}
           />
         }
       />
@@ -274,46 +279,46 @@ const ServicesScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
   },
   addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#6366F1',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#6366F1",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
     gap: 6,
   },
   addButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   filtersContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   filtersContent: {
     paddingHorizontal: 16,
@@ -323,41 +328,41 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   row: {
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   serviceCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     marginHorizontal: 4,
     marginVertical: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-    overflow: 'hidden',
-    maxWidth: '48%',
+    overflow: "hidden",
+    maxWidth: "48%",
   },
   imageContainer: {
-    position: 'relative',
-    width: '100%',
+    position: "relative",
+    width: "100%",
     height: 140,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
   },
   serviceImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
   },
   statusOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 8,
     right: 8,
   },
@@ -370,81 +375,81 @@ const styles = StyleSheet.create({
   },
   serviceName: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     lineHeight: 20,
   },
   categoryBadge: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: "#EEF2FF",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   categoryBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#6366F1',
-    textTransform: 'uppercase',
+    fontWeight: "700",
+    color: "#6366F1",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   description: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
     lineHeight: 17,
   },
   serviceInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
     borderRadius: 8,
     padding: 10,
     marginTop: 4,
   },
   priceContainer: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   priceLabel: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    color: "#9CA3AF",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   price: {
     fontSize: 15,
-    fontWeight: 'bold',
-    color: '#8B5CF6',
+    fontWeight: "bold",
+    color: "#8B5CF6",
   },
   divider: {
     width: 1,
     height: 30,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: "#E5E7EB",
   },
   durationContainer: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   durationLabel: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    color: "#9CA3AF",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   duration: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
   },
   activeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: "#ECFDF5",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
@@ -453,18 +458,18 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#10B981',
+    backgroundColor: "#10B981",
   },
   activeText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#10B981',
+    fontWeight: "600",
+    color: "#10B981",
   },
   inactiveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: "#FEF2F2",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
@@ -473,29 +478,29 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#EF4444',
+    backgroundColor: "#EF4444",
   },
   inactiveText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#EF4444',
+    fontWeight: "600",
+    color: "#EF4444",
   },
   actionsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
     marginTop: 4,
   },
   quickActionButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EEF2FF',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EEF2FF",
     paddingVertical: 10,
     borderRadius: 8,
   },
   quickActionButtonDanger: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: "#FEF2F2",
   },
 });
 

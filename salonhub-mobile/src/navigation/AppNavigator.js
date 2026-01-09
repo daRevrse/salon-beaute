@@ -29,6 +29,7 @@ import StaffScreen from '../screens/StaffScreen';
 import StaffFormScreen from '../screens/StaffFormScreen';
 import BillingScreen from '../screens/BillingScreen';
 import PromotionsScreen from '../screens/PromotionsScreen';
+import PromotionFormScreen from '../screens/PromotionFormScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 
 const Stack = createNativeStackNavigator();
@@ -175,6 +176,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="Promotions"
               component={PromotionsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="PromotionForm"
+              component={PromotionFormScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen

@@ -3,7 +3,7 @@
  */
 
 const API_BASE_URL = process.env.REACT_APP_API_URL;
-const BACKEND_URL = API_BASE_URL.replace("api/", "");
+const BACKEND_URL = API_BASE_URL.replace(/\/api$/, "");
 
 /**
  * Construire l'URL complète d'une image
@@ -18,8 +18,14 @@ export const getImageUrl = (imageUrl) => {
     return imageUrl;
   }
 
+  // Nettoyer l'URL si elle contient incorrectement "api/"
+  let cleanUrl = imageUrl;
+  if (imageUrl.includes("/api/uploads")) {
+    cleanUrl = imageUrl.replace("/api/uploads", "/uploads");
+  }
+
   // Construire l'URL complète
-  return `${BACKEND_URL}${imageUrl}`;
+  return `${BACKEND_URL}${cleanUrl}`;
 };
 
 /**

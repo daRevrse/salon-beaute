@@ -9,6 +9,7 @@ import DashboardLayout from "../components/common/DashboardLayout";
 import ImageUploader from "../components/common/ImageUploader";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../services/api";
+import { getImageUrl } from "../utils/imageUtils";
 import {
   UserCircleIcon,
   EnvelopeIcon,
@@ -253,7 +254,7 @@ const Profile = () => {
             <div className="flex-shrink-0">
               {formData.avatar_url ? (
                 <img
-                  src={formData.avatar_url?.replace("api/", "")}
+                  src={getImageUrl(formData.avatar_url)}
                   alt="Avatar"
                   className="h-24 w-24 rounded-full border-4 border-white shadow-lg object-cover"
                 />
@@ -367,7 +368,7 @@ const Profile = () => {
                   <div>
                     <ImageUploader
                       target="user-avatar"
-                      imageUrl={formData.avatar_url?.replace("api/", "")}
+                      imageUrl={formData.avatar_url}
                       onImageUpload={(url) =>
                         setFormData({ ...formData, avatar_url: url })
                       }

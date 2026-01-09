@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
     let uploadPath = "public/uploads/";
 
     // Déterminer le dossier selon le type
-    if (target === "tenant-logo") {
+    if (target === "tenant-logo" || target === "tenant-banner") {
       uploadPath += "tenants";
     } else if (target === "service-image") {
       uploadPath += "services";

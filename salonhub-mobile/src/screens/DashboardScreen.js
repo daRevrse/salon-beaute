@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -27,6 +28,13 @@ const DashboardScreen = ({ navigation }) => {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Recharger les données quand l'écran devient visible
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboardData();
+    }, [])
+  );
 
   const loadDashboardData = async () => {
     try {

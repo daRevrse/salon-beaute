@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { getImageUrl } from "../../utils/imageUtils";
 
 // Icônes Heroicons
 import {
@@ -80,7 +81,7 @@ const BookingLanding = () => {
         {salon?.banner_url ? (
           /* Bannière du salon si disponible */
           <img
-            src={salon.banner_url.replace("api/", "")}
+            src={getImageUrl(salon.banner_url)}
             alt="Bannière du salon"
             className="absolute inset-0 w-full h-full object-cover"
           />
@@ -112,7 +113,7 @@ const BookingLanding = () => {
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-6">
           <img
             src={
-              salon?.logo_url?.replace("api/", "") ||
+              getImageUrl(salon?.logo_url) ||
               "https://placehold.net/4.png"
             }
             alt="Salon Logo"
@@ -178,7 +179,7 @@ const BookingLanding = () => {
                 <div className="h-40 bg-gray-100 overflow-hidden relative">
                   <img
                     src={
-                      service.image_url?.replace("api/", "") ||
+                      getImageUrl(service.image_url) ||
                       "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop"
                     }
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

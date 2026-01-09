@@ -12,6 +12,7 @@ import { useCurrency, CURRENCIES } from "../contexts/CurrencyContext";
 import { withPermission } from "../components/common/PermissionGate";
 import ImageUploader from "../components/common/ImageUploader";
 import PWASettings from "../components/settings/PWASettings";
+import { getImageUrl } from "../utils/imageUtils";
 import {
   ClockIcon,
   CalendarDaysIcon,
@@ -388,7 +389,8 @@ const Settings = () => {
               Paramètres du salon
             </h1>
             <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">
-              Configurez l'identité, la facturation et les horaires de votre salon
+              Configurez l'identité, la facturation et les horaires de votre
+              salon
             </p>
           </div>
         </div>
@@ -488,7 +490,10 @@ const Settings = () => {
                     <div>
                       <ImageUploader
                         target="tenant-logo"
-                        imageUrl={logoUrl?.replace("api/", "")}
+                        imageUrl={logoUrl.replace(
+                          "/uploads",
+                          API_URL.replace("/api", "/uploads")
+                        )}
                         onImageUpload={setLogoUrl}
                         onDelete={() => setLogoUrl(null)}
                         label="Logo du Salon"
@@ -503,7 +508,10 @@ const Settings = () => {
                     <div>
                       <ImageUploader
                         target="tenant-banner"
-                        imageUrl={bannerUrl?.replace("api/", "")}
+                        imageUrl={bannerUrl.replace(
+                          "/uploads",
+                          API_URL.replace("/api", "/uploads")
+                        )}
                         onImageUpload={setBannerUrl}
                         onDelete={() => setBannerUrl(null)}
                         label="Bannière du Salon"
@@ -788,7 +796,9 @@ const Settings = () => {
                       className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center justify-center"
                     >
                       <PlusIcon className="h-5 w-5 mr-2" />
-                      <span className="hidden sm:inline">Ajouter un employé</span>
+                      <span className="hidden sm:inline">
+                        Ajouter un employé
+                      </span>
                       <span className="sm:hidden">Ajouter</span>
                     </button>
                   </div>
@@ -819,7 +829,7 @@ const Settings = () => {
                               <div className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 rounded-full bg-indigo-100 flex items-center justify-center">
                                 {member.avatar_url ? (
                                   <img
-                                    src={member.avatar_url?.replace("api/", "")}
+                                    src={getImageUrl(member.avatar_url)}
                                     alt={member.first_name}
                                     className="h-full w-full rounded-full object-cover"
                                   />

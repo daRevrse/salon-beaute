@@ -390,63 +390,6 @@ router.get("/me", authMiddleware, async (req, res) => {
 });
 
 // ==========================================
-// PUT - Modifier son profil
-// ==========================================
-router.put("/profile", authMiddleware, async (req, res) => {
-  try {
-    const { first_name, last_name, email, phone, avatar_url } = req.body;
-
-    // Vérifier si email existe déjà (si changé)
-    if (email && email !== req.user.email) {
-      const [existingUser] = await query(
-        "SELECT id FROM users WHERE email = ? AND id != ?",
-        [email, req.user.id]
-      );
-
-      if (existingUser) {
-        return res.status(409).json({
-          success: false,
-          error: "Cet email est déjà utilisé",
-        });
-      }
-    }
-
-    await query(
-      `UPDATE users SET
-        first_name = COALESCE(?, first_name),
-        last_name = COALESCE(?, last_name),
-        email = COALESCE(?, email),
-        phone = ?,
-        avatar_url = ?
-      WHERE id = ?`,
-      [first_name, last_name, email, phone, avatar_url, req.user.id]
-    );
-
-    // Récupérer le profil mis à jour
-    const [updatedUser] = await query(
-      `SELECT
-        id, email, first_name, last_name, phone, avatar_url, role,
-        is_active, last_login_at, created_at
-      FROM users
-      WHERE id = ?`,
-      [req.user.id]
-    );
-
-    res.json({
-      success: true,
-      message: "Profil mis à jour",
-      data: updatedUser,
-    });
-  } catch (error) {
-    console.error("Erreur mise à jour profil:", error);
-    res.status(500).json({
-      success: false,
-      error: "Erreur serveur",
-    });
-  }
-});
-
-// ==========================================
 // PUT - Changer mot de passe
 // ==========================================
 router.put("/password", authMiddleware, async (req, res) => {
@@ -916,6 +859,191 @@ router.delete("/account", authMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Erreur serveur lors de la suppression du compte",
+    });
+  }
+});
+
+// ==========================================
+// GET - Récupérer le profil de l'utilisateur connecté
+// ==========================================
+router.get("/profile", authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    const user = await query(
+      `SELECT id, tenant_id, email, first_name, last_name, phone, role, avatar_url, working_hours, is_active, created_at
+       FROM users
+       WHERE id = ?`,
+      [userId]
+    );
+
+    if (user.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Utilisateur introuvable",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user[0],
+    });
+  } catch (error) {
+    console.error("Erreur récupération profil:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur",
+    });
+  }
+});
+
+// ==========================================
+// PUT - Mettre à jour le profil de l'utilisateur connecté
+// ==========================================
+router.put("/profile", authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { first_name, last_name, phone, email, avatar_url } = req.body;
+
+    console.log('📝 PUT /profile - User:', userId, 'Data:', { first_name, last_name, phone, email, avatar_url });
+
+    // Construire la requête de mise à jour dynamiquement
+    const updates = [];
+    const params = [];
+
+    if (first_name !== undefined) {
+      updates.push("first_name = ?");
+      params.push(first_name);
+    }
+    if (last_name !== undefined) {
+      updates.push("last_name = ?");
+      params.push(last_name);
+    }
+    if (phone !== undefined) {
+      updates.push("phone = ?");
+      params.push(phone);
+    }
+    if (email !== undefined) {
+      // Vérifier que l'email n'est pas déjà utilisé
+      const existingUser = await query(
+        "SELECT id FROM users WHERE email = ? AND tenant_id = ? AND id != ?",
+        [email, req.tenantId, userId]
+      );
+      if (existingUser.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Cet email est déjà utilisé par un autre utilisateur",
+        });
+      }
+      updates.push("email = ?");
+      params.push(email);
+    }
+    if (avatar_url !== undefined) {
+      updates.push("avatar_url = ?");
+      params.push(avatar_url);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Aucune donnée à mettre à jour",
+      });
+    }
+
+    params.push(userId);
+
+    await query(
+      `UPDATE users SET ${updates.join(", ")}, updated_at = NOW() WHERE id = ?`,
+      params
+    );
+
+    // Récupérer le profil mis à jour
+    const updatedUser = await query(
+      `SELECT id, tenant_id, email, first_name, last_name, phone, role, avatar_url, is_active, created_at
+       FROM users
+       WHERE id = ?`,
+      [userId]
+    );
+
+    console.log('✅ Profil mis à jour - avatar_url:', updatedUser[0]?.avatar_url);
+
+    res.json({
+      success: true,
+      message: "Profil mis à jour avec succès",
+      data: updatedUser[0],
+    });
+  } catch (error) {
+    console.error("Erreur mise à jour profil:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur",
+    });
+  }
+});
+
+// ==========================================
+// PUT - Changer le mot de passe de l'utilisateur connecté
+// ==========================================
+router.put("/profile/password", authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { current_password, new_password } = req.body;
+
+    // Validation
+    if (!current_password || !new_password) {
+      return res.status(400).json({
+        success: false,
+        error: "Mot de passe actuel et nouveau mot de passe requis",
+      });
+    }
+
+    if (new_password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: "Le nouveau mot de passe doit contenir au moins 6 caractères",
+      });
+    }
+
+    // Récupérer l'utilisateur
+    const user = await query(
+      "SELECT id, password_hash FROM users WHERE id = ?",
+      [userId]
+    );
+
+    if (user.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Utilisateur introuvable",
+      });
+    }
+
+    // Vérifier le mot de passe actuel
+    const isValid = await bcrypt.compare(current_password, user[0].password_hash);
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        error: "Mot de passe actuel incorrect",
+      });
+    }
+
+    // Hasher le nouveau mot de passe
+    const newPasswordHash = await bcrypt.hash(new_password, 10);
+
+    // Mettre à jour le mot de passe
+    await query(
+      "UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?",
+      [newPasswordHash, userId]
+    );
+
+    res.json({
+      success: true,
+      message: "Mot de passe modifié avec succès",
+    });
+  } catch (error) {
+    console.error("Erreur changement mot de passe:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur",
     });
   }
 });

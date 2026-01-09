@@ -6,7 +6,7 @@ import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { usePermissions } from "../../contexts/PermissionContext";
-import { ImageWithFallback } from "../../utils/imageUtils";
+import { ImageWithFallback, getImageUrl } from "../../utils/imageUtils";
 import NotificationBell from "./NotificationBell";
 
 // Heroicons
@@ -84,7 +84,7 @@ const Navbar = () => {
             <Link to="/dashboard" className="flex items-center group">
               {tenant?.logo_url ? (
                 <img
-                  src={tenant.logo_url?.replace("api/", "")}
+                  src={getImageUrl(tenant.logo_url)}
                   alt="logo"
                   className="h-9 w-9 rounded-lg object-cover group-hover:shadow-md transition"
                 />
@@ -132,7 +132,7 @@ const Navbar = () => {
               >
                 {user?.avatar_url ? (
                   <ImageWithFallback
-                    src={user.avatar_url?.replace("api/", "")}
+                    src={user.avatar_url}
                     alt={`${user.first_name} ${user.last_name}`}
                     fallbackType="avatar"
                     className="h-9 w-9 rounded-full object-cover border border-indigo-200"

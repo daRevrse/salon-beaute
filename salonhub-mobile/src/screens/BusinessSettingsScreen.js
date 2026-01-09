@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,10 +11,11 @@ import {
   Platform,
   KeyboardAvoidingView,
   Image,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import api from '../services/api';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import api, { API_URL } from "../services/api";
+import { uploadImage } from "../services/imageUpload";
 
 const BusinessSettingsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
@@ -23,13 +24,13 @@ const BusinessSettingsScreen = ({ navigation }) => {
   const [bannerUri, setBannerUri] = useState(null);
 
   const [formData, setFormData] = useState({
-    business_name: '',
-    business_phone: '',
-    business_email: '',
-    business_address: '',
-    slug: '',
-    city: '',
-    postal_code: '',
+    business_name: "",
+    business_phone: "",
+    business_email: "",
+    business_address: "",
+    slug: "",
+    city: "",
+    postal_code: "",
   });
 
   useEffect(() => {
@@ -39,16 +40,17 @@ const BusinessSettingsScreen = ({ navigation }) => {
   const loadBusinessSettings = async () => {
     try {
       // Load from /settings/salon endpoint
-      const response = await api.get('/settings/salon');
+      const response = await api.get("/settings/salon");
+      console.log("Paramètres chargés:", response.data);
       if (response.data.success && response.data.data) {
         setFormData({
-          business_name: response.data.data.name || '',
-          business_phone: response.data.data.phone || '',
-          business_email: response.data.data.email || '',
-          business_address: response.data.data.address || '',
-          slug: response.data.data.slug || '',
-          city: response.data.data.city || '',
-          postal_code: response.data.data.postal_code || '',
+          business_name: response.data.data.name || "",
+          business_phone: response.data.data.phone || "",
+          business_email: response.data.data.email || "",
+          business_address: response.data.data.address || "",
+          slug: response.data.data.slug || "",
+          city: response.data.data.city || "",
+          postal_code: response.data.data.postal_code || "",
         });
         setLogoUri(response.data.data.logo_url || null);
         setBannerUri(response.data.data.banner_url || null);
@@ -57,13 +59,15 @@ const BusinessSettingsScreen = ({ navigation }) => {
       // If 404, it means no settings exist yet, which is fine
       // User can create them by filling the form
       if (error.response?.status === 404) {
-        console.log('Aucune configuration trouvée, vous pouvez créer vos paramètres');
+        console.log(
+          "Aucune configuration trouvée, vous pouvez créer vos paramètres"
+        );
       } else {
-        console.error('Erreur chargement paramètres:', error);
+        console.error("Erreur chargement paramètres:", error);
         Alert.alert(
-          'Erreur',
-          'Impossible de charger les paramètres. Veuillez réessayer.',
-          [{ text: 'OK' }]
+          "Erreur",
+          "Impossible de charger les paramètres. Veuillez réessayer.",
+          [{ text: "OK" }]
         );
       }
     } finally {
@@ -74,46 +78,76 @@ const BusinessSettingsScreen = ({ navigation }) => {
   const handlePickImage = async (type) => {
     // Request permission
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission requise', 'Nous avons besoin de votre permission pour accéder à vos photos.');
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission requise",
+        "Nous avons besoin de votre permission pour accéder à vos photos."
+      );
       return;
     }
 
     // Pick image
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ["images"],
       allowsEditing: true,
-      aspect: type === 'logo' ? [1, 1] : [16, 9],
+      aspect: type === "logo" ? [1, 1] : [16, 9],
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets[0]) {
-      if (type === 'logo') {
+      if (type === "logo") {
         setLogoUri(result.assets[0].uri);
       } else {
         setBannerUri(result.assets[0].uri);
       }
-      // TODO: Upload image to server when backend supports it
     }
   };
 
   const handleSave = async () => {
     // Validation
     if (!formData.business_name.trim()) {
-      Alert.alert('Erreur', 'Le nom du salon est obligatoire');
+      Alert.alert("Erreur", "Le nom du salon est obligatoire");
       return;
     }
 
     if (formData.business_email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.business_email.trim())) {
-        Alert.alert('Erreur', 'Veuillez entrer un email valide');
+        Alert.alert("Erreur", "Veuillez entrer un email valide");
         return;
       }
     }
 
     setSubmitting(true);
     try {
+      // Upload images if they were changed (local URIs starting with file://)
+      let logoUrl = null;
+      let bannerUrl = null;
+
+      if (logoUri && logoUri.startsWith("file://")) {
+        try {
+          logoUrl = await uploadImage(logoUri, "tenant-logo");
+        } catch (uploadError) {
+          console.error("Erreur upload logo:", uploadError);
+          Alert.alert(
+            "Avertissement",
+            "Le logo n'a pas pu être uploadé, mais les autres paramètres seront sauvegardés"
+          );
+        }
+      }
+
+      if (bannerUri && bannerUri.startsWith("file://")) {
+        try {
+          bannerUrl = await uploadImage(bannerUri, "tenant-banner");
+        } catch (uploadError) {
+          console.error("Erreur upload bannière:", uploadError);
+          Alert.alert(
+            "Avertissement",
+            "La bannière n'a pas pu être uploadée, mais les autres paramètres seront sauvegardés"
+          );
+        }
+      }
+
       const settingsData = {
         name: formData.business_name.trim(),
         phone: formData.business_phone.trim() || null,
@@ -122,16 +156,26 @@ const BusinessSettingsScreen = ({ navigation }) => {
         slug: formData.slug.trim() || null,
         city: formData.city.trim() || null,
         postal_code: formData.postal_code.trim() || null,
-        // logo_url and banner_url will be added when image upload is implemented
       };
 
-      await api.put('/settings/salon', settingsData);
-      Alert.alert('Succès', 'Paramètres du salon enregistrés avec succès');
+      // Add uploaded image URLs if available
+      if (logoUrl) {
+        settingsData.logo_url = logoUrl;
+      }
+      if (bannerUrl) {
+        settingsData.banner_url = bannerUrl;
+      }
+
+      await api.put("/settings/salon", settingsData);
+      Alert.alert("Succès", "Paramètres du salon enregistrés avec succès");
       navigation.goBack();
     } catch (error) {
-      console.error('Erreur sauvegarde paramètres:', error);
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Impossible de sauvegarder les paramètres';
-      Alert.alert('Erreur', errorMessage);
+      console.error("Erreur sauvegarde paramètres:", error);
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Impossible de sauvegarder les paramètres";
+      Alert.alert("Erreur", errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -148,11 +192,14 @@ const BusinessSettingsScreen = ({ navigation }) => {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Paramètres Généraux</Text>
@@ -162,9 +209,14 @@ const BusinessSettingsScreen = ({ navigation }) => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={20} color="#6366F1" />
+          <Ionicons
+            name="information-circle-outline"
+            size={20}
+            color="#6366F1"
+          />
           <Text style={styles.infoText}>
-            Ces informations seront affichées sur votre page de réservation en ligne et dans les emails envoyés à vos clients.
+            Ces informations seront affichées sur votre page de réservation en
+            ligne et dans les emails envoyés à vos clients.
           </Text>
         </View>
 
@@ -177,15 +229,28 @@ const BusinessSettingsScreen = ({ navigation }) => {
             <Text style={styles.label}>Logo du Salon</Text>
             <TouchableOpacity
               style={styles.imageUploadContainer}
-              onPress={() => handlePickImage('logo')}
+              onPress={() => handlePickImage("logo")}
             >
               {logoUri ? (
-                <Image source={{ uri: logoUri }} style={styles.logoImage} resizeMode="contain" />
+                <Image
+                  source={{
+                    uri: logoUri.replace(
+                      "/uploads",
+                      API_URL.replace("/api", "/uploads")
+                    ),
+                  }}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
               ) : (
                 <View style={styles.imagePlaceholder}>
                   <Ionicons name="image-outline" size={40} color="#D1D5DB" />
-                  <Text style={styles.placeholderText}>Cliquez pour ajouter une image</Text>
-                  <Text style={styles.placeholderSubtext}>(Max 5MB - JPEG, PNG, GIF, WebP)</Text>
+                  <Text style={styles.placeholderText}>
+                    Cliquez pour ajouter une image
+                  </Text>
+                  <Text style={styles.placeholderSubtext}>
+                    (Max 5MB - JPEG, PNG, GIF, WebP)
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -199,15 +264,28 @@ const BusinessSettingsScreen = ({ navigation }) => {
             <Text style={styles.label}>Bannière du Salon</Text>
             <TouchableOpacity
               style={[styles.imageUploadContainer, styles.bannerContainer]}
-              onPress={() => handlePickImage('banner')}
+              onPress={() => handlePickImage("banner")}
             >
               {bannerUri ? (
-                <Image source={{ uri: bannerUri }} style={styles.bannerImage} resizeMode="cover" />
+                <Image
+                  source={{
+                    uri: bannerUri.replace(
+                      "/uploads",
+                      API_URL.replace("/api", "/uploads")
+                    ),
+                  }}
+                  style={styles.bannerImage}
+                  resizeMode="cover"
+                />
               ) : (
                 <View style={styles.imagePlaceholder}>
                   <Ionicons name="image-outline" size={40} color="#D1D5DB" />
-                  <Text style={styles.placeholderText}>Cliquez pour ajouter une image</Text>
-                  <Text style={styles.placeholderSubtext}>(Max 5MB - JPEG, PNG, GIF, WebP)</Text>
+                  <Text style={styles.placeholderText}>
+                    Cliquez pour ajouter une image
+                  </Text>
+                  <Text style={styles.placeholderSubtext}>
+                    (Max 5MB - JPEG, PNG, GIF, WebP)
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -226,12 +304,19 @@ const BusinessSettingsScreen = ({ navigation }) => {
               Nom du salon <Text style={styles.required}>*</Text>
             </Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="business-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <Ionicons
+                name="business-outline"
+                size={20}
+                color="#9CA3AF"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="Mon Salon de Beauté"
                 value={formData.business_name}
-                onChangeText={(text) => setFormData({ ...formData, business_name: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, business_name: text })
+                }
               />
             </View>
           </View>
@@ -239,12 +324,19 @@ const BusinessSettingsScreen = ({ navigation }) => {
           <View style={styles.formGroup}>
             <Text style={styles.label}>Téléphone du salon</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="call-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <Ionicons
+                name="call-outline"
+                size={20}
+                color="#9CA3AF"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="+221 XX XXX XX XX"
                 value={formData.business_phone}
-                onChangeText={(text) => setFormData({ ...formData, business_phone: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, business_phone: text })
+                }
                 keyboardType="phone-pad"
               />
             </View>
@@ -253,12 +345,19 @@ const BusinessSettingsScreen = ({ navigation }) => {
           <View style={styles.formGroup}>
             <Text style={styles.label}>Email du salon</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color="#9CA3AF"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="contact@monsalon.com"
                 value={formData.business_email}
-                onChangeText={(text) => setFormData({ ...formData, business_email: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, business_email: text })
+                }
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -268,12 +367,19 @@ const BusinessSettingsScreen = ({ navigation }) => {
           <View style={styles.formGroup}>
             <Text style={styles.label}>Adresse</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="location-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <Ionicons
+                name="location-outline"
+                size={20}
+                color="#9CA3AF"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="Adresse complète du salon"
                 value={formData.business_address}
-                onChangeText={(text) => setFormData({ ...formData, business_address: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, business_address: text })
+                }
                 multiline
               />
             </View>
@@ -282,12 +388,19 @@ const BusinessSettingsScreen = ({ navigation }) => {
           <View style={styles.formGroup}>
             <Text style={styles.label}>Ville</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="location-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <Ionicons
+                name="location-outline"
+                size={20}
+                color="#9CA3AF"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="Dakar"
                 value={formData.city}
-                onChangeText={(text) => setFormData({ ...formData, city: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, city: text })
+                }
               />
             </View>
           </View>
@@ -295,12 +408,19 @@ const BusinessSettingsScreen = ({ navigation }) => {
           <View style={styles.formGroup}>
             <Text style={styles.label}>Code postal</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color="#9CA3AF"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="12345"
                 value={formData.postal_code}
-                onChangeText={(text) => setFormData({ ...formData, postal_code: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, postal_code: text })
+                }
                 keyboardType="numeric"
               />
             </View>
@@ -314,12 +434,22 @@ const BusinessSettingsScreen = ({ navigation }) => {
           <View style={styles.formGroup}>
             <Text style={styles.label}>Identifiant unique (slug)</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="at-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <Ionicons
+                name="at-outline"
+                size={20}
+                color="#9CA3AF"
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="mon-salon-beaute"
                 value={formData.slug}
-                onChangeText={(text) => setFormData({ ...formData, slug: text.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
+                onChangeText={(text) =>
+                  setFormData({
+                    ...formData,
+                    slug: text.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+                  })
+                }
                 autoCapitalize="none"
               />
             </View>
@@ -353,7 +483,9 @@ const BusinessSettingsScreen = ({ navigation }) => {
           ) : (
             <>
               <Ionicons name="checkmark" size={20} color="#fff" />
-              <Text style={styles.saveButtonText}>Enregistrer les modifications</Text>
+              <Text style={styles.saveButtonText}>
+                Enregistrer les modifications
+              </Text>
             </>
           )}
         </TouchableOpacity>
@@ -365,46 +497,46 @@ const BusinessSettingsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 16,
     paddingTop: 48,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   backButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
   },
   content: {
     flex: 1,
     padding: 16,
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -412,8 +544,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 16,
   },
   formGroup: {
@@ -421,19 +553,19 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
+    fontWeight: "500",
+    color: "#374151",
     marginBottom: 8,
   },
   required: {
-    color: '#EF4444',
+    color: "#EF4444",
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     borderRadius: 10,
     paddingHorizontal: 12,
     minHeight: 48,
@@ -444,11 +576,11 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    color: '#1F2937',
+    color: "#1F2937",
     paddingVertical: 12,
   },
   textAreaContainer: {
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
     minHeight: 100,
   },
   textArea: {
@@ -457,14 +589,14 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
     marginTop: 6,
     marginLeft: 4,
   },
   urlPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EEF2FF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EEF2FF",
     padding: 12,
     borderRadius: 8,
     gap: 8,
@@ -473,51 +605,51 @@ const styles = StyleSheet.create({
   urlPreviewText: {
     flex: 1,
     fontSize: 13,
-    color: '#4F46E5',
-    fontWeight: '500',
+    color: "#4F46E5",
+    fontWeight: "500",
   },
   imageUploadContainer: {
-    width: '100%',
+    width: "100%",
     height: 200,
     borderRadius: 12,
     borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
+    borderStyle: "dashed",
+    borderColor: "#E5E7EB",
+    backgroundColor: "#F9FAFB",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
   },
   bannerContainer: {
     height: 160,
   },
   imagePlaceholder: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 20,
   },
   placeholderText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
     marginTop: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   placeholderSubtext: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     marginTop: 4,
-    textAlign: 'center',
+    textAlign: "center",
   },
   logoImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   bannerImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   infoCard: {
-    flexDirection: 'row',
-    backgroundColor: '#EEF2FF',
+    flexDirection: "row",
+    backgroundColor: "#EEF2FF",
     padding: 16,
     borderRadius: 12,
     gap: 12,
@@ -526,21 +658,21 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#4F46E5',
+    color: "#4F46E5",
     lineHeight: 18,
   },
   footer: {
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 16,
-    backgroundColor: '#fff',
+    paddingBottom: Platform.OS === "ios" ? 32 : 16,
+    backgroundColor: "#fff",
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: "#E5E7EB",
   },
   saveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#6366F1',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#6366F1",
     paddingVertical: 14,
     borderRadius: 10,
     gap: 8,
@@ -549,9 +681,9 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 

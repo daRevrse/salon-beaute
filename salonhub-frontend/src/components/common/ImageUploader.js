@@ -10,6 +10,7 @@ import {
   TrashIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
+import { getImageUrl } from "../../utils/imageUtils";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -69,9 +70,9 @@ const ImageUploader = ({
       });
 
       if (response.data.success) {
-        // Construire l'URL complète
-        const fullImageUrl = `${API_URL}${response.data.data.url}`;
-        onImageUpload(fullImageUrl);
+        // Retourner l'URL relative pour stockage en base de données
+        // L'URL complète sera construite côté client lors de l'affichage
+        onImageUpload(response.data.data.url);
       } else {
         setError(response.data.error || "Erreur d'upload");
       }
@@ -90,8 +91,12 @@ const ImageUploader = ({
       setLoading(true);
       setError(null);
 
-      // Extraire l'URL relative
-      const relativeUrl = imageUrl.replace(API_URL, "");
+      // Extraire l'URL relative si c'est une URL complète
+      let relativeUrl = imageUrl;
+      if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+        const url = new URL(imageUrl);
+        relativeUrl = url.pathname;
+      }
 
       await api.delete("/uploads", {
         data: { url: relativeUrl },
@@ -137,7 +142,7 @@ const ImageUploader = ({
         >
           {imageUrl && !loading ? (
             <img
-              src={imageUrl}
+              src={getImageUrl(imageUrl)}
               alt="Uploaded"
               className="w-full h-full object-cover"
               onError={(e) => {

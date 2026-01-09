@@ -9,6 +9,7 @@ import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import PromoCodeInput from "../../components/common/PromoCodeInput";
 import api from "../../services/api";
+import { getImageUrl } from "../../utils/imageUtils";
 import {
   // <-- Import Heroicons
   ClockIcon,
@@ -198,7 +199,7 @@ const BookingClientInfo = () => {
       {service?.image_url && (
         <div className="fixed inset-0 z-0">
           <img
-            src={service.image_url.replace("api/", "")}
+            src={getImageUrl(service.image_url)}
             alt={service.name}
             className="w-full h-full object-cover"
           />

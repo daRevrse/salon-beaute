@@ -7,6 +7,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { getImageUrl } from "../../utils/imageUtils";
 import {
   // <-- Import Heroicons
   ClockIcon,
@@ -122,7 +123,7 @@ const BookingDateTime = () => {
       {service?.image_url && (
         <div className="fixed inset-0 z-0">
           <img
-            src={service.image_url.replace("api/", "")}
+            src={getImageUrl(service.image_url)}
             alt={service.name}
             className="w-full h-full object-cover"
           />

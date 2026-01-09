@@ -9,7 +9,7 @@ import { useCurrency } from "../contexts/CurrencyContext";
 import { usePermissions } from "../contexts/PermissionContext";
 import { useServices } from "../hooks/useServices";
 import ImageUploader from "../components/common/ImageUploader";
-import { ImageWithFallback } from "../utils/imageUtils";
+import { ImageWithFallback, getImageUrl } from "../utils/imageUtils";
 import {
   ScissorsIcon,
   PencilSquareIcon,
@@ -263,7 +263,7 @@ const Services = () => {
                 {/* Image du service */}
                 <div className="h-32 w-full mb-4 overflow-hidden rounded-lg bg-gray-100">
                   <ImageWithFallback
-                    src={service.image_url?.replace("/api", "")}
+                    src={getImageUrl(service.image_url)}
                     alt={service.name}
                     fallbackType="service"
                     className="w-full h-full object-cover"

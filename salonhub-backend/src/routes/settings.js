@@ -81,7 +81,7 @@ router.get("/salon", async (req, res) => {
     const tenantId = req.tenantId;
 
     const tenant = await db.query(
-      `SELECT id, name, slug, phone, email, address, logo_url, currency
+      `SELECT id, name, slug, phone, email, address, city, postal_code, logo_url, banner_url, currency
        FROM tenants
        WHERE id = ?`,
       [tenantId]
@@ -114,7 +114,7 @@ router.get("/salon", async (req, res) => {
 router.put("/salon", async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { name, phone, email, address, logo_url, banner_url } = req.body;
+    const { name, slug, phone, email, address, city, postal_code, logo_url, banner_url } = req.body;
 
     // Construire la requête de mise à jour dynamiquement
     const updates = [];
@@ -123,6 +123,10 @@ router.put("/salon", async (req, res) => {
     if (name !== undefined) {
       updates.push("name = ?");
       params.push(name);
+    }
+    if (slug !== undefined) {
+      updates.push("slug = ?");
+      params.push(slug);
     }
     if (phone !== undefined) {
       updates.push("phone = ?");
@@ -135,6 +139,14 @@ router.put("/salon", async (req, res) => {
     if (address !== undefined) {
       updates.push("address = ?");
       params.push(address);
+    }
+    if (city !== undefined) {
+      updates.push("city = ?");
+      params.push(city);
+    }
+    if (postal_code !== undefined) {
+      updates.push("postal_code = ?");
+      params.push(postal_code);
     }
     if (logo_url !== undefined) {
       updates.push("logo_url = ?");
