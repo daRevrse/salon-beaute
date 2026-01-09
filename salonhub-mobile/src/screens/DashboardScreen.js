@@ -7,14 +7,13 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Linking,
+  Share,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import AlertBanner from '../components/AlertBanner';
-import StatusBadge from '../components/StatusBadge';
-import EmptyState from '../components/EmptyState';
-import ActionButton from '../components/ActionButton';
 
 const DashboardScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -24,7 +23,6 @@ const DashboardScreen = ({ navigation }) => {
   const [todayAppointments, setTodayAppointments] = useState([]);
   const [recentClients, setRecentClients] = useState([]);
   const [popularServices, setPopularServices] = useState([]);
-  const [showBusinessHoursAlert, setShowBusinessHoursAlert] = useState(true);
 
   useEffect(() => {
     loadDashboardData();
@@ -32,79 +30,68 @@ const DashboardScreen = ({ navigation }) => {
 
   const loadDashboardData = async () => {
     try {
-      // Charger les RDV du jour
-      const todayRes = await api.get('/appointments/today');
-      const todayApts = todayRes.data?.data || [];
-      setTodayAppointments(todayApts);
+      // Charger tous les RDV
+      const appointmentsRes = await api.get('/appointments');
+      const allAppointments = appointmentsRes.data?.data || [];
 
       // Charger tous les clients
       const clientsRes = await api.get('/clients');
       const allClients = clientsRes.data?.data || [];
-      // Trier par date de création (les plus récents en premier) et prendre les 5 premiers
-      const sortedClients = allClients.sort((a, b) =>
-        new Date(b.created_at) - new Date(a.created_at)
-      );
-      setRecentClients(sortedClients.slice(0, 5));
 
       // Charger tous les services
       const servicesRes = await api.get('/services');
       const allServices = servicesRes.data?.data || [];
 
-      // Charger tous les RDV pour calculer le CA et les services populaires
-      const appointmentsRes = await api.get('/appointments');
-      const allAppointments = appointmentsRes.data?.data || [];
-
-      // Calculer le CA du mois en cours
+      // Calculer la date d'aujourd'hui
       const now = new Date();
+      const currentDate = now.toISOString().split('T')[0];
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
-      const currentDate = now.toISOString().split('T')[0]; // Format: YYYY-MM-DD
 
-      const monthlyRevenue = allAppointments
-        .filter(apt => {
-          const aptDate = new Date(apt.appointment_date);
-          return aptDate.getMonth() === currentMonth &&
-                 aptDate.getFullYear() === currentYear &&
-                 apt.status === 'completed';
-        })
-        .reduce((sum, apt) => {
-          // Use total_price if available, otherwise fall back to service price
-          const price = apt.total_price || apt.price || 0;
-          return sum + parseFloat(price);
-        }, 0);
+      // RDV du jour
+      const todayApts = allAppointments.filter(apt => apt.appointment_date === currentDate);
+      setTodayAppointments(todayApts);
 
-      // Calculer le CA du jour
-      const todayCompletedAppointments = allAppointments.filter(apt => {
-        return apt.appointment_date === currentDate && apt.status === 'completed';
-      });
-      const todayRevenue = todayCompletedAppointments.reduce((sum, apt) => {
+      // Clients récents (5 derniers)
+      const sortedClients = [...allClients].sort((a, b) =>
+        new Date(b.created_at) - new Date(a.created_at)
+      );
+      setRecentClients(sortedClients.slice(0, 5));
+
+      // Calculer les stats
+      const todayCompleted = todayApts.filter(apt => apt.status === 'completed');
+      const todayRevenue = todayCompleted.reduce((sum, apt) => {
         const price = apt.total_price || apt.price || 0;
         return sum + parseFloat(price);
       }, 0);
 
-      // Compter les RDV complétés ce mois
-      const completedThisMonth = allAppointments.filter(apt => {
+      const monthlyCompleted = allAppointments.filter(apt => {
         const aptDate = new Date(apt.appointment_date);
         return aptDate.getMonth() === currentMonth &&
                aptDate.getFullYear() === currentYear &&
                apt.status === 'completed';
-      }).length;
+      });
 
-      // Compter les RDV annulés ce mois
-      const cancelledThisMonth = allAppointments.filter(apt => {
+      const monthlyRevenue = monthlyCompleted.reduce((sum, apt) => {
+        const price = apt.total_price || apt.price || 0;
+        return sum + parseFloat(price);
+      }, 0);
+
+      const monthlyCancelled = allAppointments.filter(apt => {
         const aptDate = new Date(apt.appointment_date);
         return aptDate.getMonth() === currentMonth &&
                aptDate.getFullYear() === currentYear &&
                apt.status === 'cancelled';
       }).length;
 
-      // Calculer les services populaires
+      // Services populaires
       const serviceCount = {};
       allAppointments.forEach(apt => {
         if (apt.service_id) {
           serviceCount[apt.service_id] = (serviceCount[apt.service_id] || 0) + 1;
         }
       });
+
       const topServices = Object.entries(serviceCount)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5)
@@ -115,33 +102,28 @@ const DashboardScreen = ({ navigation }) => {
         .filter(Boolean);
       setPopularServices(topServices);
 
-      // Mettre à jour les stats
       setStats({
         todayAppointments: todayApts.length,
         totalClients: allClients.length,
-        activeServices: allServices.filter(s => !s.is_deleted).length,
-        monthlyRevenue: monthlyRevenue,
-        todayRevenue: todayRevenue,
-        todayCompleted: todayCompletedAppointments.length,
-        completedThisMonth: completedThisMonth,
-        cancelledThisMonth: cancelledThisMonth,
+        activeServices: allServices.filter(s => s.is_active).length,
+        pendingAppointments: todayApts.filter(apt => apt.status === 'pending').length,
+        monthlyRevenue,
+        todayRevenue,
+        completedThisMonth: monthlyCompleted.length,
+        cancelledThisMonth: monthlyCancelled,
       });
     } catch (error) {
       console.error('Erreur chargement dashboard:', error);
-      // Définir des valeurs par défaut en cas d'erreur
       setStats({
         todayAppointments: 0,
         totalClients: 0,
         activeServices: 0,
+        pendingAppointments: 0,
         monthlyRevenue: 0,
         todayRevenue: 0,
-        todayCompleted: 0,
         completedThisMonth: 0,
         cancelledThisMonth: 0,
       });
-      setTodayAppointments([]);
-      setRecentClients([]);
-      setPopularServices([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -153,10 +135,74 @@ const DashboardScreen = ({ navigation }) => {
     loadDashboardData();
   };
 
+  const handleHelp = () => {
+    Alert.alert(
+      'Aide & Support',
+      'Pour obtenir de l\'aide:\n\n• Consultez notre guide d\'utilisation\n• Contactez le support technique\n• Email: support@salonhub.com\n• Tél: +221 XX XXX XX XX',
+      [
+        {
+          text: 'Contacter le support',
+          onPress: () => Linking.openURL('mailto:support@salonhub.com'),
+        },
+        { text: 'Fermer', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handlePublicPage = async () => {
+    try {
+      // Récupérer les paramètres du salon pour obtenir l'URL publique
+      const response = await api.get('/settings/salon');
+      const salonData = response.data?.data;
+
+      if (salonData?.public_url) {
+        Linking.openURL(salonData.public_url);
+      } else {
+        Alert.alert(
+          'Page publique',
+          'Votre page publique n\'est pas encore configurée. Voulez-vous la configurer maintenant?',
+          [
+            {
+              text: 'Configurer',
+              onPress: () => navigation.navigate('BusinessSettings'),
+            },
+            { text: 'Plus tard', style: 'cancel' },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Erreur page publique:', error);
+      Alert.alert(
+        'Page publique',
+        'Fonctionnalité en cours de développement. Vous pourrez bientôt créer et partager votre page publique pour permettre à vos clients de prendre rendez-vous en ligne.'
+      );
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const result = await Share.share({
+        message: `Découvrez ${user?.business_name || 'notre salon'} et prenez rendez-vous facilement!\n\nTéléchargez SalonHub: https://salonhub.app`,
+        title: 'Partager mon salon',
+      });
+
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          console.log('Partagé via:', result.activityType);
+        } else {
+          console.log('Partagé avec succès');
+        }
+      }
+    } catch (error) {
+      console.error('Erreur partage:', error);
+      Alert.alert('Erreur', 'Impossible de partager pour le moment');
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color="#6366F1" />
       </View>
     );
   }
@@ -164,577 +210,565 @@ const DashboardScreen = ({ navigation }) => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('fr-FR', {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      maximumFractionDigits: 2,
     }).format(amount);
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
-
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
     <ScrollView
       style={styles.container}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366F1']} />
       }
     >
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Bonjour,</Text>
-          <Text style={styles.name}>
-            {user?.first_name} {user?.last_name}
-          </Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.greeting}>Bienvenue, {user?.first_name} !</Text>
+          <Text style={styles.subtitle}>Voici un aperçu de votre activité.</Text>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleHelp}>
+            <Ionicons name="help-circle-outline" size={24} color="#6366F1" />
+            <Text style={styles.actionButtonLabel}>Aide</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={handlePublicPage}>
+            <Ionicons name="globe-outline" size={24} color="#6366F1" />
+            <Text style={styles.actionButtonLabel}>Page publique</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+            <Ionicons name="share-social-outline" size={24} color="#6366F1" />
+            <Text style={styles.actionButtonLabel}>Partager</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Business Hours Alert */}
-      {showBusinessHoursAlert && (
-        <View style={styles.alertContainer}>
-          <AlertBanner
-            type="warning"
-            icon="time-outline"
-            title="Configuration requise: Horaires d'ouverture"
-            message="Vos horaires d'ouverture ne sont pas configurés. Sans cette configuration, vos clients ne pourront PAS réserver en ligne !"
-            actionText="Configurer mes horaires maintenant"
-            onActionPress={() => navigation.navigate('Settings')}
-            dismissable={true}
-            onDismiss={() => setShowBusinessHoursAlert(false)}
-          />
-        </View>
-      )}
-
-      {/* Quick Actions */}
-      <View style={styles.quickActionsContainer}>
-        <TouchableOpacity
-          style={styles.quickActionButton}
-          onPress={() => navigation.navigate('AppointmentForm')}
-        >
-          <Ionicons name="add-circle" size={24} color="#6366F1" />
-          <Text style={styles.quickActionText}>Nouveau rendez-vous</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Stats Cards - Row 1 */}
-      <View style={styles.statsContainer}>
-        <StatCard
+      {/* Quick Action Cards - Row 1 */}
+      <View style={styles.statsRow}>
+        <QuickActionCard
           icon="calendar"
-          title="Rendez-vous"
-          subtitle="Aujourd'hui"
+          iconColor="#fff"
+          title="RDV aujourd'hui"
           value={stats?.todayAppointments || 0}
           color="#6366F1"
+          linkText="Voir le planning →"
           onPress={() => navigation.navigate('Appointments')}
         />
-        <StatCard
+        <QuickActionCard
           icon="people"
-          title="Clients"
-          subtitle="Total"
+          iconColor="#fff"
+          title="Total clients"
           value={stats?.totalClients || 0}
           color="#10B981"
+          linkText="Gérer les clients →"
           onPress={() => navigation.navigate('Clients')}
         />
       </View>
 
-      {/* Stats Cards - Row 2 */}
-      <View style={styles.statsContainer}>
-        <StatCard
-          icon="cash"
-          title="Revenu aujourd'hui"
-          subtitle={`${stats?.todayCompleted || 0} RDV complétés`}
-          value={`${formatCurrency(stats?.todayRevenue || 0)} F`}
-          color="#10B981"
-          isAmount={true}
+      {/* Quick Action Cards - Row 2 */}
+      <View style={styles.statsRow}>
+        <QuickActionCard
+          icon="cut"
+          iconColor="#fff"
+          title="Services actifs"
+          value={stats?.activeServices || 0}
+          color="#8B5CF6"
+          linkText="Gérer les services →"
+          onPress={() => navigation.navigate('Services')}
         />
-        <StatCard
-          icon="trending-up"
-          title="Revenu ce mois"
-          subtitle={`${stats?.completedThisMonth || 0} RDV complétés`}
-          value={`${formatCurrency(stats?.monthlyRevenue || 0)} F`}
-          color="#3B82F6"
-          isAmount={true}
+        <QuickActionCard
+          icon="time"
+          iconColor="#fff"
+          title="En attente"
+          value={stats?.pendingAppointments || 0}
+          color="#F59E0B"
+          linkText="Valider les RDV →"
+          onPress={() => navigation.navigate('Appointments')}
         />
       </View>
 
-      {/* Stats Cards - Row 3 */}
-      <View style={styles.statsContainer}>
-        <StatCard
+      {/* Revenue Cards */}
+      <View style={styles.revenueContainer}>
+        <View style={styles.revenueCard}>
+          <View style={styles.revenueHeader}>
+            <Ionicons name="cash" size={20} color="#10B981" />
+            <Text style={styles.revenueLabel}>Revenu aujourd'hui</Text>
+          </View>
+          <Text style={styles.revenueValue}>{formatCurrency(stats?.todayRevenue || 0)} F CFA</Text>
+          <Text style={styles.revenueSubtext}>→ RDV complétés</Text>
+        </View>
+
+        <View style={styles.revenueCard}>
+          <View style={styles.revenueHeader}>
+            <Ionicons name="trending-up" size={20} color="#3B82F6" />
+            <Text style={styles.revenueLabel}>Revenu ce mois</Text>
+          </View>
+          <Text style={styles.revenueValue}>{formatCurrency(stats?.monthlyRevenue || 0)} F CFA</Text>
+          <Text style={styles.revenueSubtext}>{stats?.completedThisMonth || 0} RDV complétés</Text>
+        </View>
+      </View>
+
+      {/* Stats Cards */}
+      <View style={styles.statsRow}>
+        <StatsCard
           icon="checkmark-circle"
           title="Complétés ce mois"
-          subtitle="Rendez-vous terminés"
           value={stats?.completedThisMonth || 0}
+          subtitle="→ Rendez-vous terminés"
           color="#10B981"
         />
-        <StatCard
+        <StatsCard
           icon="close-circle"
           title="Annulés ce mois"
-          subtitle="À surveiller"
           value={stats?.cancelledThisMonth || 0}
+          subtitle="→ À surveiller"
           color="#EF4444"
         />
       </View>
 
-      {/* Today's Appointments Section */}
+      {/* Today's Appointments */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
+          <Ionicons name="calendar" size={24} color="#1F2937" />
           <Text style={styles.sectionTitle}>Rendez-vous d'aujourd'hui</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Appointments')}>
-            <Text style={styles.seeAllLink}>Voir tout</Text>
-          </TouchableOpacity>
         </View>
+        <TouchableOpacity style={styles.sectionLink} onPress={() => navigation.navigate('Appointments')}>
+          <Text style={styles.linkText}>Voir tout</Text>
+        </TouchableOpacity>
+
         {todayAppointments.length === 0 ? (
-          <EmptyState
-            icon="calendar-outline"
-            title="Aucun rendez-vous prévu pour aujourd'hui"
-          />
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={48} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>Aucun rendez-vous</Text>
+            <Text style={styles.emptyText}>Aucun rendez-vous prévu pour aujourd'hui.</Text>
+          </View>
         ) : (
-          todayAppointments.slice(0, 3).map((appointment) => (
-            <AppointmentCard key={appointment.id} appointment={appointment} navigation={navigation} />
+          todayAppointments.slice(0, 3).map((apt) => (
+            <AppointmentItem key={apt.id} appointment={apt} navigation={navigation} />
           ))
         )}
       </View>
 
-      {/* Popular Services Section */}
+      {/* Popular Services */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Services populaires</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="stats-chart" size={24} color="#1F2937" />
+          <Text style={styles.sectionTitle}>Services populaires</Text>
+        </View>
+        <TouchableOpacity style={styles.sectionLink} onPress={() => navigation.navigate('Services')}>
+          <Text style={styles.linkText}>Voir tout</Text>
+        </TouchableOpacity>
+
         {popularServices.length === 0 ? (
-          <EmptyState
-            icon="trending-up-outline"
-            title="Aucune donnée disponible"
-          />
+          <View style={styles.emptyState}>
+            <Ionicons name="trending-up-outline" size={48} color="#D1D5DB" />
+            <Text style={styles.emptyText}>Aucune donnée disponible</Text>
+          </View>
         ) : (
           popularServices.map((service, index) => (
-            <ServiceCard key={service.id} service={service} rank={index + 1} />
+            <ServiceItem key={service.id} service={service} rank={index + 1} />
           ))
         )}
       </View>
 
-      {/* Recent Clients Section */}
+      {/* Recent Clients */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
+          <Ionicons name="people" size={24} color="#1F2937" />
           <Text style={styles.sectionTitle}>Clients récents</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Clients')}>
-            <Text style={styles.seeAllLink}>Voir tout</Text>
-          </TouchableOpacity>
         </View>
+        <TouchableOpacity style={styles.sectionLink} onPress={() => navigation.navigate('Clients')}>
+          <Text style={styles.linkText}>Voir tout</Text>
+        </TouchableOpacity>
+
         {recentClients.length === 0 ? (
-          <EmptyState
-            icon="people-outline"
-            title="Aucun client"
-          />
+          <View style={styles.emptyState}>
+            <Ionicons name="people-outline" size={48} color="#D1D5DB" />
+            <Text style={styles.emptyText}>Aucun client</Text>
+          </View>
         ) : (
           recentClients.map((client) => (
-            <ClientCard key={client.id} client={client} formatDate={formatDate} />
+            <ClientItem key={client.id} client={client} />
           ))
         )}
       </View>
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 };
 
-const StatCard = ({ icon, title, subtitle, value, color, onPress, isAmount }) => (
-  <TouchableOpacity
-    style={[styles.statCard, { borderLeftColor: color }]}
-    onPress={onPress}
-    disabled={!onPress}
-  >
-    <View style={[styles.iconContainer, { backgroundColor: color + '20' }]}>
+const QuickActionCard = ({ icon, iconColor, title, value, color, linkText, onPress }) => (
+  <TouchableOpacity style={[styles.actionCard, { backgroundColor: color }]} onPress={onPress}>
+    <View style={styles.actionCardTop}>
+      <Text style={styles.actionCardTitle}>{title}</Text>
+      <Ionicons name={icon} size={32} color={iconColor} />
+    </View>
+    <Text style={styles.actionCardValue}>{value}</Text>
+    <Text style={styles.actionCardLink}>{linkText}</Text>
+  </TouchableOpacity>
+);
+
+const StatsCard = ({ icon, title, value, subtitle, color }) => (
+  <View style={styles.statsCard}>
+    <View style={styles.statsCardHeader}>
       <Ionicons name={icon} size={24} color={color} />
     </View>
-    <View style={styles.statContent}>
-      <Text style={[styles.statValue, isAmount && styles.statValueSmall]}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-      <Text style={styles.statSubtitle}>{subtitle}</Text>
-    </View>
-  </TouchableOpacity>
+    <Text style={styles.statsCardValue}>{value}</Text>
+    <Text style={styles.statsCardTitle}>{title}</Text>
+    <Text style={styles.statsCardSubtitle}>{subtitle}</Text>
+  </View>
 );
 
-const AppointmentCard = ({ appointment, navigation }) => (
+const AppointmentItem = ({ appointment, navigation }) => (
   <TouchableOpacity
-    style={styles.appointmentCard}
+    style={styles.listItem}
     onPress={() => navigation.navigate('AppointmentDetail', { appointmentId: appointment.id })}
-    activeOpacity={0.7}
   >
-    <View style={styles.appointmentHeader}>
-      <View style={styles.appointmentTime}>
-        <Ionicons name="time-outline" size={16} color="#6B7280" />
-        <Text style={styles.appointmentTimeText}>
-          {new Date(appointment.start_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-          {' - '}
-          {new Date(appointment.end_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-        </Text>
-      </View>
-      <StatusBadge status={appointment.status} />
+    <View style={styles.listItemContent}>
+      <Text style={styles.listItemTitle}>
+        {appointment.client?.first_name} {appointment.client?.last_name}
+      </Text>
+      <Text style={styles.listItemSubtitle}>{appointment.service?.name}</Text>
     </View>
-    <View style={styles.appointmentBody}>
-      <View style={styles.appointmentRow}>
-        <Ionicons name="person-outline" size={18} color="#6B7280" />
-        <Text style={styles.appointmentText}>
-          {appointment.client?.first_name} {appointment.client?.last_name}
-        </Text>
-      </View>
-      {appointment.client?.phone && (
-        <View style={styles.appointmentRow}>
-          <Ionicons name="call-outline" size={18} color="#6B7280" />
-          <Text style={styles.appointmentText}>{appointment.client.phone}</Text>
-        </View>
-      )}
-      <View style={styles.appointmentRow}>
-        <Ionicons name="cut-outline" size={18} color="#6B7280" />
-        <Text style={styles.appointmentText}>
-          {appointment.service?.name} • {appointment.duration} min
-        </Text>
-      </View>
-      {appointment.employee && (
-        <View style={styles.appointmentRow}>
-          <Ionicons name="person-circle-outline" size={18} color="#6B7280" />
-          <Text style={styles.appointmentText}>
-            {appointment.employee.first_name} {appointment.employee.last_name}
-          </Text>
-        </View>
-      )}
+    <View style={[styles.statusBadge, getStatusStyle(appointment.status)]}>
+      <Text style={styles.statusText}>{getStatusLabel(appointment.status)}</Text>
     </View>
   </TouchableOpacity>
 );
 
-const ServiceCard = ({ service, rank }) => (
-  <View style={styles.serviceCard}>
-    <View style={styles.serviceRank}>
-      <Text style={styles.serviceRankText}>#{rank}</Text>
+const ServiceItem = ({ service, rank }) => (
+  <View style={styles.listItem}>
+    <View style={styles.rankBadge}>
+      <Text style={styles.rankText}>{rank}</Text>
     </View>
-    <View style={styles.serviceContent}>
-      <Text style={styles.serviceName}>{service.name}</Text>
-      <View style={styles.serviceDetails}>
-        <View style={styles.serviceDetailItem}>
-          <Ionicons name="pricetag-outline" size={14} color="#8B5CF6" />
-          <Text style={styles.servicePrice}>{service.price} F CFA</Text>
-        </View>
-        <View style={styles.serviceDetailItem}>
-          <Ionicons name="time-outline" size={14} color="#6B7280" />
-          <Text style={styles.serviceDuration}>{service.duration} min</Text>
-        </View>
-      </View>
+    <View style={styles.listItemContent}>
+      <Text style={styles.listItemTitle}>{service.name}</Text>
+      <Text style={styles.listItemSubtitle}>{service.price} F CFA</Text>
     </View>
-    <View style={styles.serviceBookings}>
-      <Text style={styles.serviceBookingsCount}>{service.bookingCount}</Text>
-      <Text style={styles.serviceBookingsLabel}>réservations</Text>
+    <View style={styles.bookingCount}>
+      <Text style={styles.bookingNumber}>{service.bookingCount}</Text>
+      <Text style={styles.bookingLabel}>réservations</Text>
     </View>
   </View>
 );
 
-const ClientCard = ({ client, formatDate }) => (
-  <View style={styles.clientCard}>
+const ClientItem = ({ client }) => (
+  <View style={styles.listItem}>
     <View style={styles.clientAvatar}>
       <Text style={styles.clientAvatarText}>
         {client.first_name?.charAt(0)}{client.last_name?.charAt(0)}
       </Text>
     </View>
-    <View style={styles.clientContent}>
-      <Text style={styles.clientName}>
+    <View style={styles.listItemContent}>
+      <Text style={styles.listItemTitle}>
         {client.first_name} {client.last_name}
       </Text>
-      {client.email && (
-        <View style={styles.clientRow}>
-          <Ionicons name="mail-outline" size={14} color="#6B7280" />
-          <Text style={styles.clientText}>{client.email}</Text>
-        </View>
-      )}
-      {client.phone && (
-        <View style={styles.clientRow}>
-          <Ionicons name="call-outline" size={14} color="#6B7280" />
-          <Text style={styles.clientText}>{client.phone}</Text>
-        </View>
-      )}
-      <View style={styles.clientRow}>
-        <Ionicons name="calendar-outline" size={14} color="#6B7280" />
-        <Text style={styles.clientText}>Inscrit le {formatDate(client.created_at)}</Text>
-      </View>
+      <Text style={styles.listItemSubtitle}>{client.email}</Text>
     </View>
   </View>
 );
 
+const getStatusLabel = (status) => {
+  const labels = {
+    pending: 'En attente',
+    confirmed: 'Confirmé',
+    completed: 'Terminé',
+    cancelled: 'Annulé',
+  };
+  return labels[status] || status;
+};
+
+const getStatusStyle = (status) => {
+  const styles = {
+    pending: { backgroundColor: '#FEF3C7' },
+    confirmed: { backgroundColor: '#D1FAE5' },
+    completed: { backgroundColor: '#DBEAFE' },
+    cancelled: { backgroundColor: '#FEE2E2' },
+  };
+  return styles[status] || {};
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F9FAFB',
   },
   header: {
     backgroundColor: '#fff',
-    padding: 20,
+    paddingHorizontal: 20,
     paddingTop: 60,
+    paddingBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerLeft: {
+    marginBottom: 16,
+  },
+  greeting: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  actionButtonLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6366F1',
+    textAlign: 'center',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 12,
+  },
+  actionCard: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  greeting: {
-    fontSize: 16,
+  actionCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  actionCardTitle: {
+    fontSize: 13,
+    color: '#fff',
+    opacity: 0.9,
+    flex: 1,
+  },
+  actionCardValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  actionCardLink: {
+    fontSize: 12,
+    color: '#fff',
+    opacity: 0.9,
+  },
+  revenueContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 12,
+  },
+  revenueCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  revenueHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  revenueLabel: {
+    fontSize: 13,
     color: '#6B7280',
   },
-  name: {
+  revenueValue: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#1F2937',
-    marginTop: 4,
+    marginBottom: 4,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    padding: 10,
-    gap: 10,
+  revenueSubtext: {
+    fontSize: 12,
+    color: '#9CA3AF',
   },
-  statCard: {
+  statsCard: {
     flex: 1,
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    borderLeftWidth: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+  statsCardHeader: {
+    marginBottom: 8,
   },
-  statContent: {
-    gap: 2,
-  },
-  statValue: {
-    fontSize: 24,
+  statsCardValue: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#1F2937',
+    marginBottom: 4,
   },
-  statTitle: {
-    fontSize: 14,
+  statsCardTitle: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#374151',
+    marginBottom: 2,
   },
-  statSubtitle: {
-    fontSize: 12,
+  statsCardSubtitle: {
+    fontSize: 11,
     color: '#9CA3AF',
   },
-  statValueSmall: {
-    fontSize: 18,
-  },
-  alertContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  quickActionsContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  quickActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  quickActionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6366F1',
-  },
   section: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    position: 'relative',
   },
   sectionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1F2937',
   },
-  seeAllLink: {
+  sectionLink: {
+    position: 'absolute',
+    top: 24,
+    right: 16,
+  },
+  linkText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#6366F1',
   },
-  appointmentCard: {
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
+    marginTop: 8,
   },
-  appointmentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  appointmentTime: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  appointmentTimeText: {
-    fontSize: 14,
+  emptyTitle: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
+    marginTop: 12,
+    marginBottom: 4,
   },
-  appointmentBody: {
-    gap: 8,
-  },
-  appointmentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  appointmentText: {
+  emptyText: {
     fontSize: 14,
     color: '#6B7280',
   },
-  serviceCard: {
+  listItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
     elevation: 2,
   },
-  serviceRank: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  listItemContent: {
+    flex: 1,
+  },
+  listItemTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  listItemSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  rankBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  serviceRankText: {
-    fontSize: 16,
+  rankText: {
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#6B7280',
   },
-  serviceContent: {
-    flex: 1,
+  bookingCount: {
+    alignItems: 'flex-end',
   },
-  serviceName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 6,
-  },
-  serviceDetails: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  serviceDetailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  servicePrice: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8B5CF6',
-  },
-  serviceDuration: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  serviceBookings: {
-    alignItems: 'center',
-    paddingLeft: 12,
-    borderLeftWidth: 1,
-    borderLeftColor: '#E5E7EB',
-  },
-  serviceBookingsCount: {
+  bookingNumber: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#6366F1',
   },
-  serviceBookingsLabel: {
+  bookingLabel: {
     fontSize: 11,
     color: '#9CA3AF',
   },
-  clientCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
-  },
   clientAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#6366F1',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   clientAvatarText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
-  },
-  clientContent: {
-    flex: 1,
-    gap: 4,
-  },
-  clientName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  clientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  clientText: {
-    fontSize: 13,
-    color: '#6B7280',
   },
 });
 

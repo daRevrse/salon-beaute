@@ -11,11 +11,25 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 import api from '../services/api';
 import FilterButton from '../components/FilterButton';
 import ActionButton from '../components/ActionButton';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
+
+// Configuration du calendrier en français
+LocaleConfig.locales['fr'] = {
+  monthNames: [
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  ],
+  monthNamesShort: ['Jan.', 'Fév.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'],
+  dayNames: ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
+  dayNamesShort: ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'],
+  today: "Aujourd'hui"
+};
+LocaleConfig.defaultLocale = 'fr';
 
 const AppointmentsScreen = ({ navigation }) => {
   const [appointments, setAppointments] = useState([]);
@@ -25,6 +39,7 @@ const AppointmentsScreen = ({ navigation }) => {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState(null);
   const [processingIds, setProcessingIds] = useState([]);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
 
   useEffect(() => {
     loadAppointments();
@@ -56,10 +71,64 @@ const AppointmentsScreen = ({ navigation }) => {
       filtered = filtered.filter(apt => apt.status === selectedStatus);
     }
 
-    // Filter by date if needed (for now, we'll keep all dates)
-    // You can add date filtering logic here later
+    // Filter by date if selected
+    if (selectedDate) {
+      filtered = filtered.filter(apt => {
+        let aptDate = apt.appointment_date;
+        // Extraire juste la date si c'est un timestamp
+        if (aptDate && aptDate.includes('T')) {
+          aptDate = aptDate.split('T')[0];
+        }
+        return aptDate === selectedDate;
+      });
+    }
 
     setFilteredAppointments(filtered);
+  };
+
+  const getMarkedDates = () => {
+    const marked = {};
+
+    appointments.forEach(apt => {
+      // S'assurer que la date est au format YYYY-MM-DD
+      let date = apt.appointment_date;
+
+      if (!date) return; // Ignorer si pas de date
+
+      // Si la date contient un timestamp, extraire juste la partie date
+      if (date.includes('T')) {
+        date = date.split('T')[0];
+      }
+
+      if (!marked[date]) {
+        marked[date] = { marked: true, dots: [] };
+      }
+
+      // Ajouter un point de couleur selon le statut
+      const color =
+        apt.status === 'pending' ? '#F59E0B' :
+        apt.status === 'confirmed' ? '#10B981' :
+        apt.status === 'completed' ? '#3B82F6' :
+        '#6B7280';
+
+      marked[date].dots.push({ color });
+    });
+
+    // Ajouter la date sélectionnée
+    if (selectedDate) {
+      marked[selectedDate] = {
+        ...marked[selectedDate],
+        selected: true,
+        selectedColor: '#6366F1',
+      };
+    }
+
+    return marked;
+  };
+
+  const handleDayPress = (day) => {
+    setSelectedDate(day.dateString);
+    setViewMode('list'); // Passer en mode liste pour voir les RDV du jour
   };
 
   const onRefresh = () => {
@@ -276,16 +345,35 @@ const AppointmentsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header with Add Button */}
+      {/* Header with Add Button and View Toggle */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Rendez-vous</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => navigation.navigate('AppointmentForm')}
-        >
-          <Ionicons name="add" size={20} color="#fff" />
-          <Text style={styles.addButtonText}>Nouveau</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {/* View Toggle */}
+          <View style={styles.viewToggle}>
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
+              onPress={() => setViewMode('list')}
+            >
+              <Ionicons name="list" size={18} color={viewMode === 'list' ? '#fff' : '#6B7280'} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'calendar' && styles.toggleButtonActive]}
+              onPress={() => setViewMode('calendar')}
+            >
+              <Ionicons name="calendar" size={18} color={viewMode === 'calendar' ? '#fff' : '#6B7280'} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Add Button */}
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => navigation.navigate('AppointmentForm')}
+          >
+            <Ionicons name="add" size={20} color="#fff" />
+            <Text style={styles.addButtonText}>Nouveau</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Filters */}
@@ -295,6 +383,17 @@ const AppointmentsScreen = ({ navigation }) => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filtersContent}
         >
+          {selectedDate && (
+            <TouchableOpacity
+              style={styles.clearDateButton}
+              onPress={() => setSelectedDate(null)}
+            >
+              <Ionicons name="close-circle" size={16} color="#6366F1" />
+              <Text style={styles.clearDateText}>
+                {new Date(selectedDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+              </Text>
+            </TouchableOpacity>
+          )}
           <FilterButton
             label="Tous"
             active={selectedStatus === 'all'}
@@ -325,27 +424,90 @@ const AppointmentsScreen = ({ navigation }) => {
         </ScrollView>
       </View>
 
-      {/* Appointments List */}
-      <FlatList
-        data={filteredAppointments}
-        renderItem={renderAppointment}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={
-          <EmptyState
-            icon="calendar-outline"
-            title="Aucun rendez-vous"
-            description={
-              selectedStatus === 'all'
-                ? "Vous n'avez pas encore de rendez-vous"
-                : `Aucun rendez-vous ${selectedStatus === 'pending' ? 'en attente' : selectedStatus === 'confirmed' ? 'confirmé' : 'complété'}`
-            }
+      {/* Calendar or List View */}
+      {viewMode === 'calendar' ? (
+        <ScrollView
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          <Calendar
+            current={selectedDate || new Date().toISOString().split('T')[0]}
+            onDayPress={handleDayPress}
+            markedDates={getMarkedDates()}
+            markingType={'multi-dot'}
+            theme={{
+              backgroundColor: '#F9FAFB',
+              calendarBackground: '#fff',
+              textSectionTitleColor: '#6B7280',
+              selectedDayBackgroundColor: '#6366F1',
+              selectedDayTextColor: '#fff',
+              todayTextColor: '#6366F1',
+              dayTextColor: '#1F2937',
+              textDisabledColor: '#D1D5DB',
+              dotColor: '#6366F1',
+              selectedDotColor: '#fff',
+              arrowColor: '#6366F1',
+              monthTextColor: '#1F2937',
+              indicatorColor: '#6366F1',
+              textDayFontFamily: 'System',
+              textMonthFontFamily: 'System',
+              textDayHeaderFontFamily: 'System',
+              textDayFontWeight: '400',
+              textMonthFontWeight: 'bold',
+              textDayHeaderFontWeight: '600',
+              textDayFontSize: 15,
+              textMonthFontSize: 18,
+              textDayHeaderFontSize: 13,
+            }}
+            style={styles.calendar}
           />
-        }
-      />
+
+          {/* Légende */}
+          <View style={styles.legend}>
+            <Text style={styles.legendTitle}>Légende :</Text>
+            <View style={styles.legendItems}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+                <Text style={styles.legendText}>En attente</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+                <Text style={styles.legendText}>Confirmé</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
+                <Text style={styles.legendText}>Complété</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={filteredAppointments}
+          renderItem={renderAppointment}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon="calendar-outline"
+              title="Aucun rendez-vous"
+              description={
+                selectedDate
+                  ? `Aucun rendez-vous le ${new Date(selectedDate).toLocaleDateString('fr-FR')}`
+                  : selectedStatus === 'all'
+                  ? "Vous n'avez pas encore de rendez-vous"
+                  : `Aucun rendez-vous ${selectedStatus === 'pending' ? 'en attente' : selectedStatus === 'confirmed' ? 'confirmé' : 'complété'}`
+              }
+            />
+          }
+        />
+      )}
     </View>
   );
 };
@@ -375,6 +537,25 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1F2937',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: 2,
+  },
+  toggleButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  toggleButtonActive: {
+    backgroundColor: '#6366F1',
+  },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -388,6 +569,68 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  clearDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    gap: 4,
+  },
+  clearDateText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6366F1',
+  },
+  calendar: {
+    marginTop: 8,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  legend: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  legendTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  legendItems: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  legendText: {
+    fontSize: 13,
+    color: '#6B7280',
   },
   filtersContainer: {
     backgroundColor: '#fff',

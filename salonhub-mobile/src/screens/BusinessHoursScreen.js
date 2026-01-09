@@ -15,20 +15,20 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../services/api';
 
 const DAYS_OF_WEEK = [
-  { id: 0, name: 'Dimanche', shortName: 'Dim' },
-  { id: 1, name: 'Lundi', shortName: 'Lun' },
-  { id: 2, name: 'Mardi', shortName: 'Mar' },
-  { id: 3, name: 'Mercredi', shortName: 'Mer' },
-  { id: 4, name: 'Jeudi', shortName: 'Jeu' },
-  { id: 5, name: 'Vendredi', shortName: 'Ven' },
-  { id: 6, name: 'Samedi', shortName: 'Sam' },
+  { key: 'sunday', name: 'Dimanche', shortName: 'Dim' },
+  { key: 'monday', name: 'Lundi', shortName: 'Lun' },
+  { key: 'tuesday', name: 'Mardi', shortName: 'Mar' },
+  { key: 'wednesday', name: 'Mercredi', shortName: 'Mer' },
+  { key: 'thursday', name: 'Jeudi', shortName: 'Jeu' },
+  { key: 'friday', name: 'Vendredi', shortName: 'Ven' },
+  { key: 'saturday', name: 'Samedi', shortName: 'Sam' },
 ];
 
 const BusinessHoursScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [businessHours, setBusinessHours] = useState([]);
-  const [showTimePicker, setShowTimePicker] = useState(null); // { dayId, type: 'open' | 'close' }
+  const [businessHours, setBusinessHours] = useState({});
+  const [showTimePicker, setShowTimePicker] = useState(null); // { dayKey, type: 'open' | 'close' }
 
   useEffect(() => {
     loadBusinessHours();
@@ -36,9 +36,9 @@ const BusinessHoursScreen = ({ navigation }) => {
 
   const loadBusinessHours = async () => {
     try {
-      const response = await api.get('/business-hours');
-      if (response.data.success && response.data.data && response.data.data.length > 0) {
-        setBusinessHours(response.data.data);
+      const response = await api.get('/settings');
+      if (response.data && response.data.business_hours) {
+        setBusinessHours(response.data.business_hours);
       } else {
         // Initialize with default values if no data
         initializeDefaultHours();
@@ -57,23 +57,26 @@ const BusinessHoursScreen = ({ navigation }) => {
   };
 
   const initializeDefaultHours = () => {
-    const defaultHours = DAYS_OF_WEEK.map(day => ({
-      day_of_week: day.id,
-      is_open: day.id >= 1 && day.id <= 5, // Monday to Friday open by default
-      open_time: '09:00:00',
-      close_time: '18:00:00',
-    }));
+    const defaultHours = {
+      monday: { open: '09:00', close: '18:00', closed: false },
+      tuesday: { open: '09:00', close: '18:00', closed: false },
+      wednesday: { open: '09:00', close: '18:00', closed: false },
+      thursday: { open: '09:00', close: '18:00', closed: false },
+      friday: { open: '09:00', close: '18:00', closed: false },
+      saturday: { open: '09:00', close: '17:00', closed: false },
+      sunday: { open: '00:00', close: '00:00', closed: true },
+    };
     setBusinessHours(defaultHours);
   };
 
-  const handleToggleDay = (dayId) => {
-    setBusinessHours(prev =>
-      prev.map(item =>
-        item.day_of_week === dayId
-          ? { ...item, is_open: !item.is_open }
-          : item
-      )
-    );
+  const handleToggleDay = (dayKey) => {
+    setBusinessHours(prev => ({
+      ...prev,
+      [dayKey]: {
+        ...prev[dayKey],
+        closed: !prev[dayKey]?.closed,
+      },
+    }));
   };
 
   const handleTimeChange = (event, selectedTime) => {
@@ -84,31 +87,42 @@ const BusinessHoursScreen = ({ navigation }) => {
     if (selectedTime && showTimePicker) {
       const hours = selectedTime.getHours().toString().padStart(2, '0');
       const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
-      const timeString = `${hours}:${minutes}:00`;
+      const timeString = `${hours}:${minutes}`;
 
-      setBusinessHours(prev =>
-        prev.map(item =>
-          item.day_of_week === showTimePicker.dayId
-            ? { ...item, [showTimePicker.type === 'open' ? 'open_time' : 'close_time']: timeString }
-            : item
-        )
-      );
+      setBusinessHours(prev => ({
+        ...prev,
+        [showTimePicker.dayKey]: {
+          ...prev[showTimePicker.dayKey],
+          [showTimePicker.type]: timeString,
+        },
+      }));
+    }
+
+    if (Platform.OS === 'ios') {
+      // Keep picker open on iOS
     }
   };
 
   const formatTime = (timeString) => {
     if (!timeString) return '';
-    return timeString.substring(0, 5);
+    return timeString; // Already in HH:mm format
+  };
+
+  const parseTime = (timeString) => {
+    const [hours, minutes] = timeString.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours, 10));
+    date.setMinutes(parseInt(minutes, 10));
+    return date;
   };
 
   const handleSave = async () => {
     setSubmitting(true);
     try {
-      await api.post('/business-hours', { hours: businessHours });
+      await api.put('/settings', { business_hours: businessHours });
       Alert.alert('Succès', 'Horaires d\'ouverture enregistrés avec succès');
       navigation.goBack();
     } catch (error) {
-      console.error('Erreur sauvegarde horaires:', error);
       const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Impossible de sauvegarder les horaires';
       Alert.alert('Erreur', errorMessage);
     } finally {
@@ -123,15 +137,6 @@ const BusinessHoursScreen = ({ navigation }) => {
       </View>
     );
   }
-
-  const getDayHours = (dayId) => {
-    return businessHours.find(item => item.day_of_week === dayId) || {
-      day_of_week: dayId,
-      is_open: false,
-      open_time: '09:00:00',
-      close_time: '18:00:00',
-    };
-  };
 
   return (
     <View style={styles.container}>
@@ -160,47 +165,49 @@ const BusinessHoursScreen = ({ navigation }) => {
 
         {/* Days List */}
         {DAYS_OF_WEEK.map(day => {
-          const dayHours = getDayHours(day.id);
+          const dayHours = businessHours[day.key] || { open: '09:00', close: '18:00', closed: false };
+          const isOpen = !dayHours.closed;
+
           return (
-            <View key={day.id} style={styles.dayCard}>
+            <View key={day.key} style={styles.dayCard}>
+              {/* Day Header */}
               <View style={styles.dayHeader}>
-                <View style={styles.dayNameContainer}>
+                <View style={styles.dayInfo}>
                   <Text style={styles.dayName}>{day.name}</Text>
-                  {!dayHours.is_open && (
-                    <Text style={styles.closedText}>Fermé</Text>
-                  )}
+                  {!isOpen && <Text style={styles.closedLabel}>Fermé</Text>}
                 </View>
                 <Switch
-                  value={dayHours.is_open}
-                  onValueChange={() => handleToggleDay(day.id)}
+                  value={isOpen}
+                  onValueChange={() => handleToggleDay(day.key)}
                   trackColor={{ false: '#D1D5DB', true: '#A5B4FC' }}
-                  thumbColor={dayHours.is_open ? '#6366F1' : '#F3F4F6'}
+                  thumbColor={isOpen ? '#6366F1' : '#F3F4F6'}
                 />
               </View>
 
-              {dayHours.is_open && (
+              {/* Time Pickers */}
+              {isOpen && (
                 <View style={styles.timeContainer}>
                   {/* Open Time */}
-                  <View style={styles.timeGroup}>
+                  <View style={styles.timeField}>
                     <Text style={styles.timeLabel}>Ouverture</Text>
                     <TouchableOpacity
-                      style={styles.timePicker}
-                      onPress={() => setShowTimePicker({ dayId: day.id, type: 'open' })}
+                      style={styles.timeButton}
+                      onPress={() => setShowTimePicker({ dayKey: day.key, type: 'open' })}
                     >
                       <Ionicons name="time-outline" size={20} color="#6366F1" />
-                      <Text style={styles.timeText}>{formatTime(dayHours.open_time)}</Text>
+                      <Text style={styles.timeText}>{formatTime(dayHours.open)}</Text>
                     </TouchableOpacity>
                   </View>
 
                   {/* Close Time */}
-                  <View style={styles.timeGroup}>
+                  <View style={styles.timeField}>
                     <Text style={styles.timeLabel}>Fermeture</Text>
                     <TouchableOpacity
-                      style={styles.timePicker}
-                      onPress={() => setShowTimePicker({ dayId: day.id, type: 'close' })}
+                      style={styles.timeButton}
+                      onPress={() => setShowTimePicker({ dayKey: day.key, type: 'close' })}
                     >
                       <Ionicons name="time-outline" size={20} color="#6366F1" />
-                      <Text style={styles.timeText}>{formatTime(dayHours.close_time)}</Text>
+                      <Text style={styles.timeText}>{formatTime(dayHours.close)}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -211,24 +218,6 @@ const BusinessHoursScreen = ({ navigation }) => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
-
-      {/* Time Picker */}
-      {showTimePicker && (
-        <DateTimePicker
-          value={(() => {
-            const dayHours = getDayHours(showTimePicker.dayId);
-            const timeString = showTimePicker.type === 'open' ? dayHours.open_time : dayHours.close_time;
-            const [hours, minutes] = timeString.split(':');
-            const date = new Date();
-            date.setHours(parseInt(hours), parseInt(minutes), 0);
-            return date;
-          })()}
-          mode="time"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleTimeChange}
-          is24Hour={true}
-        />
-      )}
 
       {/* Save Button */}
       <View style={styles.footer}>
@@ -242,11 +231,22 @@ const BusinessHoursScreen = ({ navigation }) => {
           ) : (
             <>
               <Ionicons name="checkmark" size={20} color="#fff" />
-              <Text style={styles.saveButtonText}>Enregistrer les horaires</Text>
+              <Text style={styles.saveButtonText}>Enregistrer</Text>
             </>
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Time Picker Modal */}
+      {showTimePicker && (
+        <DateTimePicker
+          value={parseTime(businessHours[showTimePicker.dayKey]?.[showTimePicker.type] || '09:00')}
+          mode="time"
+          is24Hour={true}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleTimeChange}
+        />
+      )}
     </View>
   );
 };
@@ -327,53 +327,57 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  dayNameContainer: {
+  dayInfo: {
     flex: 1,
   },
   dayName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 2,
+    marginBottom: 4,
   },
-  closedText: {
+  closedLabel: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: '#EF4444',
+    fontWeight: '500',
   },
   timeContainer: {
     flexDirection: 'row',
-    marginTop: 16,
     gap: 12,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
-  timeGroup: {
+  timeField: {
     flex: 1,
   },
   timeLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     color: '#6B7280',
     marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
-  timePicker: {
+  timeButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    borderRadius: 8,
-    padding: 12,
-    gap: 8,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   timeText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#1F2937',
   },
   footer: {
     padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+    paddingBottom: 32,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',

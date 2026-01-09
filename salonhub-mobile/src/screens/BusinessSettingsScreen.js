@@ -27,8 +27,9 @@ const BusinessSettingsScreen = ({ navigation }) => {
     business_phone: '',
     business_email: '',
     business_address: '',
-    business_description: '',
-    booking_url: '',
+    slug: '',
+    city: '',
+    postal_code: '',
   });
 
   useEffect(() => {
@@ -37,15 +38,17 @@ const BusinessSettingsScreen = ({ navigation }) => {
 
   const loadBusinessSettings = async () => {
     try {
-      const response = await api.get('/business/settings');
+      // Load from /settings/salon endpoint
+      const response = await api.get('/settings/salon');
       if (response.data.success && response.data.data) {
         setFormData({
-          business_name: response.data.data.business_name || '',
-          business_phone: response.data.data.business_phone || '',
-          business_email: response.data.data.business_email || '',
-          business_address: response.data.data.business_address || '',
-          business_description: response.data.data.business_description || '',
-          booking_url: response.data.data.booking_url || '',
+          business_name: response.data.data.name || '',
+          business_phone: response.data.data.phone || '',
+          business_email: response.data.data.email || '',
+          business_address: response.data.data.address || '',
+          slug: response.data.data.slug || '',
+          city: response.data.data.city || '',
+          postal_code: response.data.data.postal_code || '',
         });
         setLogoUri(response.data.data.logo_url || null);
         setBannerUri(response.data.data.banner_url || null);
@@ -112,15 +115,17 @@ const BusinessSettingsScreen = ({ navigation }) => {
     setSubmitting(true);
     try {
       const settingsData = {
-        business_name: formData.business_name.trim(),
-        business_phone: formData.business_phone.trim() || null,
-        business_email: formData.business_email.trim() || null,
-        business_address: formData.business_address.trim() || null,
-        business_description: formData.business_description.trim() || null,
-        booking_url: formData.booking_url.trim() || null,
+        name: formData.business_name.trim(),
+        phone: formData.business_phone.trim() || null,
+        email: formData.business_email.trim() || null,
+        address: formData.business_address.trim() || null,
+        slug: formData.slug.trim() || null,
+        city: formData.city.trim() || null,
+        postal_code: formData.postal_code.trim() || null,
+        // logo_url and banner_url will be added when image upload is implemented
       };
 
-      await api.put('/business/settings', settingsData);
+      await api.put('/settings/salon', settingsData);
       Alert.alert('Succès', 'Paramètres du salon enregistrés avec succès');
       navigation.goBack();
     } catch (error) {
@@ -275,16 +280,28 @@ const BusinessSettingsScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Description</Text>
-            <View style={[styles.inputContainer, styles.textAreaContainer]}>
+            <Text style={styles.label}>Ville</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="location-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Décrivez votre salon en quelques mots..."
-                value={formData.business_description}
-                onChangeText={(text) => setFormData({ ...formData, business_description: text })}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
+                style={styles.input}
+                placeholder="Dakar"
+                value={formData.city}
+                onChangeText={(text) => setFormData({ ...formData, city: text })}
+              />
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Code postal</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="12345"
+                value={formData.postal_code}
+                onChangeText={(text) => setFormData({ ...formData, postal_code: text })}
+                keyboardType="numeric"
               />
             </View>
           </View>
@@ -292,24 +309,33 @@ const BusinessSettingsScreen = ({ navigation }) => {
 
         {/* Online Booking Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Réservation en ligne</Text>
+          <Text style={styles.sectionTitle}>Page publique</Text>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>URL de réservation</Text>
+            <Text style={styles.label}>Identifiant unique (slug)</Text>
             <View style={styles.inputContainer}>
-              <Ionicons name="link-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <Ionicons name="at-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="monsalon.salonhub.com"
-                value={formData.booking_url}
-                onChangeText={(text) => setFormData({ ...formData, booking_url: text })}
+                placeholder="mon-salon-beaute"
+                value={formData.slug}
+                onChangeText={(text) => setFormData({ ...formData, slug: text.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
                 autoCapitalize="none"
               />
             </View>
             <Text style={styles.helperText}>
-              Cette URL permettra à vos clients de prendre rendez-vous en ligne
+              Uniquement lettres, chiffres et tirets. Exemple: mon-salon-beaute
             </Text>
           </View>
+
+          {formData.slug && (
+            <View style={styles.urlPreview}>
+              <Ionicons name="link-outline" size={16} color="#6366F1" />
+              <Text style={styles.urlPreviewText}>
+                https://salonhub.app/book/{formData.slug}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={{ height: 100 }} />
@@ -434,6 +460,21 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 6,
     marginLeft: 4,
+  },
+  urlPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+    marginTop: 8,
+  },
+  urlPreviewText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#4F46E5',
+    fontWeight: '500',
   },
   imageUploadContainer: {
     width: '100%',

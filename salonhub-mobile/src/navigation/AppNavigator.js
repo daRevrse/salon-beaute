@@ -26,7 +26,10 @@ import ProfileScreen from '../screens/ProfileScreen';
 import BusinessHoursScreen from '../screens/BusinessHoursScreen';
 import BusinessSettingsScreen from '../screens/BusinessSettingsScreen';
 import StaffScreen from '../screens/StaffScreen';
+import StaffFormScreen from '../screens/StaffFormScreen';
 import BillingScreen from '../screens/BillingScreen';
+import PromotionsScreen from '../screens/PromotionsScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -162,6 +165,21 @@ const AppNavigator = () => {
             <Stack.Screen
               name="Billing"
               component={BillingScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="StaffForm"
+              component={StaffFormScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Promotions"
+              component={PromotionsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
               options={{ headerShown: false }}
             />
           </>
