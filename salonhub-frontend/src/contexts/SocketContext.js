@@ -11,50 +11,50 @@ export const SocketProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    console.log("=== SOCKET DEBUG ===");
-    console.log("isAuthenticated:", isAuthenticated);
-    console.log("user:", user);
-    console.log("tenant_id:", user?.tenant_id);
+    // console.log("=== SOCKET DEBUG ===");
+    // console.log("isAuthenticated:", isAuthenticated);
+    // console.log("user:", user);
+    // console.log("tenant_id:", user?.tenant_id);
 
     // On ne se connecte que si l'utilisateur est staff/admin connecté
     if (isAuthenticated && user && user.tenant_id) {
       const apiUrl =
         process.env.REACT_APP_API_URL.replace("/api", "") ||
         "http://localhost:5000";
-      console.log("📡 Connexion WebSocket à:", apiUrl);
+      // console.log("📡 Connexion WebSocket à:", apiUrl);
 
       const newSocket = io(apiUrl);
 
       newSocket.on("connect", () => {
-        console.log(
-          "🟢 Connecté au serveur WebSocket - Socket ID:",
-          newSocket.id
-        );
+        // console.log(
+        //   "🟢 Connecté au serveur WebSocket - Socket ID:",
+        //   newSocket.id
+        // );
         // Rejoindre la room du salon
         newSocket.emit("join_tenant", user.tenant_id);
-        console.log("📤 Demande de rejoindre tenant:", user.tenant_id);
+        // console.log("📤 Demande de rejoindre tenant:", user.tenant_id);
       });
 
       newSocket.on("joined", (data) => {
-        console.log("✅ Rejoint la room avec succès:", data);
+        // console.log("✅ Rejoint la room avec succès:", data);
       });
 
       newSocket.on("disconnect", () => {
-        console.log("🔴 Déconnecté du serveur WebSocket");
+        // console.log("🔴 Déconnecté du serveur WebSocket");
       });
 
       newSocket.on("error", (error) => {
-        console.error("❌ Erreur WebSocket:", error);
+        // console.error("❌ Erreur WebSocket:", error);
       });
 
       setSocket(newSocket);
 
       return () => {
-        console.log("🔌 Nettoyage connexion WebSocket");
+        // console.log("🔌 Nettoyage connexion WebSocket");
         newSocket.close();
       };
     } else {
-      console.warn("⚠️  Conditions non remplies pour la connexion WebSocket");
+      // console.warn("⚠️  Conditions non remplies pour la connexion WebSocket");
     }
   }, [isAuthenticated, user]);
 

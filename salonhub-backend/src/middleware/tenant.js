@@ -74,17 +74,17 @@ const checkSubscriptionStatus = async (req, res, next) => {
     }
 
     // Vérifier fin d'essai
-    if (tenant.subscription_status === "trial" && tenant.trial_ends_at) {
-      const trialEnd = new Date(tenant.trial_ends_at);
-      if (trialEnd < new Date()) {
-        return res.status(403).json({
-          success: false,
-          error: "Période d'essai expirée",
-          message:
-            "Votre période d'essai est terminée. Veuillez souscrire à un abonnement.",
-        });
-      }
-    }
+    // if (tenant.subscription_status === "trial" && tenant.trial_ends_at) {
+    //   const trialEnd = new Date(tenant.trial_ends_at);
+    //   if (trialEnd < new Date()) {
+    //     return res.status(403).json({
+    //       success: false,
+    //       error: "Période d'essai expirée",
+    //       message:
+    //         "Votre période d'essai est terminée. Veuillez souscrire à un abonnement.",
+    //     });
+    //   }
+    // }
 
     // Tout est OK
     req.tenant = tenant;

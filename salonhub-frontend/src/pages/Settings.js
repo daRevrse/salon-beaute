@@ -490,10 +490,7 @@ const Settings = () => {
                     <div>
                       <ImageUploader
                         target="tenant-logo"
-                        imageUrl={logoUrl.replace(
-                          "/uploads",
-                          API_URL.replace("/api", "/uploads")
-                        )}
+                        imageUrl={logoUrl}
                         onImageUpload={setLogoUrl}
                         onDelete={() => setLogoUrl(null)}
                         label="Logo du Salon"
@@ -508,10 +505,7 @@ const Settings = () => {
                     <div>
                       <ImageUploader
                         target="tenant-banner"
-                        imageUrl={bannerUrl.replace(
-                          "/uploads",
-                          API_URL.replace("/api", "/uploads")
-                        )}
+                        imageUrl={bannerUrl}
                         onImageUpload={setBannerUrl}
                         onDelete={() => setBannerUrl(null)}
                         label="Bannière du Salon"
