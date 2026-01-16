@@ -16,7 +16,11 @@
       "Bash(curl:*)",
       "Bash(timeout /t 5 /nobreak)",
       "Bash(npm start)",
-      "Bash(mysql:*)"
+      "Bash(mysql:*)",
+      "Skill(frontend-design)",
+      "Bash(powershell -Command:*)",
+      "Bash(start \"\" \"C:\\\\Users\\\\Administrateur\\\\salon-beaute\\\\landing-page\\\\index.html\")",
+      "Bash(dir:*)"
     ]
   }
 }
