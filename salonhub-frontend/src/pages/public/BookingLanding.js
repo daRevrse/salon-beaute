@@ -1,6 +1,6 @@
 /**
- * Page d'accueil du système de réservation
- * Version améliorée style site professionnel de salon
+ * Public Booking Landing Page - Purple Dynasty Theme
+ * Multi-Sector Adaptive with Business Type Terminology
  */
 
 import React, { useEffect, useState } from "react";
@@ -8,13 +8,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { getImageUrl } from "../../utils/imageUtils";
+import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
 
-// Icônes Heroicons
 import {
   PhoneIcon,
   MapPinIcon,
   ClockIcon,
   ChevronRightIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 
 const BookingLanding = () => {
@@ -27,6 +28,11 @@ const BookingLanding = () => {
 
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  // Business type configuration
+  const businessType = salon?.business_type || "beauty";
+  const config = getBusinessTypeConfig(businessType);
+  const term = config.terminology;
+
   useEffect(() => {
     const loadData = async () => {
       const salonData = await fetchSalon();
@@ -38,7 +44,7 @@ const BookingLanding = () => {
     loadData();
   }, []);
 
-  // AUTO SLIDESHOW EVERY 5 SECONDS
+  // Auto slideshow every 5 seconds
   useEffect(() => {
     if (!salon?.images?.length) return;
 
@@ -51,10 +57,10 @@ const BookingLanding = () => {
 
   if (loading && !salon && services.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <div className={`animate-spin rounded-full h-16 w-16 border-b-2 ${config.borderColor} mx-auto`}></div>
+          <p className="mt-4 text-slate-600">Chargement...</p>
         </div>
       </div>
     );
@@ -62,70 +68,64 @@ const BookingLanding = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center max-w-md mx-auto p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Erreur</h2>
-          <p className="text-gray-600">{error}</p>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Erreur</h2>
+          <p className="text-slate-600">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ------------------------------------------------------ */}
-      {/* HERO SECTION – SLIDESHOW + INTRO                       */}
-      {/* ------------------------------------------------------ */}
-      <div className="relative w-full h-[60vh] md:h-[70vh] overflow-hidden rounded-b-3xl shadow-lg">
-        {/* IMAGES BACKGROUND */}
+    <div className="min-h-screen bg-slate-50">
+      {/* Hero Section - Slideshow + Intro */}
+      <div className="relative w-full h-[60vh] md:h-[70vh] overflow-hidden rounded-b-3xl shadow-soft-xl">
+        {/* Background Images */}
         {salon?.banner_url ? (
-          /* Bannière du salon si disponible */
           <img
             src={getImageUrl(salon.banner_url)}
-            alt="Bannière du salon"
+            alt={`Bannière ${term.establishment}`}
             className="absolute inset-0 w-full h-full object-cover"
           />
         ) : salon?.images?.length > 0 ? (
-          /* Slideshow d'images si disponible */
           salon.images.map((img, index) => (
             <img
               key={index}
               src={img}
-              alt={`Salon image ${index + 1}`}
+              alt={`Image ${index + 1}`}
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
                 index === currentSlide ? "opacity-100" : "opacity-0"
               }`}
             />
           ))
         ) : (
-          /* Image par défaut */
-          <img
-            src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1800&h=600&fit=crop"
-            alt="Salon de beauté"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
+          <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient}`}></div>
         )}
 
-        {/* OVERLAY */}
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-[2px]"></div>
 
-        {/* HERO CONTENT */}
+        {/* Hero Content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-6">
-          <img
-            src={
-              getImageUrl(salon?.logo_url) ||
-              "https://placehold.net/4.png"
-            }
-            alt="Salon Logo"
-            className="h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 rounded-full border-4 border-white shadow-lg object-cover mb-4 bg-white p-2"
-          />
-          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold drop-shadow-xl">
-            {salon?.name || "Votre salon de beauté"}
+          {salon?.logo_url ? (
+            <img
+              src={getImageUrl(salon.logo_url)}
+              alt="Logo"
+              className="h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 rounded-2xl border-4 border-white/30 shadow-soft-xl object-cover mb-4 bg-white p-2"
+            />
+          ) : (
+            <div className={`h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 rounded-2xl bg-gradient-to-br ${config.gradient} flex items-center justify-center border-4 border-white/30 shadow-soft-xl mb-4`}>
+              <SparklesIcon className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
+            </div>
+          )}
+
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-display font-bold drop-shadow-xl">
+            {salon?.name || `Votre ${term.establishment.toLowerCase()}`}
           </h1>
 
           <p className="mt-4 text-base sm:text-lg md:text-xl text-white/90 max-w-2xl drop-shadow-md px-4">
-            Réservez votre prestation en quelques clics. Professionnalisme,
-            confort et expertise.
+            {config.bookingSubtitle}
           </p>
 
           {salon?.phone && (
@@ -146,23 +146,27 @@ const BookingLanding = () => {
         </div>
       </div>
 
-      {/* ------------------------------------------------------ */}
-      {/* SERVICES SECTION                                       */}
-      {/* ------------------------------------------------------ */}
+      {/* Services Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
         <div className="text-center mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
-            Choisissez votre prestation
+          <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-900 mb-3">
+            Choisissez {businessType === "restaurant" ? "votre plat" : businessType === "training" ? "votre formation" : businessType === "medical" ? "votre prestation" : "votre prestation"}
           </h2>
-          <p className="text-gray-600">
-            Découvrez notre sélection de services professionnels
+          <p className="text-slate-600">
+            {businessType === "restaurant"
+              ? "Découvrez notre carte"
+              : businessType === "training"
+              ? "Découvrez nos formations professionnelles"
+              : businessType === "medical"
+              ? "Découvrez nos prestations de santé"
+              : "Découvrez notre sélection de services professionnels"}
           </p>
         </div>
 
         {services.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">
-              Aucun service disponible pour le moment.
+            <p className="text-slate-600">
+              {term.noServices} disponible pour le moment.
             </p>
           </div>
         ) : (
@@ -173,55 +177,56 @@ const BookingLanding = () => {
                 onClick={() =>
                   navigate(`/book/${slug}/datetime`, { state: { service } })
                 }
-                className="group bg-white rounded-2xl shadow hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden"
+                className="group bg-white rounded-2xl shadow-soft hover:shadow-soft-xl transition-all duration-300 cursor-pointer overflow-hidden border border-slate-200"
               >
-                {/* SERVICE IMAGE */}
-                <div className="h-40 bg-gray-100 overflow-hidden relative">
+                {/* Service Image */}
+                <div className="h-40 bg-slate-100 overflow-hidden relative">
                   <img
                     src={
                       getImageUrl(service.image_url) ||
-                      "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop"
+                      `https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop`
                     }
+                    alt={service.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition"></div>
+                  <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/20 transition"></div>
                 </div>
 
-                {/* CONTENT */}
+                {/* Content */}
                 <div className="p-4 sm:p-6">
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1">
+                  <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-1">
                     {service.name}
                   </h3>
 
                   {service.description && (
-                    <p className="text-gray-600 text-sm line-clamp-2 mb-4">
+                    <p className="text-slate-600 text-sm line-clamp-2 mb-4">
                       {service.description}
                     </p>
                   )}
 
-                  <div className="flex justify-between items-center border-t pt-3 mt-3">
-                    <span className="text-indigo-600 text-lg sm:text-xl font-bold">
+                  <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-3">
+                    <span className={`${config.textColor} text-lg sm:text-xl font-bold`}>
                       {formatPrice(service.price)}
                     </span>
 
-                    <div className="flex items-center gap-1 text-gray-500">
+                    <div className="flex items-center gap-1 text-slate-500">
                       <ClockIcon className="w-5 h-5" />
                       <span className="text-sm">{service.duration} min</span>
                     </div>
                   </div>
 
                   {service.category && (
-                    <span className="inline-block mt-3 px-3 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
+                    <span className={`inline-block mt-3 px-3 py-1 text-xs font-medium ${config.lightBg} ${config.textColor} rounded-full`}>
                       {service.category}
                     </span>
                   )}
                 </div>
 
-                <div className="bg-indigo-50 px-4 sm:px-6 py-3 flex items-center justify-between">
-                  <span className="text-indigo-600 font-medium text-sm">
-                    Réserver ce service
+                <div className={`${config.lightBg} px-4 sm:px-6 py-3 flex items-center justify-between`}>
+                  <span className={`${config.textColor} font-medium text-sm`}>
+                    {term.book}
                   </span>
-                  <ChevronRightIcon className="w-4 h-4 text-indigo-600" />
+                  <ChevronRightIcon className={`w-4 h-4 ${config.textColor}`} />
                 </div>
               </div>
             ))}
@@ -229,11 +234,9 @@ const BookingLanding = () => {
         )}
       </main>
 
-      {/* ------------------------------------------------------ */}
-      {/* FOOTER                                                 */}
-      {/* ------------------------------------------------------ */}
-      <footer className="bg-white border-t border-gray-200 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-gray-600">
+      {/* Footer */}
+      <footer className="bg-white border-t border-slate-200 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-slate-600">
           {salon?.phone && (
             <div className="flex justify-center items-center gap-2 mb-1">
               <PhoneIcon className="w-4 h-4" />
@@ -249,6 +252,10 @@ const BookingLanding = () => {
               </span>
             </div>
           )}
+
+          <p className="mt-4 text-slate-400 text-xs">
+            © {new Date().getFullYear()} {salon?.name || "SalonHub"}. Tous droits réservés.
+          </p>
         </div>
       </footer>
     </div>

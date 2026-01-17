@@ -1,6 +1,6 @@
 /**
- * Page de paramètres du salon AMÉLIORÉE
- * Layout avec onglets: Général, Facturation, Horaires
+ * Page Settings - Purple Dynasty Theme
+ * Multi-Sector Adaptive with Promotions Tab
  */
 
 import { useState, useEffect } from "react";
@@ -10,9 +10,11 @@ import DashboardLayout from "../components/common/DashboardLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { useCurrency, CURRENCIES } from "../contexts/CurrencyContext";
 import { withPermission } from "../components/common/PermissionGate";
+import { getBusinessTypeConfig } from "../utils/businessTypeConfig";
 import ImageUploader from "../components/common/ImageUploader";
 import PWASettings from "../components/settings/PWASettings";
 import { getImageUrl } from "../utils/imageUtils";
+import api from "../services/api";
 import {
   ClockIcon,
   CalendarDaysIcon,
@@ -27,7 +29,15 @@ import {
   TrashIcon,
   PencilIcon,
   BellIcon,
+  TagIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
+
+import { useToast } from "../hooks/useToast";
+import Toast from "../components/common/Toast";
+import ConfirmModal from "../components/common/ConfirmModal";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -45,13 +55,20 @@ const Settings = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { tenant, refreshTenant, refreshUser } = useAuth();
-  const { currency, changeCurrency } = useCurrency();
+  const { currency, changeCurrency, formatPrice } = useCurrency();
+  const { toast, success, error: toastError, hideToast } = useToast();
+
+  // Business type configuration
+  const businessType = tenant?.business_type || "beauty";
+  const config = getBusinessTypeConfig(businessType);
+  const term = config.terminology;
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
 
-  // Lire le paramètre d'URL pour déterminer l'onglet actif
+  // Tab from URL
   const urlParams = new URLSearchParams(location.search);
   const tabFromUrl = urlParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabFromUrl || "general");
@@ -89,11 +106,37 @@ const Settings = () => {
     password: "",
   });
 
+  // Promotions state
+  const [promotions, setPromotions] = useState([]);
+  const [promotionsLoading, setPromotionsLoading] = useState(false);
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  const [editingPromotion, setEditingPromotion] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [promotionToDelete, setPromotionToDelete] = useState(null);
+  const [promoFormData, setPromoFormData] = useState({
+    code: "",
+    title: "",
+    description: "",
+    discount_type: "percentage",
+    discount_value: "",
+    min_purchase_amount: "",
+    max_discount_amount: "",
+    usage_limit: "",
+    usage_per_client: 1,
+    valid_from: "",
+    valid_until: "",
+    is_active: true,
+    is_public: true,
+  });
+
   useEffect(() => {
     fetchSettings();
     fetchSalonInfo();
     if (activeTab === "staff") {
       fetchStaff();
+    }
+    if (activeTab === "promotions") {
+      loadPromotions();
     }
     // eslint-disable-next-line
   }, [activeTab]);
@@ -152,7 +195,7 @@ const Settings = () => {
         }
       }
     } catch (err) {
-      console.error("Erreur lors du chargement des infos du salon:", err);
+      console.error("Erreur lors du chargement des infos:", err);
     }
   };
 
@@ -171,6 +214,134 @@ const Settings = () => {
     }
   };
 
+  // Promotions functions
+  const loadPromotions = async () => {
+    setPromotionsLoading(true);
+    try {
+      const response = await api.get("/promotions");
+      setPromotions(response.data.data);
+    } catch (err) {
+      console.error("Erreur chargement promotions:", err);
+      toastError("Impossible de charger les promotions");
+    } finally {
+      setPromotionsLoading(false);
+    }
+  };
+
+  const handleOpenPromoModal = (promotion = null) => {
+    if (promotion) {
+      setEditingPromotion(promotion);
+      setPromoFormData({
+        code: promotion.code,
+        title: promotion.title,
+        description: promotion.description || "",
+        discount_type: promotion.discount_type,
+        discount_value: promotion.discount_value,
+        min_purchase_amount: promotion.min_purchase_amount || "",
+        max_discount_amount: promotion.max_discount_amount || "",
+        usage_limit: promotion.usage_limit || "",
+        usage_per_client: promotion.usage_per_client,
+        valid_from: promotion.valid_from?.split("T")[0] || "",
+        valid_until: promotion.valid_until?.split("T")[0] || "",
+        is_active: promotion.is_active,
+        is_public: promotion.is_public,
+      });
+    } else {
+      setEditingPromotion(null);
+      setPromoFormData({
+        code: "",
+        title: "",
+        description: "",
+        discount_type: "percentage",
+        discount_value: "",
+        min_purchase_amount: "",
+        max_discount_amount: "",
+        usage_limit: "",
+        usage_per_client: 1,
+        valid_from: "",
+        valid_until: "",
+        is_active: true,
+        is_public: true,
+      });
+    }
+    setShowPromoModal(true);
+  };
+
+  const handleClosePromoModal = () => {
+    setShowPromoModal(false);
+    setEditingPromotion(null);
+  };
+
+  const handlePromoChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setPromoFormData({
+      ...promoFormData,
+      [name]: type === "checkbox" ? checked : value,
+    });
+  };
+
+  const handlePromoSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      if (editingPromotion) {
+        await api.put(`/promotions/${editingPromotion.id}`, promoFormData);
+        success("Promotion modifiée avec succès !");
+      } else {
+        await api.post("/promotions", promoFormData);
+        success("Promotion créée avec succès !");
+      }
+
+      handleClosePromoModal();
+      loadPromotions();
+    } catch (err) {
+      toastError(err.response?.data?.error || "Erreur lors de la sauvegarde");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const initiateDeletePromo = (id) => {
+    setPromotionToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDeletePromo = async () => {
+    if (promotionToDelete) {
+      try {
+        await api.delete(`/promotions/${promotionToDelete}`);
+        success("Promotion supprimée avec succès !");
+        loadPromotions();
+        setShowDeleteConfirm(false);
+        setPromotionToDelete(null);
+      } catch (err) {
+        toastError(err.response?.data?.error || "Erreur lors de la suppression");
+      }
+    }
+  };
+
+  const handleTogglePromoActive = async (promotion) => {
+    try {
+      await api.put(`/promotions/${promotion.id}`, {
+        is_active: !promotion.is_active,
+      });
+      loadPromotions();
+      success(promotion.is_active ? "Promotion désactivée" : "Promotion activée");
+    } catch (err) {
+      toastError(err.response?.data?.error || "Erreur lors de la modification");
+    }
+  };
+
+  const getDiscountLabel = (promo) => {
+    if (promo.discount_type === "percentage") {
+      return `-${promo.discount_value}%`;
+    } else {
+      return `-${formatPrice(promo.discount_value)}`;
+    }
+  };
+
+  // Staff functions
   const handleOpenStaffModal = (staffMember = null) => {
     if (staffMember) {
       setEditingStaff(staffMember);
@@ -210,7 +381,6 @@ const Settings = () => {
       const token = localStorage.getItem("token");
 
       if (editingStaff) {
-        // Modification
         const updateData = {
           first_name: staffFormData.first_name,
           last_name: staffFormData.last_name,
@@ -226,14 +396,13 @@ const Settings = () => {
           }
         );
 
-        setMessage("Employé modifié avec succès !");
+        setMessage(`${term.staffMember} modifié avec succès !`);
       } else {
-        // Création
         await axios.post(`${API_URL}/auth/staff`, staffFormData, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        setMessage("Employé ajouté avec succès !");
+        setMessage(`${term.staffMember} ajouté avec succès !`);
       }
 
       fetchStaff();
@@ -247,7 +416,7 @@ const Settings = () => {
   };
 
   const handleDeleteStaff = async (id) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet employé ?")) {
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer cet ${term.staffMember.toLowerCase()} ?`)) {
       return;
     }
 
@@ -257,7 +426,7 @@ const Settings = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setMessage("Employé supprimé avec succès !");
+      setMessage(`${term.staffMember} supprimé avec succès !`);
       fetchStaff();
       setTimeout(() => setMessage(null), 3000);
     } catch (err) {
@@ -308,7 +477,6 @@ const Settings = () => {
     try {
       const token = localStorage.getItem("token");
 
-      // Sauvegarder les paramètres généraux
       await axios.put(
         `${API_URL}/settings`,
         {
@@ -321,7 +489,6 @@ const Settings = () => {
         }
       );
 
-      // Sauvegarder le logo, bannière et infos du salon si modifiés
       if (
         logoUrl ||
         bannerUrl ||
@@ -345,7 +512,6 @@ const Settings = () => {
 
       changeCurrency(selectedCurrency);
 
-      // Rafraîchir les données du salon et de l'utilisateur
       const [tenantResult, userResult] = await Promise.all([
         refreshTenant(),
         refreshUser(),
@@ -370,8 +536,8 @@ const Settings = () => {
       <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement...</p>
+            <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${config.borderColor} mx-auto`}></div>
+            <p className="mt-4 text-slate-600">Chargement...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -380,180 +546,169 @@ const Settings = () => {
 
   return (
     <DashboardLayout>
+      {/* Toast Container */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+          duration={toast.duration}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDeletePromo}
+        title="Supprimer la promotion"
+        message="Êtes-vous sûr de vouloir supprimer cette promotion ? Cette action est irréversible."
+        confirmText="Supprimer"
+        type="danger"
+      />
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
         {/* Header */}
-        <div className="mb-6 sm:mb-8 flex items-start sm:items-center">
-          <Cog6ToothIcon className="h-6 w-6 sm:h-8 sm:w-8 text-gray-900 mr-2 sm:mr-3 flex-shrink-0 mt-1 sm:mt-0" />
-          <div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
-              Paramètres du salon
-            </h1>
-            <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">
-              Configurez l'identité, la facturation et les horaires de votre
-              salon
-            </p>
+        <div className="mb-6 sm:mb-8">
+          <div className={`bg-gradient-to-r ${config.gradient} rounded-2xl p-6 sm:p-8 text-white shadow-soft-xl`}>
+            <div className="flex items-center">
+              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl mr-4">
+                <Cog6ToothIcon className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-display font-bold">
+                  Paramètres
+                </h1>
+                <p className="text-white/80 mt-1">
+                  Configurez votre {term.establishment.toLowerCase()}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Messages */}
         {message && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
-            <CheckIcon className="h-5 w-5 text-green-600 mr-2" />
-            <p className="text-green-800">{message}</p>
+          <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center">
+            <CheckIcon className="h-5 w-5 text-emerald-600 mr-2" />
+            <p className="text-emerald-800">{message}</p>
           </div>
         )}
 
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center">
             <XMarkIcon className="h-5 w-5 text-red-600 mr-2" />
             <p className="text-red-800">{error}</p>
           </div>
         )}
 
-        {/* Onglets */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100">
-          <div className="border-b border-gray-200 overflow-x-auto">
+        {/* Tabs */}
+        <div className="bg-white rounded-2xl shadow-soft-xl border border-slate-200">
+          <div className="border-b border-slate-200 overflow-x-auto">
             <nav className="flex -mb-px min-w-max sm:min-w-0">
-              <button
-                onClick={() => setActiveTab("general")}
-                className={`flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "general"
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <BuildingStorefrontIcon className="h-4 w-4 sm:h-5 sm:w-5 inline mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Général</span>
-                <span className="sm:hidden">Général</span>
-              </button>
-              <button
-                onClick={() => setActiveTab("billing")}
-                className={`flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "billing"
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <CreditCardIcon className="h-4 w-4 sm:h-5 sm:w-5 inline mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Facturation</span>
-                <span className="sm:hidden">Fact.</span>
-              </button>
-              <button
-                onClick={() => setActiveTab("hours")}
-                className={`flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "hours"
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <ClockIcon className="h-4 w-4 sm:h-5 sm:w-5 inline mr-1 sm:mr-2" />
-                Horaires
-              </button>
-              <button
-                onClick={() => setActiveTab("staff")}
-                className={`flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "staff"
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <UsersIcon className="h-4 w-4 sm:h-5 sm:w-5 inline mr-1 sm:mr-2" />
-                Staff
-              </button>
-              <button
-                onClick={() => setActiveTab("pwa")}
-                className={`flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "pwa"
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <BellIcon className="h-4 w-4 sm:h-5 sm:w-5 inline mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Notifications</span>
-                <span className="sm:hidden">Notif.</span>
-              </button>
+              {[
+                { id: "general", label: "Général", icon: BuildingStorefrontIcon },
+                { id: "billing", label: "Facturation", icon: CreditCardIcon },
+                { id: "hours", label: "Horaires", icon: ClockIcon },
+                { id: "staff", label: term.staff, icon: UsersIcon },
+                { id: "promotions", label: "Promotions", icon: TagIcon },
+                { id: "pwa", label: "Notifications", icon: BellIcon },
+              ].map((tab) => {
+                const TabIcon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === tab.id
+                        ? `${config.activeBorder} ${config.textColor}`
+                        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                    }`}
+                  >
+                    <TabIcon className="h-4 w-4 sm:h-5 sm:w-5 inline mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span className="sm:hidden">{tab.label.substring(0, 5)}</span>
+                  </button>
+                );
+              })}
             </nav>
           </div>
 
           <div className="p-4 sm:p-6 md:p-8">
-            {/* Onglet Général */}
+            {/* General Tab */}
             {activeTab === "general" && (
               <div className="space-y-6 sm:space-y-8">
                 <div>
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center border-b pb-2 sm:pb-3">
-                    <BuildingStorefrontIcon className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 mr-2 sm:mr-3" />
-                    Identité du salon
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-800 mb-4 sm:mb-6 flex items-center border-b border-slate-200 pb-3">
+                    <BuildingStorefrontIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${config.textColor} mr-2 sm:mr-3`} />
+                    Identité de votre {term.establishment.toLowerCase()}
                   </h2>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Logo */}
                     <div>
                       <ImageUploader
                         target="tenant-logo"
                         imageUrl={logoUrl}
                         onImageUpload={setLogoUrl}
                         onDelete={() => setLogoUrl(null)}
-                        label="Logo du Salon"
+                        label="Logo"
                         aspectRatio="aspect-square"
                       />
-                      <p className="mt-2 text-sm text-gray-500">
-                        Logo carré qui apparaîtra comme icône de votre salon.
+                      <p className="mt-2 text-sm text-slate-500">
+                        Logo carré qui apparaîtra comme icône.
                       </p>
                     </div>
 
-                    {/* Bannière */}
                     <div>
                       <ImageUploader
                         target="tenant-banner"
                         imageUrl={bannerUrl}
                         onImageUpload={setBannerUrl}
                         onDelete={() => setBannerUrl(null)}
-                        label="Bannière du Salon"
+                        label="Bannière"
                         aspectRatio="aspect-[16/9]"
                       />
-                      <p className="mt-2 text-sm text-gray-500">
-                        Bannière large qui apparaîtra sur votre page de
-                        réservation.
+                      <p className="mt-2 text-sm text-slate-500">
+                        Bannière pour votre page de réservation.
                       </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-8 mt-8">
-                    {/* Info salon */}
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Nom du salon
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          {term.establishmentName}
                         </label>
                         <input
                           type="text"
                           value={tenant?.name || ""}
                           disabled
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                          className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-500 cursor-not-allowed"
                         />
-                        <p className="mt-1 text-xs text-gray-500">
+                        <p className="mt-1 text-xs text-slate-500">
                           Contactez le support pour modifier le nom
                         </p>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
                           URL de réservation
                         </label>
                         <div className="flex">
-                          <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                          <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 text-slate-500 text-sm">
                             {window.location.origin}/book/
                           </span>
                           <input
                             type="text"
                             value={tenant?.slug || ""}
                             readOnly
-                            className="flex-1 px-4 py-2 border-l-0 border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed"
+                            className="flex-1 px-4 py-2.5 border-l-0 border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed"
                           />
                           <button
                             type="button"
                             onClick={handleCopy}
-                            className="px-4 py-2 border border-l-0 border-gray-300 rounded-r-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium text-gray-700"
+                            className={`px-4 py-2.5 border border-l-0 border-slate-200 rounded-r-xl ${config.lightBg} ${config.hoverBg} text-sm font-medium ${config.textColor}`}
                           >
                             {copied ? "Copié !" : "Copier"}
                           </button>
@@ -565,25 +720,24 @@ const Settings = () => {
               </div>
             )}
 
-            {/* Onglet Facturation */}
+            {/* Billing Tab */}
             {activeTab === "billing" && (
               <div className="space-y-6 sm:space-y-8">
                 <div>
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center border-b pb-2 sm:pb-3">
-                    <CurrencyDollarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 mr-2 sm:mr-3" />
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-800 mb-4 sm:mb-6 flex items-center border-b border-slate-200 pb-3">
+                    <CurrencyDollarIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${config.textColor} mr-2 sm:mr-3`} />
                     Configuration de la facturation
                   </h2>
 
                   <div className="max-w-md space-y-6">
-                    {/* Devise */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
                         Devise
                       </label>
                       <select
                         value={selectedCurrency}
                         onChange={(e) => setSelectedCurrency(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
                       >
                         {Object.entries(CURRENCIES).map(([code, info]) => (
                           <option key={code} value={code}>
@@ -591,21 +745,19 @@ const Settings = () => {
                           </option>
                         ))}
                       </select>
-                      <p className="mt-2 text-sm text-gray-500">
-                        La devise est utilisée pour tous vos prix et
-                        statistiques.
+                      <p className="mt-2 text-sm text-slate-500">
+                        La devise est utilisée pour tous vos prix et statistiques.
                       </p>
                     </div>
 
-                    {/* Abonnement */}
-                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6 border border-indigo-200">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <div className={`bg-gradient-to-r ${config.gradient} rounded-xl p-6 text-white shadow-soft`}>
+                      <h3 className="text-lg font-semibold mb-4">
                         Abonnement actuel
                       </h3>
                       <div className="space-y-2">
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Plan:</span>
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-white/80">Plan:</span>
+                          <span className="font-medium">
                             {tenant?.subscription_plan === "professional"
                               ? "Professional"
                               : tenant?.subscription_plan === "enterprise"
@@ -614,16 +766,8 @@ const Settings = () => {
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Statut:</span>
-                          <span
-                            className={`text-sm font-medium ${
-                              tenant?.subscription_status === "active"
-                                ? "text-green-600"
-                                : tenant?.subscription_status === "trial"
-                                ? "text-blue-600"
-                                : "text-red-600"
-                            }`}
-                          >
+                          <span className="text-white/80">Statut:</span>
+                          <span className="font-medium">
                             {tenant?.subscription_status === "active"
                               ? "Actif"
                               : tenant?.subscription_status === "trial"
@@ -634,24 +778,22 @@ const Settings = () => {
                       </div>
                       <button
                         onClick={() => navigate("/billing")}
-                        className="mt-4 w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                        className="mt-4 w-full px-4 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-colors font-medium"
                       >
                         Gérer l'abonnement
                       </button>
                     </div>
 
-                    {/* Informations de paiement */}
-                    <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
+                      <h3 className="text-lg font-semibold text-slate-800 mb-4">
                         Informations de paiement
                       </h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Gérez vos méthodes de paiement et votre historique de
-                        facturation.
+                      <p className="text-sm text-slate-600 mb-4">
+                        Gérez vos méthodes de paiement et votre historique de facturation.
                       </p>
                       <button
                         onClick={() => navigate("/billing")}
-                        className="w-full px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors font-medium"
+                        className={`w-full px-4 py-2.5 border ${config.borderColor} ${config.textColor} rounded-xl ${config.hoverBg} transition-colors font-medium`}
                       >
                         Accéder à la facturation
                       </button>
@@ -661,54 +803,49 @@ const Settings = () => {
               </div>
             )}
 
-            {/* Onglet Horaires */}
+            {/* Hours Tab */}
             {activeTab === "hours" && (
               <div className="space-y-6 sm:space-y-8">
                 <div>
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center border-b pb-2 sm:pb-3">
-                    <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 mr-2 sm:mr-3" />
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-800 mb-4 sm:mb-6 flex items-center border-b border-slate-200 pb-3">
+                    <ClockIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${config.textColor} mr-2 sm:mr-3`} />
                     Planning et Créneaux
                   </h2>
 
-                  {/* Durée des créneaux */}
-                  <div className="mb-8 pb-8 border-b">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                      <CalendarDaysIcon className="h-5 w-5 mr-2 text-gray-600" />
+                  <div className="mb-8 pb-8 border-b border-slate-200">
+                    <h3 className="text-lg font-medium text-slate-800 mb-4 flex items-center">
+                      <CalendarDaysIcon className="h-5 w-5 mr-2 text-slate-600" />
                       Durée des créneaux
                     </h3>
                     <div className="max-w-xs">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
                         Durée d'un créneau (minutes)
                       </label>
                       <select
                         value={slotDuration}
-                        onChange={(e) =>
-                          setSlotDuration(Number(e.target.value))
-                        }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        onChange={(e) => setSlotDuration(Number(e.target.value))}
+                        className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
                       >
                         <option value={15}>15 minutes</option>
                         <option value={30}>30 minutes</option>
                         <option value={60}>60 minutes</option>
                       </select>
-                      <p className="mt-2 text-sm text-gray-500">
-                        Les clients pourront réserver à des intervalles de{" "}
-                        {slotDuration} minutes
+                      <p className="mt-2 text-sm text-slate-500">
+                        Les {term.clients.toLowerCase()} pourront réserver à des intervalles de {slotDuration} minutes
                       </p>
                     </div>
                   </div>
 
-                  {/* Horaires d'ouverture */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                      <ClockIcon className="h-5 w-5 mr-2 text-gray-600" />
+                    <h3 className="text-lg font-medium text-slate-800 mb-4 flex items-center">
+                      <ClockIcon className="h-5 w-5 mr-2 text-slate-600" />
                       Horaires d'ouverture
                     </h3>
                     <div className="space-y-4">
                       {DAYS.map(({ key, label }) => (
                         <div
                           key={key}
-                          className="flex items-center space-x-4 pb-4 border-b border-gray-200 last:border-b-0"
+                          className="flex items-center space-x-4 pb-4 border-b border-slate-100 last:border-b-0"
                         >
                           <div className="w-32">
                             <label className="flex items-center">
@@ -716,15 +853,11 @@ const Settings = () => {
                                 type="checkbox"
                                 checked={!businessHours[key].closed}
                                 onChange={(e) =>
-                                  handleDayChange(
-                                    key,
-                                    "closed",
-                                    !e.target.checked
-                                  )
+                                  handleDayChange(key, "closed", !e.target.checked)
                                 }
-                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                className={`h-4 w-4 ${config.textColor} ${config.focusRing} border-slate-300 rounded`}
                               />
-                              <span className="ml-2 text-sm font-medium text-gray-700">
+                              <span className="ml-2 text-sm font-medium text-slate-700">
                                 {label}
                               </span>
                             </label>
@@ -733,38 +866,30 @@ const Settings = () => {
                           {!businessHours[key].closed ? (
                             <div className="flex items-center space-x-4 flex-1">
                               <div className="flex-1">
-                                <label className="block text-xs text-gray-500 mb-1">
+                                <label className="block text-xs text-slate-500 mb-1">
                                   Ouverture
                                 </label>
                                 <input
                                   type="time"
                                   value={businessHours[key].open}
-                                  onChange={(e) =>
-                                    handleDayChange(key, "open", e.target.value)
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                  onChange={(e) => handleDayChange(key, "open", e.target.value)}
+                                  className={`w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
                                 />
                               </div>
                               <div className="flex-1">
-                                <label className="block text-xs text-gray-500 mb-1">
+                                <label className="block text-xs text-slate-500 mb-1">
                                   Fermeture
                                 </label>
                                 <input
                                   type="time"
                                   value={businessHours[key].close}
-                                  onChange={(e) =>
-                                    handleDayChange(
-                                      key,
-                                      "close",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                  onChange={(e) => handleDayChange(key, "close", e.target.value)}
+                                  className={`w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
                                 />
                               </div>
                             </div>
                           ) : (
-                            <div className="flex-1 text-sm text-gray-400 italic">
+                            <div className="flex-1 text-sm text-slate-400 italic">
                               Fermé
                             </div>
                           )}
@@ -776,51 +901,47 @@ const Settings = () => {
               </div>
             )}
 
-            {/* Onglet Staff */}
+            {/* Staff Tab */}
             {activeTab === "staff" && (
               <div className="space-y-6 sm:space-y-8">
                 <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 border-b pb-3">
-                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center mb-3 sm:mb-0">
-                      <UsersIcon className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 mr-2 sm:mr-3" />
-                      Gestion du personnel
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 border-b border-slate-200 pb-3">
+                    <h2 className="text-lg sm:text-xl font-semibold text-slate-800 flex items-center mb-3 sm:mb-0">
+                      <UsersIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${config.textColor} mr-2 sm:mr-3`} />
+                      Gestion du {term.staff.toLowerCase()}
                     </h2>
                     <button
                       onClick={() => handleOpenStaffModal()}
-                      className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center justify-center"
+                      className={`w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r ${config.gradient} text-white rounded-xl hover:shadow-glow transition-all font-medium flex items-center justify-center`}
                     >
                       <PlusIcon className="h-5 w-5 mr-2" />
-                      <span className="hidden sm:inline">
-                        Ajouter un employé
-                      </span>
-                      <span className="sm:hidden">Ajouter</span>
+                      {term.staffAdd}
                     </button>
                   </div>
 
-                  {/* Liste du staff */}
                   <div className="space-y-3 sm:space-y-4">
                     {staff.length === 0 ? (
-                      <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg border border-gray-200">
-                        <UsersIcon className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                        <p className="text-sm sm:text-base text-gray-600">
-                          Aucun employé pour le moment
+                      <div className={`text-center py-8 sm:py-12 ${config.lightBg} rounded-xl border ${config.lightBorderColor}`}>
+                        <UsersIcon className={`h-10 w-10 sm:h-12 sm:w-12 ${config.textColor} mx-auto mb-3 sm:mb-4`} />
+                        <p className="text-sm sm:text-base text-slate-600">
+                          Aucun {term.staffMember.toLowerCase()} pour le moment
                         </p>
                         <button
                           onClick={() => handleOpenStaffModal()}
-                          className="mt-3 sm:mt-4 text-sm sm:text-base text-indigo-600 hover:text-indigo-800 font-medium"
+                          className={`mt-3 sm:mt-4 text-sm sm:text-base ${config.textColor} hover:${config.darkTextColor} font-medium`}
                         >
-                          Ajouter le premier employé
+                          {term.staffAdd}
                         </button>
                       </div>
                     ) : (
                       staff.map((member) => (
                         <div
                           key={member.id}
-                          className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow"
+                          className={`bg-white border border-slate-200 rounded-xl p-3 sm:p-4 hover:shadow-soft transition-shadow`}
                         >
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                             <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                              <div className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 rounded-full bg-indigo-100 flex items-center justify-center">
+                              <div className={`h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 rounded-full ${config.lightBg} flex items-center justify-center`}>
                                 {member.avatar_url ? (
                                   <img
                                     src={getImageUrl(member.avatar_url)}
@@ -828,7 +949,7 @@ const Settings = () => {
                                     className="h-full w-full rounded-full object-cover"
                                   />
                                 ) : (
-                                  <span className="text-indigo-700 font-semibold text-sm sm:text-lg">
+                                  <span className={`${config.darkTextColor} font-semibold text-sm sm:text-lg`}>
                                     {member.first_name?.charAt(0)}
                                     {member.last_name?.charAt(0)}
                                   </span>
@@ -836,30 +957,30 @@ const Settings = () => {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between sm:block">
-                                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 truncate">
+                                  <h3 className="font-semibold text-sm sm:text-base text-slate-800 truncate">
                                     {member.first_name} {member.last_name}
                                   </h3>
                                   <span
                                     className={`sm:hidden ml-2 px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
                                       member.role === "owner"
-                                        ? "bg-purple-100 text-purple-800"
+                                        ? `${config.lightBg} ${config.textColor}`
                                         : member.role === "admin"
                                         ? "bg-blue-100 text-blue-800"
-                                        : "bg-gray-100 text-gray-800"
+                                        : "bg-slate-100 text-slate-800"
                                     }`}
                                   >
                                     {member.role === "owner"
                                       ? "Proprio"
                                       : member.role === "admin"
                                       ? "Admin"
-                                      : "Employé"}
+                                      : term.staffMember}
                                   </span>
                                 </div>
-                                <p className="text-xs sm:text-sm text-gray-600 truncate">
+                                <p className="text-xs sm:text-sm text-slate-600 truncate">
                                   {member.email}
                                 </p>
                                 {member.phone && (
-                                  <p className="text-xs sm:text-sm text-gray-500 truncate">
+                                  <p className="text-xs sm:text-sm text-slate-500 truncate">
                                     {member.phone}
                                   </p>
                                 )}
@@ -868,17 +989,17 @@ const Settings = () => {
                                 <span
                                   className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
                                     member.role === "owner"
-                                      ? "bg-purple-100 text-purple-800"
+                                      ? `${config.lightBg} ${config.textColor}`
                                       : member.role === "admin"
                                       ? "bg-blue-100 text-blue-800"
-                                      : "bg-gray-100 text-gray-800"
+                                      : "bg-slate-100 text-slate-800"
                                   }`}
                                 >
                                   {member.role === "owner"
                                     ? "Propriétaire"
                                     : member.role === "admin"
                                     ? "Admin"
-                                    : "Employé"}
+                                    : term.staffMember}
                                 </span>
                               </div>
                             </div>
@@ -889,29 +1010,24 @@ const Settings = () => {
                                   <input
                                     type="checkbox"
                                     checked={member.is_active}
-                                    onChange={() =>
-                                      handleToggleStaff(
-                                        member.id,
-                                        member.is_active
-                                      )
-                                    }
-                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                    onChange={() => handleToggleStaff(member.id, member.is_active)}
+                                    className={`h-4 w-4 ${config.textColor} ${config.focusRing} border-slate-300 rounded`}
                                   />
-                                  <span className="ml-2 text-xs sm:text-sm text-gray-600">
+                                  <span className="ml-2 text-xs sm:text-sm text-slate-600">
                                     Actif
                                   </span>
                                 </label>
                                 <div className="flex items-center space-x-1 sm:space-x-2">
                                   <button
                                     onClick={() => handleOpenStaffModal(member)}
-                                    className="p-1.5 sm:p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                    className={`p-1.5 sm:p-2 text-slate-600 hover:${config.textColor} ${config.hoverBg} rounded-lg transition-colors`}
                                     title="Modifier"
                                   >
                                     <PencilIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteStaff(member.id)}
-                                    className="p-1.5 sm:p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    className="p-1.5 sm:p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                     title="Supprimer"
                                   >
                                     <TrashIcon className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -928,7 +1044,140 @@ const Settings = () => {
               </div>
             )}
 
-            {/* Onglet PWA et Notifications */}
+            {/* Promotions Tab */}
+            {activeTab === "promotions" && (
+              <div className="space-y-6 sm:space-y-8">
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 border-b border-slate-200 pb-3">
+                    <h2 className="text-lg sm:text-xl font-semibold text-slate-800 flex items-center mb-3 sm:mb-0">
+                      <TagIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${config.textColor} mr-2 sm:mr-3`} />
+                      Gestion des promotions
+                    </h2>
+                    <button
+                      onClick={() => handleOpenPromoModal()}
+                      className={`w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r ${config.gradient} text-white rounded-xl hover:shadow-glow transition-all font-medium flex items-center justify-center`}
+                    >
+                      <PlusIcon className="h-5 w-5 mr-2" />
+                      Nouvelle promotion
+                    </button>
+                  </div>
+
+                  {promotionsLoading ? (
+                    <div className="flex justify-center items-center py-12">
+                      <div className={`animate-spin rounded-full h-10 w-10 border-b-2 ${config.borderColor}`}></div>
+                    </div>
+                  ) : promotions.length === 0 ? (
+                    <div className={`text-center py-8 sm:py-12 ${config.lightBg} rounded-xl border ${config.lightBorderColor}`}>
+                      <TagIcon className={`h-10 w-10 sm:h-12 sm:w-12 ${config.textColor} mx-auto mb-3 sm:mb-4`} />
+                      <h3 className="text-lg font-semibold text-slate-800 mb-2">
+                        Aucune promotion
+                      </h3>
+                      <p className="text-slate-500 mb-6">
+                        Créez votre première promotion pour attirer plus de {term.clients.toLowerCase()}
+                      </p>
+                      <button
+                        onClick={() => handleOpenPromoModal()}
+                        className={`px-6 py-3 bg-gradient-to-r ${config.gradient} text-white rounded-xl font-medium shadow-soft hover:shadow-glow transition-all duration-300`}
+                      >
+                        Créer une promotion
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {promotions.map((promo) => {
+                        const isExpired = new Date(promo.valid_until) < new Date();
+
+                        return (
+                          <div
+                            key={promo.id}
+                            className={`bg-white rounded-xl shadow-soft border-2 overflow-hidden transition-all hover:shadow-soft-xl ${
+                              isExpired ? "border-slate-200 opacity-75" : config.lightBorderColor
+                            }`}
+                          >
+                            <div
+                              className={`p-4 text-center ${
+                                isExpired ? "bg-slate-100 text-slate-600" : `bg-gradient-to-r ${config.gradient} text-white`
+                              }`}
+                            >
+                              <div className="text-2xl font-bold">
+                                {getDiscountLabel(promo)}
+                              </div>
+                              <div className="text-sm mt-1 uppercase tracking-wide font-semibold opacity-80">
+                                {promo.code}
+                              </div>
+                            </div>
+
+                            <div className="p-4">
+                              <h3 className="text-lg font-bold text-slate-800 mb-1">
+                                {promo.title}
+                              </h3>
+                              {promo.description && (
+                                <p className="text-slate-600 text-sm mb-3 line-clamp-2">
+                                  {promo.description}
+                                </p>
+                              )}
+
+                              <div className="flex items-center space-x-2 mb-4">
+                                {promo.is_active && !isExpired ? (
+                                  <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-medium flex items-center">
+                                    <CheckCircleIcon className="h-3 w-3 mr-1" />
+                                    Active
+                                  </span>
+                                ) : isExpired ? (
+                                  <span className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-medium flex items-center">
+                                    <XCircleIcon className="h-3 w-3 mr-1" />
+                                    Expirée
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium">
+                                    Inactive
+                                  </span>
+                                )}
+
+                                {promo.is_public && (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium">
+                                    Publique
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleTogglePromoActive(promo)}
+                                  className={`flex-1 px-3 py-2 text-xs rounded-xl font-medium transition-colors ${
+                                    promo.is_active
+                                      ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                      : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                                  }`}
+                                >
+                                  {promo.is_active ? "Désactiver" : "Activer"}
+                                </button>
+
+                                <button
+                                  onClick={() => handleOpenPromoModal(promo)}
+                                  className={`px-3 py-2 ${config.lightBg} ${config.textColor} rounded-xl hover:${config.mediumBg} text-xs font-medium transition-colors`}
+                                >
+                                  <PencilSquareIcon className="h-4 w-4" />
+                                </button>
+
+                                <button
+                                  onClick={() => initiateDeletePromo(promo.id)}
+                                  className="px-3 py-2 bg-red-100 text-red-700 rounded-xl hover:bg-red-200 text-xs font-medium transition-colors"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* PWA Tab */}
             {activeTab === "pwa" && (
               <div>
                 <PWASettings />
@@ -936,18 +1185,18 @@ const Settings = () => {
             )}
           </div>
 
-          {/* Actions - Toujours visibles */}
-          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-3 sm:space-x-4">
+          {/* Actions */}
+          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-end gap-3 sm:space-x-4 rounded-b-2xl">
             <button
               onClick={() => navigate("/dashboard")}
-              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 rounded-lg text-sm sm:text-base text-gray-700 hover:bg-gray-100 font-medium transition-colors order-2 sm:order-1"
+              className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-slate-200 rounded-xl text-sm sm:text-base text-slate-700 hover:bg-slate-100 font-medium transition-colors order-2 sm:order-1"
             >
               Annuler
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-colors text-sm sm:text-base order-1 sm:order-2"
+              className={`w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r ${config.gradient} text-white rounded-xl hover:shadow-glow font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-soft transition-all text-sm sm:text-base order-1 sm:order-2`}
             >
               {saving ? "Enregistrement..." : "Enregistrer"}
             </button>
@@ -955,53 +1204,47 @@ const Settings = () => {
         </div>
       </div>
 
-      {/* Modal Staff */}
+      {/* Staff Modal */}
       {showStaffModal && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {editingStaff ? "Modifier l'employé" : "Ajouter un employé"}
-            </h3>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-soft-2xl animate-scale-in">
+            <div className={`bg-gradient-to-r ${config.gradient} px-6 py-4 rounded-t-2xl`}>
+              <h3 className="text-lg font-display font-semibold text-white">
+                {editingStaff ? `Modifier le ${term.staffMember.toLowerCase()}` : term.staffAdd}
+              </h3>
+            </div>
 
-            <form onSubmit={handleStaffSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Prénom *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={staffFormData.first_name}
-                  onChange={(e) =>
-                    setStaffFormData({
-                      ...staffFormData,
-                      first_name: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
+            <form onSubmit={handleStaffSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Prénom *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={staffFormData.first_name}
+                    onChange={(e) => setStaffFormData({ ...staffFormData, first_name: e.target.value })}
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Nom *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={staffFormData.last_name}
+                    onChange={(e) => setStaffFormData({ ...staffFormData, last_name: e.target.value })}
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nom *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={staffFormData.last_name}
-                  onChange={(e) =>
-                    setStaffFormData({
-                      ...staffFormData,
-                      last_name: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Email *
                 </label>
                 <input
@@ -1009,97 +1252,285 @@ const Settings = () => {
                   required
                   disabled={!!editingStaff}
                   value={staffFormData.email}
-                  onChange={(e) =>
-                    setStaffFormData({
-                      ...staffFormData,
-                      email: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  onChange={(e) => setStaffFormData({ ...staffFormData, email: e.target.value })}
+                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed`}
                 />
                 {editingStaff && (
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-slate-500">
                     L'email ne peut pas être modifié
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Téléphone
                 </label>
                 <input
                   type="tel"
                   value={staffFormData.phone}
-                  onChange={(e) =>
-                    setStaffFormData({
-                      ...staffFormData,
-                      phone: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  onChange={(e) => setStaffFormData({ ...staffFormData, phone: e.target.value })}
+                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Rôle *
                 </label>
                 <select
                   required
                   value={staffFormData.role}
-                  onChange={(e) =>
-                    setStaffFormData({ ...staffFormData, role: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  onChange={(e) => setStaffFormData({ ...staffFormData, role: e.target.value })}
+                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
                 >
-                  <option value="staff">Employé</option>
+                  <option value="staff">{term.staffMember}</option>
                   <option value="admin">Administrateur</option>
                 </select>
               </div>
 
               {!editingStaff && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     Mot de passe *
                   </label>
                   <input
                     type="password"
                     required={!editingStaff}
                     value={staffFormData.password}
-                    onChange={(e) =>
-                      setStaffFormData({
-                        ...staffFormData,
-                        password: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    onChange={(e) => setStaffFormData({ ...staffFormData, password: e.target.value })}
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
                     minLength={6}
                   />
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-slate-500">
                     Minimum 6 caractères
                   </p>
                 </div>
               )}
 
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleCloseStaffModal}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 font-medium"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                  className={`px-5 py-2.5 bg-gradient-to-r ${config.gradient} text-white rounded-xl font-medium shadow-soft hover:shadow-glow disabled:opacity-50 transition-all`}
                 >
-                  {saving
-                    ? "Enregistrement..."
-                    : editingStaff
-                    ? "Modifier"
-                    : "Ajouter"}
+                  {saving ? "Enregistrement..." : editingStaff ? "Modifier" : "Ajouter"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Promotion Modal */}
+      {showPromoModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-soft-2xl my-8 animate-scale-in">
+            <div className={`bg-gradient-to-r ${config.gradient} px-6 py-4 rounded-t-2xl flex items-center justify-between`}>
+              <h3 className="text-lg font-display font-semibold text-white">
+                {editingPromotion ? "Modifier la promotion" : "Nouvelle promotion"}
+              </h3>
+              <button
+                onClick={handleClosePromoModal}
+                className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <XMarkIcon className="h-5 w-5 text-white" />
+              </button>
+            </div>
+
+            <form onSubmit={handlePromoSubmit} className="p-6 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Code promo *
+                  </label>
+                  <input
+                    type="text"
+                    name="code"
+                    required
+                    value={promoFormData.code}
+                    onChange={handlePromoChange}
+                    placeholder="NOEL2024"
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent uppercase`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Titre *
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    required
+                    value={promoFormData.title}
+                    onChange={handlePromoChange}
+                    placeholder="Offre de Noël"
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  rows="2"
+                  value={promoFormData.description}
+                  onChange={handlePromoChange}
+                  placeholder="Description de l'offre..."
+                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent resize-none`}
+                ></textarea>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Type de réduction *
+                  </label>
+                  <select
+                    name="discount_type"
+                    required
+                    value={promoFormData.discount_type}
+                    onChange={handlePromoChange}
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                  >
+                    <option value="percentage">Pourcentage (%)</option>
+                    <option value="fixed_amount">Montant fixe</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Valeur *
+                  </label>
+                  <input
+                    type="number"
+                    name="discount_value"
+                    required
+                    min="0"
+                    step="0.01"
+                    value={promoFormData.discount_value}
+                    onChange={handlePromoChange}
+                    placeholder={promoFormData.discount_type === "percentage" ? "20" : "10.00"}
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Début de validité *
+                  </label>
+                  <input
+                    type="date"
+                    name="valid_from"
+                    required
+                    value={promoFormData.valid_from}
+                    onChange={handlePromoChange}
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Fin de validité *
+                  </label>
+                  <input
+                    type="date"
+                    name="valid_until"
+                    required
+                    value={promoFormData.valid_until}
+                    onChange={handlePromoChange}
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Limite d'utilisation totale
+                  </label>
+                  <input
+                    type="number"
+                    name="usage_limit"
+                    min="0"
+                    value={promoFormData.usage_limit}
+                    onChange={handlePromoChange}
+                    placeholder="Illimité"
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Par {term.client.toLowerCase()} *
+                  </label>
+                  <input
+                    type="number"
+                    name="usage_per_client"
+                    required
+                    min="1"
+                    value={promoFormData.usage_per_client}
+                    onChange={handlePromoChange}
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    checked={promoFormData.is_active}
+                    onChange={handlePromoChange}
+                    className={`h-4 w-4 ${config.textColor} ${config.focusRing} border-slate-300 rounded`}
+                  />
+                  <span className="ml-2 text-sm text-slate-700">
+                    Promotion active
+                  </span>
+                </label>
+
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="is_public"
+                    checked={promoFormData.is_public}
+                    onChange={handlePromoChange}
+                    className={`h-4 w-4 ${config.textColor} ${config.focusRing} border-slate-300 rounded`}
+                  />
+                  <span className="ml-2 text-sm text-slate-700">
+                    Visible sur la page de réservation publique
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleClosePromoModal}
+                  className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 font-medium"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className={`px-5 py-2.5 bg-gradient-to-r ${config.gradient} text-white rounded-xl font-medium shadow-soft hover:shadow-glow disabled:opacity-50 transition-all`}
+                >
+                  {saving ? "Enregistrement..." : editingPromotion ? "Modifier" : "Créer"}
                 </button>
               </div>
             </form>
@@ -1110,5 +1541,4 @@ const Settings = () => {
   );
 };
 
-// Protéger la page avec les permissions
 export default withPermission(Settings, "viewSettings");

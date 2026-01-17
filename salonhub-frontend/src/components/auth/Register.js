@@ -1,6 +1,6 @@
 /**
- * Page Register - Formulaire multi-étapes (Wizard)
- * Inscription moderne avec progression visuelle
+ * Premium Register Page - SalonHub
+ * Purple Dynasty Theme - 4-Step Multi-Sector Wizard
  */
 
 import React, { useState } from "react";
@@ -20,13 +20,68 @@ import {
   MapPinIcon,
   LockClosedIcon,
   SparklesIcon,
+  StarIcon,
+  ShieldCheckIcon,
+  ScissorsIcon,
+  AcademicCapIcon,
+  HeartIcon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon as CheckCircleSolid } from "@heroicons/react/24/solid";
 
+// Business Types Configuration
+const BUSINESS_TYPES = [
+  {
+    id: "beauty",
+    name: "Beaute & Bien-etre",
+    description: "Salons de coiffure, instituts, spa, barbershops",
+    icon: ScissorsIcon,
+    color: "violet",
+    gradient: "from-violet-500 to-violet-600",
+    lightBg: "bg-violet-50",
+    borderColor: "border-violet-500",
+    textColor: "text-violet-600",
+  },
+  {
+    id: "restaurant",
+    name: "Restauration",
+    description: "Restaurants, cafes, bars, traiteurs",
+    icon: BuildingStorefrontIcon,
+    color: "amber",
+    gradient: "from-amber-500 to-orange-500",
+    lightBg: "bg-amber-50",
+    borderColor: "border-amber-500",
+    textColor: "text-amber-600",
+  },
+  {
+    id: "training",
+    name: "Formation",
+    description: "Centres de formation, ecoles, coaching",
+    icon: AcademicCapIcon,
+    color: "emerald",
+    gradient: "from-emerald-500 to-green-500",
+    lightBg: "bg-emerald-50",
+    borderColor: "border-emerald-500",
+    textColor: "text-emerald-600",
+  },
+  {
+    id: "medical",
+    name: "Sante & Medical",
+    description: "Cabinets medicaux, cliniques, praticiens",
+    icon: HeartIcon,
+    color: "cyan",
+    gradient: "from-cyan-500 to-teal-500",
+    lightBg: "bg-cyan-50",
+    borderColor: "border-cyan-500",
+    textColor: "text-cyan-600",
+  },
+];
+
 const STEPS = [
-  { id: 1, name: "Salon", icon: BuildingStorefrontIcon },
-  { id: 2, name: "Compte", icon: UserIcon },
-  { id: 3, name: "Plan", icon: CreditCardIcon },
+  { id: 1, name: "Activite", icon: Squares2X2Icon },
+  { id: 2, name: "Etablissement", icon: BuildingStorefrontIcon },
+  { id: 3, name: "Compte", icon: UserIcon },
+  { id: 4, name: "Formule", icon: CreditCardIcon },
 ];
 
 const Register = () => {
@@ -38,21 +93,21 @@ const Register = () => {
   const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
-    // Salon
+    // Business Type
+    business_type: "",
+    // Salon/Establishment
     salon_name: "",
     salon_email: "",
     salon_phone: "",
     salon_address: "",
     salon_city: "",
     salon_postal_code: "",
-
     // Owner
     first_name: "",
     last_name: "",
     email: "",
     password: "",
     password_confirm: "",
-
     // Plan
     subscription_plan: "professional",
   });
@@ -65,12 +120,27 @@ const Register = () => {
     if (error) setError("");
   };
 
+  const selectBusinessType = (typeId) => {
+    setFormData({
+      ...formData,
+      business_type: typeId,
+    });
+    if (error) setError("");
+  };
+
   const validateStep = (step) => {
     setError("");
 
     if (step === 1) {
+      if (!formData.business_type) {
+        setError("Veuillez selectionner votre type d'activite");
+        return false;
+      }
+    }
+
+    if (step === 2) {
       if (!formData.salon_name || !formData.salon_email) {
-        setError("Le nom et l'email du salon sont obligatoires");
+        setError("Le nom et l'email de l'etablissement sont obligatoires");
         return false;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -80,7 +150,7 @@ const Register = () => {
       }
     }
 
-    if (step === 2) {
+    if (step === 3) {
       if (
         !formData.first_name ||
         !formData.last_name ||
@@ -96,7 +166,7 @@ const Register = () => {
         return false;
       }
       if (formData.password.length < 8) {
-        setError("Le mot de passe doit contenir au moins 8 caractères");
+        setError("Le mot de passe doit contenir au moins 8 caracteres");
         return false;
       }
       if (formData.password !== formData.password_confirm) {
@@ -123,12 +193,9 @@ const Register = () => {
     e.preventDefault();
     setError("");
 
-    if (!validateStep(2)) return;
+    if (!validateStep(3)) return;
 
-    // Préparation données
     const { password_confirm, ...registerData } = formData;
-
-    // Tentative inscription
     const result = await register(registerData);
 
     if (result.success) {
@@ -138,570 +205,665 @@ const Register = () => {
     }
   };
 
+  // Get establishment label based on business type
+  const getEstablishmentLabel = () => {
+    switch (formData.business_type) {
+      case "beauty":
+        return "salon";
+      case "restaurant":
+        return "restaurant";
+      case "training":
+        return "centre de formation";
+      case "medical":
+        return "cabinet";
+      default:
+        return "etablissement";
+    }
+  };
+
+  const plans = [
+    {
+      id: "starter",
+      name: "Starter",
+      price: 9.99,
+      description: "Pour demarrer",
+      features: ["100 clients max", "Reservations en ligne", "Gestion agenda"],
+      icon: SparklesIcon,
+    },
+    {
+      id: "professional",
+      name: "Professionnel",
+      price: 29.99,
+      description: "Le plus populaire",
+      popular: true,
+      features: ["Clients illimites", "Personnel illimite", "Statistiques avancees"],
+      icon: StarIcon,
+    },
+    {
+      id: "business",
+      name: "Business",
+      price: 69.99,
+      description: "Pour les groupes",
+      features: ["Multi-etablissements", "API & integrations", "Support prioritaire"],
+      icon: ShieldCheckIcon,
+    },
+  ];
+
+  // Get current business type config
+  const currentBusinessType = BUSINESS_TYPES.find(
+    (bt) => bt.id === formData.business_type
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-lg">
-            {/* <span className="text-2xl font-bold text-white">SH</span> */}
-            <img src="logo.png" alt="Logo SalonHub" className="w-16 h-16" />
+    <div className="min-h-screen bg-slate-100 relative overflow-hidden">
+      {/* Decorative Background - Purple Theme */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-violet-200/50 to-indigo-200/30 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-gradient-to-tr from-violet-200/40 to-indigo-200/20 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-gradient-radial from-violet-100/30 to-transparent" />
+        <div className="absolute inset-0 bg-pattern-dots opacity-20" />
+      </div>
+
+      <div className="relative py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-10">
+            <Link to="/login" className="inline-flex items-center gap-3 mb-8 group">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-soft group-hover:shadow-glow transition-shadow duration-300">
+                <SparklesIcon className="w-6 h-6 text-white" />
+              </div>
+              <span className="font-display text-2xl text-slate-800 tracking-tight">SalonHub</span>
+            </Link>
+            <h1 className="font-display text-display-sm sm:text-display-md text-slate-800 mb-3">
+              Creez votre compte
+            </h1>
+            <p className="text-slate-500 text-lg">
+              14 jours d'essai gratuit, sans carte bancaire
+            </p>
           </div>
-          <h2 className="text-4xl font-extrabold text-gray-900 mb-2">
-            Créer votre compte
-          </h2>
-          <p className="text-gray-600">
-            14 jours d'essai gratuit, sans carte bancaire
-          </p>
-        </div>
 
-        {/* Progress Steps */}
-        <div className="mb-8 px-4">
-          <div className="flex items-center justify-between max-w-md mx-auto">
-            {STEPS.map((step, index) => {
-              const Icon = step.icon;
-              const isCompleted = currentStep > step.id;
-              const isCurrent = currentStep === step.id;
+          {/* Progress Steps */}
+          <div className="mb-10 px-4">
+            <div className="flex items-center justify-between max-w-2xl mx-auto">
+              {STEPS.map((step, index) => {
+                const Icon = step.icon;
+                const isCompleted = currentStep > step.id;
+                const isCurrent = currentStep === step.id;
 
-              return (
-                <React.Fragment key={step.id}>
-                  <div className="flex flex-col items-center flex-1">
-                    <div
-                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 transition-all ${
-                        isCompleted
-                          ? "bg-green-500 border-green-500"
-                          : isCurrent
-                          ? "bg-indigo-600 border-indigo-600"
-                          : "bg-white border-gray-300"
-                      }`}
-                    >
-                      {isCompleted ? (
-                        <CheckCircleSolid className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                      ) : (
-                        <Icon
-                          className={`w-5 h-5 sm:w-6 sm:h-6 ${
-                            isCurrent ? "text-white" : "text-gray-400"
-                          }`}
-                        />
-                      )}
+                return (
+                  <React.Fragment key={step.id}>
+                    <div className="flex flex-col items-center flex-1">
+                      <div
+                        className={`
+                          w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center
+                          border-2 transition-all duration-500 ease-premium
+                          ${isCompleted
+                            ? "bg-gradient-to-br from-violet-500 to-indigo-600 border-violet-500 shadow-glow"
+                            : isCurrent
+                            ? "bg-white border-violet-400 shadow-soft-lg"
+                            : "bg-white/50 border-slate-200"
+                          }
+                        `}
+                      >
+                        {isCompleted ? (
+                          <CheckCircleSolid className="w-6 h-6 text-white" />
+                        ) : (
+                          <Icon
+                            className={`w-6 h-6 transition-colors duration-300 ${
+                              isCurrent ? "text-violet-600" : "text-slate-300"
+                            }`}
+                          />
+                        )}
+                      </div>
+                      <span
+                        className={`mt-3 text-xs sm:text-sm font-medium transition-colors duration-300 ${
+                          isCurrent ? "text-violet-700" : isCompleted ? "text-violet-600" : "text-slate-400"
+                        }`}
+                      >
+                        {step.name}
+                      </span>
                     </div>
-                    <span
-                      className={`mt-2 text-xs sm:text-sm font-medium ${
-                        isCurrent ? "text-indigo-600" : "text-gray-500"
-                      }`}
-                    >
-                      {step.name}
-                    </span>
-                  </div>
-                  {index < STEPS.length - 1 && (
-                    <div
-                      className={`flex-1 h-0.5 mx-2 sm:mx-4 mb-6 transition-all ${
-                        currentStep > step.id ? "bg-green-500" : "bg-gray-300"
-                      }`}
-                    />
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Form Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start">
-              <XCircleIcon className="h-5 w-5 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
+                    {index < STEPS.length - 1 && (
+                      <div className="flex-1 mx-2 sm:mx-4 mb-8">
+                        <div className="h-0.5 rounded-full bg-slate-200 overflow-hidden">
+                          <div
+                            className={`h-full bg-gradient-to-r from-violet-400 to-indigo-500 transition-all duration-500 ease-premium ${
+                              currentStep > step.id ? "w-full" : "w-0"
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
-          )}
+          </div>
 
-          <form onSubmit={handleSubmit}>
-            {/* Step 1: Salon Info */}
-            {currentStep === 1 && (
-              <div className="space-y-6 animate-fadeIn">
-                <div className="text-center mb-6">
-                  <BuildingStorefrontIcon className="h-12 w-12 text-indigo-600 mx-auto mb-3" />
-                  <h3 className="text-2xl font-bold text-gray-900">
-                    Informations du salon
-                  </h3>
-                  <p className="text-gray-600 mt-1">
-                    Commençons par les détails de votre établissement
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Nom du salon *
-                  </label>
-                  <input
-                    type="text"
-                    name="salon_name"
-                    required
-                    value={formData.salon_name}
-                    onChange={handleChange}
-                    className="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                    placeholder="Salon Beauté Paris"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Email du salon *
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <EnvelopeIcon className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <input
-                        type="email"
-                        name="salon_email"
-                        required
-                        value={formData.salon_email}
-                        onChange={handleChange}
-                        className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                        placeholder="contact@salon.fr"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Téléphone
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <PhoneIcon className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <input
-                        type="tel"
-                        name="salon_phone"
-                        value={formData.salon_phone}
-                        onChange={handleChange}
-                        className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                        placeholder="01 23 45 67 89"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Adresse
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <MapPinIcon className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      type="text"
-                      name="salon_address"
-                      value={formData.salon_address}
-                      onChange={handleChange}
-                      className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                      placeholder="123 Rue de la Paix"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Ville
-                    </label>
-                    <input
-                      type="text"
-                      name="salon_city"
-                      value={formData.salon_city}
-                      onChange={handleChange}
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                      placeholder="Paris"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Code postal
-                    </label>
-                    <input
-                      type="text"
-                      name="salon_postal_code"
-                      value={formData.salon_postal_code}
-                      onChange={handleChange}
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                      placeholder="75001"
-                    />
-                  </div>
-                </div>
+          {/* Form Card */}
+          <div className="card-premium p-6 sm:p-8 lg:p-10">
+            {/* Error Message */}
+            {error && (
+              <div className="alert-error-premium mb-6">
+                <XCircleIcon className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-800">{error}</p>
               </div>
             )}
 
-            {/* Step 2: User Account */}
-            {currentStep === 2 && (
-              <div className="space-y-6 animate-fadeIn">
-                <div className="text-center mb-6">
-                  <UserIcon className="h-12 w-12 text-indigo-600 mx-auto mb-3" />
-                  <h3 className="text-2xl font-bold text-gray-900">
-                    Votre compte
-                  </h3>
-                  <p className="text-gray-600 mt-1">
-                    Créez vos identifiants de connexion
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Prénom *
-                    </label>
-                    <input
-                      type="text"
-                      name="first_name"
-                      required
-                      value={formData.first_name}
-                      onChange={handleChange}
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                      placeholder="Marie"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Nom *
-                    </label>
-                    <input
-                      type="text"
-                      name="last_name"
-                      required
-                      value={formData.last_name}
-                      onChange={handleChange}
-                      className="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                      placeholder="Dupont"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Votre email *
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+            <form onSubmit={handleSubmit}>
+              {/* Step 1: Business Type Selection */}
+              {currentStep === 1 && (
+                <div className="space-y-6 animate-fade-in-up">
+                  <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 mb-4">
+                      <Squares2X2Icon className="h-8 w-8 text-violet-700" />
                     </div>
-                    <input
-                      type="email"
-                      name="email"
-                      required
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                      placeholder="vous@exemple.com"
-                    />
+                    <h3 className="font-display text-2xl text-slate-800 mb-2">
+                      Quelle est votre activite ?
+                    </h3>
+                    <p className="text-slate-500">
+                      Selectionnez le type qui correspond a votre etablissement
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {BUSINESS_TYPES.map((type) => {
+                      const Icon = type.icon;
+                      const isSelected = formData.business_type === type.id;
+
+                      return (
+                        <button
+                          key={type.id}
+                          type="button"
+                          onClick={() => selectBusinessType(type.id)}
+                          className={`
+                            relative flex items-start gap-4 p-6 rounded-2xl cursor-pointer
+                            transition-all duration-300 ease-premium text-left
+                            border-2 hover:-translate-y-1 hover:shadow-soft-lg
+                            ${isSelected
+                              ? `${type.borderColor} ${type.lightBg} shadow-soft-lg`
+                              : "border-slate-200 bg-white hover:border-slate-300"
+                            }
+                          `}
+                        >
+                          {/* Selected Indicator */}
+                          {isSelected && (
+                            <div className="absolute top-4 right-4">
+                              <CheckCircleSolid className={`h-6 w-6 ${type.textColor}`} />
+                            </div>
+                          )}
+
+                          {/* Icon */}
+                          <div
+                            className={`
+                              w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0
+                              ${isSelected
+                                ? `bg-gradient-to-br ${type.gradient}`
+                                : type.lightBg
+                              }
+                            `}
+                          >
+                            <Icon
+                              className={`w-7 h-7 ${
+                                isSelected ? "text-white" : type.textColor
+                              }`}
+                            />
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0 pr-6">
+                            <span className="font-display text-lg text-slate-800 block mb-1">
+                              {type.name}
+                            </span>
+                            <span className="text-sm text-slate-500 block">
+                              {type.description}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
+              )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Mot de passe *
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <LockClosedIcon className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <input
-                        type="password"
-                        name="password"
-                        required
-                        value={formData.password}
-                        onChange={handleChange}
-                        className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                        placeholder="Min. 8 caractères"
-                      />
+              {/* Step 2: Establishment Info */}
+              {currentStep === 2 && (
+                <div className="space-y-6 animate-fade-in-up">
+                  <div className="text-center mb-8">
+                    <div
+                      className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 ${
+                        currentBusinessType
+                          ? `bg-gradient-to-br ${currentBusinessType.gradient}`
+                          : "bg-gradient-to-br from-violet-500 to-indigo-600"
+                      }`}
+                    >
+                      {currentBusinessType ? (
+                        <currentBusinessType.icon className="h-8 w-8 text-white" />
+                      ) : (
+                        <BuildingStorefrontIcon className="h-8 w-8 text-white" />
+                      )}
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Au moins 8 caractères
+                    <h3 className="font-display text-2xl text-slate-800 mb-2">
+                      Votre {getEstablishmentLabel()}
+                    </h3>
+                    <p className="text-slate-500">
+                      Informations de votre etablissement
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Confirmer *
-                    </label>
+                    <label className="label-premium">Nom de l'etablissement *</label>
+                    <input
+                      type="text"
+                      name="salon_name"
+                      required
+                      value={formData.salon_name}
+                      onChange={handleChange}
+                      className="input-premium"
+                      placeholder={
+                        formData.business_type === "beauty"
+                          ? "Salon Beaute Paris"
+                          : formData.business_type === "restaurant"
+                          ? "Le Petit Bistrot"
+                          : formData.business_type === "training"
+                          ? "Academy Pro Formation"
+                          : formData.business_type === "medical"
+                          ? "Cabinet Medical du Centre"
+                          : "Nom de l'etablissement"
+                      }
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="label-premium">Email professionnel *</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <EnvelopeIcon className="h-5 w-5 text-slate-300" />
+                        </div>
+                        <input
+                          type="email"
+                          name="salon_email"
+                          required
+                          value={formData.salon_email}
+                          onChange={handleChange}
+                          className="input-premium input-premium-icon"
+                          placeholder="contact@etablissement.fr"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="label-premium">Telephone</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <PhoneIcon className="h-5 w-5 text-slate-300" />
+                        </div>
+                        <input
+                          type="tel"
+                          name="salon_phone"
+                          value={formData.salon_phone}
+                          onChange={handleChange}
+                          className="input-premium input-premium-icon"
+                          placeholder="01 23 45 67 89"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label-premium">Adresse</label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <MapPinIcon className="h-5 w-5 text-slate-300" />
                       </div>
                       <input
-                        type="password"
-                        name="password_confirm"
-                        required
-                        value={formData.password_confirm}
+                        type="text"
+                        name="salon_address"
+                        value={formData.salon_address}
                         onChange={handleChange}
-                        className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                        placeholder="Même mot de passe"
+                        className="input-premium input-premium-icon"
+                        placeholder="123 Rue de la Paix"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="label-premium">Ville</label>
+                      <input
+                        type="text"
+                        name="salon_city"
+                        value={formData.salon_city}
+                        onChange={handleChange}
+                        className="input-premium"
+                        placeholder="Paris"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label-premium">Code postal</label>
+                      <input
+                        type="text"
+                        name="salon_postal_code"
+                        value={formData.salon_postal_code}
+                        onChange={handleChange}
+                        className="input-premium"
+                        placeholder="75001"
                       />
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Step 3: Plan Selection */}
-            {currentStep === 3 && (
-              <div className="space-y-6 animate-fadeIn">
-                <div className="text-center mb-6">
-                  <SparklesIcon className="h-12 w-12 text-indigo-600 mx-auto mb-3" />
-                  <h3 className="text-2xl font-bold text-gray-900">
-                    Choisissez votre plan
-                  </h3>
-                  <p className="text-gray-600 mt-1">
-                    14 jours d'essai gratuit sur tous les plans
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Plan Essential */}
-                  <label
-                    className={`relative flex flex-col p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                      formData.subscription_plan === "essential"
-                        ? "border-indigo-600 bg-indigo-50 shadow-lg"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="subscription_plan"
-                      value="essential"
-                      checked={formData.subscription_plan === "essential"}
-                      onChange={handleChange}
-                      className="sr-only"
-                    />
-                    {formData.subscription_plan === "essential" && (
-                      <CheckCircleSolid className="absolute top-4 right-4 h-6 w-6 text-indigo-600" />
-                    )}
-                    <span className="text-lg font-bold text-gray-900">
-                      Essential
-                    </span>
-                    <div className="mt-4 mb-4">
-                      <span className="text-3xl font-bold text-gray-900">
-                        {formatPrice(9.99)}
-                      </span>
-                      <span className="text-gray-600">/mois</span>
-                    </div>
-                    <ul className="space-y-2 text-sm text-gray-600">
-                      <li className="flex items-start">
-                        <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                        <span>100 clients max</span>
-                      </li>
-                      <li className="flex items-start">
-                        <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                        <span>Réservations en ligne</span>
-                      </li>
-                      <li className="flex items-start">
-                        <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                        <span>Gestion agenda</span>
-                      </li>
-                    </ul>
-                  </label>
-
-                  {/* Plan Professional */}
-                  <label
-                    className={`relative flex flex-col p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                      formData.subscription_plan === "professional"
-                        ? "border-indigo-600 bg-indigo-50 shadow-lg"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="subscription_plan"
-                      value="professional"
-                      checked={formData.subscription_plan === "professional"}
-                      onChange={handleChange}
-                      className="sr-only"
-                    />
-                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                      Populaire
-                    </div>
-                    {formData.subscription_plan === "professional" && (
-                      <CheckCircleSolid className="absolute top-4 right-4 h-6 w-6 text-indigo-600" />
-                    )}
-                    <span className="text-lg font-bold text-gray-900">
-                      Professional
-                    </span>
-                    <div className="mt-4 mb-4">
-                      <span className="text-3xl font-bold text-gray-900">
-                        {formatPrice(29.99)}
-                      </span>
-                      <span className="text-gray-600">/mois</span>
-                    </div>
-                    <ul className="space-y-2 text-sm text-gray-600">
-                      <li className="flex items-start">
-                        <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                        <span>Clients illimités</span>
-                      </li>
-                      <li className="flex items-start">
-                        <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                        <span>Personnel illimité</span>
-                      </li>
-                      <li className="flex items-start">
-                        <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                        <span>Statistiques avancées</span>
-                      </li>
-                    </ul>
-                  </label>
-
-                  {/* Plan Enterprise */}
-                  <label
-                    className={`relative flex flex-col p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                      formData.subscription_plan === "enterprise"
-                        ? "border-indigo-600 bg-indigo-50 shadow-lg"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="subscription_plan"
-                      value="enterprise"
-                      checked={formData.subscription_plan === "enterprise"}
-                      onChange={handleChange}
-                      className="sr-only"
-                    />
-                    {formData.subscription_plan === "enterprise" && (
-                      <CheckCircleSolid className="absolute top-4 right-4 h-6 w-6 text-indigo-600" />
-                    )}
-                    <span className="text-lg font-bold text-gray-900">
-                      Enterprise
-                    </span>
-                    <div className="mt-4 mb-4">
-                      <span className="text-3xl font-bold text-gray-900">
-                        {formatPrice(69.99)}
-                      </span>
-                      <span className="text-gray-600">/mois</span>
-                    </div>
-                    <ul className="space-y-2 text-sm text-gray-600">
-                      <li className="flex items-start">
-                        <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                        <span>Multi-établissements</span>
-                      </li>
-                      <li className="flex items-start">
-                        <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                        <span>API & intégrations</span>
-                      </li>
-                      <li className="flex items-start">
-                        <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                        <span>Support prioritaire</span>
-                      </li>
-                    </ul>
-                  </label>
-                </div>
-
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-100">
-                  <h4 className="font-semibold text-gray-900 mb-2">
-                    Période d'essai gratuite
-                  </h4>
-                  <p className="text-sm text-gray-700">
-                    Profitez de 14 jours d'essai gratuit sur tous les plans.
-                    Aucune carte bancaire requise. Vous pourrez changer de plan
-                    à tout moment.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between mt-8 pt-6 border-t">
-              {currentStep > 1 ? (
-                <button
-                  type="button"
-                  onClick={handlePrevious}
-                  className="flex items-center px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-medium transition-all"
-                >
-                  <ArrowLeftIcon className="h-5 w-5 mr-2" />
-                  Précédent
-                </button>
-              ) : (
-                <Link
-                  to="/login"
-                  className="flex items-center px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-medium transition-all"
-                >
-                  <ArrowLeftIcon className="h-5 w-5 mr-2" />
-                  Connexion
-                </Link>
               )}
 
-              {currentStep < 3 ? (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 font-semibold shadow-lg transition-all"
-                >
-                  Suivant
-                  <ArrowRightIcon className="h-5 w-5 ml-2" />
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex items-center px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 font-semibold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <>
-                      <svg
-                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Création...
-                    </>
-                  ) : (
-                    <>
-                      Créer mon compte
-                      <CheckCircleIcon className="h-5 w-5 ml-2" />
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
+              {/* Step 3: User Account */}
+              {currentStep === 3 && (
+                <div className="space-y-6 animate-fade-in-up">
+                  <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 mb-4">
+                      <UserIcon className="h-8 w-8 text-violet-700" />
+                    </div>
+                    <h3 className="font-display text-2xl text-slate-800 mb-2">
+                      Votre compte
+                    </h3>
+                    <p className="text-slate-500">
+                      Creez vos identifiants de connexion
+                    </p>
+                  </div>
 
-        {/* Footer */}
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p>
-            En créant un compte, vous acceptez nos{" "}
-            <a
-              href="#"
-              className="text-indigo-600 hover:text-indigo-500 font-medium"
-            >
-              Conditions d'utilisation
-            </a>{" "}
-            et notre{" "}
-            <a
-              href="#"
-              className="text-indigo-600 hover:text-indigo-500 font-medium"
-            >
-              Politique de confidentialité
-            </a>
-          </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="label-premium">Prenom *</label>
+                      <input
+                        type="text"
+                        name="first_name"
+                        required
+                        value={formData.first_name}
+                        onChange={handleChange}
+                        className="input-premium"
+                        placeholder="Marie"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label-premium">Nom *</label>
+                      <input
+                        type="text"
+                        name="last_name"
+                        required
+                        value={formData.last_name}
+                        onChange={handleChange}
+                        className="input-premium"
+                        placeholder="Dupont"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label-premium">Votre email *</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <EnvelopeIcon className="h-5 w-5 text-slate-300" />
+                      </div>
+                      <input
+                        type="email"
+                        name="email"
+                        required
+                        value={formData.email}
+                        onChange={handleChange}
+                        className="input-premium input-premium-icon"
+                        placeholder="vous@exemple.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="label-premium">Mot de passe *</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <LockClosedIcon className="h-5 w-5 text-slate-300" />
+                        </div>
+                        <input
+                          type="password"
+                          name="password"
+                          required
+                          value={formData.password}
+                          onChange={handleChange}
+                          className="input-premium input-premium-icon"
+                          placeholder="Min. 8 caracteres"
+                        />
+                      </div>
+                      <p className="mt-1.5 text-xs text-slate-400">
+                        Au moins 8 caracteres
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="label-premium">Confirmer *</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <LockClosedIcon className="h-5 w-5 text-slate-300" />
+                        </div>
+                        <input
+                          type="password"
+                          name="password_confirm"
+                          required
+                          value={formData.password_confirm}
+                          onChange={handleChange}
+                          className="input-premium input-premium-icon"
+                          placeholder="Meme mot de passe"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Plan Selection */}
+              {currentStep === 4 && (
+                <div className="space-y-6 animate-fade-in-up">
+                  <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 mb-4">
+                      <CreditCardIcon className="h-8 w-8 text-violet-700" />
+                    </div>
+                    <h3 className="font-display text-2xl text-slate-800 mb-2">
+                      Choisissez votre formule
+                    </h3>
+                    <p className="text-slate-500">
+                      14 jours d'essai gratuit sur toutes les formules
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {plans.map((plan) => {
+                      const Icon = plan.icon;
+                      const isSelected = formData.subscription_plan === plan.id;
+
+                      return (
+                        <label
+                          key={plan.id}
+                          className={`
+                            relative flex flex-col p-6 rounded-2xl cursor-pointer
+                            transition-all duration-300 ease-premium
+                            border-2 hover:-translate-y-1
+                            ${isSelected
+                              ? "border-violet-500 bg-gradient-to-br from-violet-50 to-indigo-50 shadow-soft-lg"
+                              : "border-slate-200 bg-white hover:border-violet-300 hover:shadow-soft"
+                            }
+                          `}
+                        >
+                          <input
+                            type="radio"
+                            name="subscription_plan"
+                            value={plan.id}
+                            checked={isSelected}
+                            onChange={handleChange}
+                            className="sr-only"
+                          />
+
+                          {/* Popular Badge */}
+                          {plan.popular && (
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                              <span className="badge-premium">
+                                Populaire
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Selected Indicator */}
+                          {isSelected && (
+                            <div className="absolute top-4 right-4">
+                              <CheckCircleSolid className="h-6 w-6 text-violet-600" />
+                            </div>
+                          )}
+
+                          {/* Plan Icon */}
+                          <div className={`
+                            w-12 h-12 rounded-xl flex items-center justify-center mb-4
+                            ${isSelected
+                              ? "bg-gradient-to-br from-violet-500 to-indigo-600"
+                              : "bg-violet-100"
+                            }
+                          `}>
+                            <Icon className={`w-6 h-6 ${isSelected ? "text-white" : "text-violet-600"}`} />
+                          </div>
+
+                          {/* Plan Name */}
+                          <span className="font-display text-xl text-slate-800 mb-1">
+                            {plan.name}
+                          </span>
+                          <span className="text-sm text-slate-400 mb-4">
+                            {plan.description}
+                          </span>
+
+                          {/* Price */}
+                          <div className="mb-5">
+                            <span className="font-display text-3xl text-slate-800">
+                              {formatPrice(plan.price)}
+                            </span>
+                            <span className="text-slate-500">/mois</span>
+                          </div>
+
+                          {/* Features */}
+                          <ul className="space-y-2.5">
+                            {plan.features.map((feature, idx) => (
+                              <li key={idx} className="flex items-start gap-2.5 text-sm text-slate-600">
+                                <CheckCircleIcon className="h-5 w-5 text-violet-500 flex-shrink-0" />
+                                <span>{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  {/* Trial Info */}
+                  <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-violet-50 via-indigo-50 to-violet-50 border border-violet-200">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-soft flex-shrink-0">
+                        <SparklesIcon className="w-5 h-5 text-violet-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-slate-800 mb-1">
+                          Periode d'essai gratuite
+                        </h4>
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                          Profitez de 14 jours d'essai gratuit sur toutes les formules.
+                          Aucune carte bancaire requise. Changez de formule a tout moment.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between mt-10 pt-8 border-t border-slate-200">
+                {currentStep > 1 ? (
+                  <button
+                    type="button"
+                    onClick={handlePrevious}
+                    className="btn-premium-secondary group"
+                  >
+                    <ArrowLeftIcon className="h-5 w-5 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
+                    Precedent
+                  </button>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="btn-premium-secondary group"
+                  >
+                    <ArrowLeftIcon className="h-5 w-5 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
+                    Connexion
+                  </Link>
+                )}
+
+                {currentStep < 4 ? (
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="btn-premium group"
+                  >
+                    Suivant
+                    <ArrowRightIcon className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-premium group"
+                  >
+                    {loading ? (
+                      <span className="flex items-center">
+                        <svg
+                          className="animate-elegant-spin -ml-1 mr-3 h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                          />
+                          <path
+                            className="opacity-90"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        Creation...
+                      </span>
+                    ) : (
+                      <span className="flex items-center">
+                        Creer mon compte
+                        <CheckCircleIcon className="h-5 w-5 ml-2" />
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-8 text-center text-sm text-slate-500">
+            <p>
+              En creant un compte, vous acceptez nos{" "}
+              <a href="#" className="link-premium">
+                Conditions d'utilisation
+              </a>{" "}
+              et notre{" "}
+              <a href="#" className="link-premium">
+                Politique de confidentialite
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -1,12 +1,14 @@
 /**
- * Page Clients AMÉLIORÉE
- * Liste, recherche, création, modification et messagerie
+ * Page Clients - Purple Dynasty Theme
+ * Multi-Sector Adaptive with Business Type Terminology
  */
 
 import { useState } from "react";
 import DashboardLayout from "../components/common/DashboardLayout";
 import { useClients } from "../hooks/useClients";
+import { useAuth } from "../contexts/AuthContext";
 import { usePermissions } from "../contexts/PermissionContext";
+import { getBusinessTypeConfig } from "../utils/businessTypeConfig";
 import ClientHistory from "../components/clients/ClientHistory";
 import api from "../services/api";
 import {
@@ -21,14 +23,17 @@ import {
   UserCircleIcon,
   InformationCircleIcon,
   ExclamationCircleIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 
-// --- NOUVEAUX IMPORTS ---
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/common/Toast";
 import ConfirmModal from "../components/common/ConfirmModal";
 
 const Clients = () => {
+  const { tenant } = useAuth();
   const {
     clients,
     loading,
@@ -39,7 +44,12 @@ const Clients = () => {
   } = useClients();
   const { can } = usePermissions();
 
-  // --- HOOK TOAST ---
+  // Business type configuration
+  const businessType = tenant?.business_type || "beauty";
+  const config = getBusinessTypeConfig(businessType);
+  const term = config.terminology;
+
+  // Hook toast
   const { toast, success, error, info, hideToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,7 +62,7 @@ const Clients = () => {
   const [historyClient, setHistoryClient] = useState(null);
   const [detailClient, setDetailClient] = useState(null);
 
-  // --- ETAT POUR CONFIRMATION SUPPRESSION ---
+  // État pour confirmation suppression
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
 
@@ -126,9 +136,8 @@ const Clients = () => {
     if (editingClient) {
       const result = await updateClient(editingClient.id, formData);
       if (result.success) {
-        success("Client modifié avec succès");
+        success(`${term.client} modifié avec succès`);
         handleCloseModal();
-        // Mettre à jour le détail si ouvert
         if (detailClient && detailClient.id === editingClient.id) {
           setDetailClient({ ...detailClient, ...formData });
         }
@@ -138,7 +147,7 @@ const Clients = () => {
     } else {
       const result = await createClient(formData);
       if (result.success) {
-        success("Client créé avec succès");
+        success(`${term.client} créé avec succès`);
         handleCloseModal();
       } else {
         error(result.error || "Erreur lors de la création");
@@ -146,7 +155,7 @@ const Clients = () => {
     }
   };
 
-  // --- GESTION SUPPRESSION ---
+  // Gestion suppression
   const initiateDelete = (id) => {
     setClientToDelete(id);
     setShowDeleteConfirm(true);
@@ -156,7 +165,7 @@ const Clients = () => {
     if (clientToDelete) {
       const result = await deleteClient(clientToDelete);
       if (result.success) {
-        success("Client supprimé avec succès");
+        success(`${term.client} supprimé avec succès`);
         setShowDeleteConfirm(false);
         setClientToDelete(null);
         if (showDetailModal) setShowDetailModal(false);
@@ -228,7 +237,7 @@ const Clients = () => {
 
   return (
     <DashboardLayout>
-      {/* TOAST CONTAINER */}
+      {/* Toast Container */}
       {toast && (
         <Toast
           message={toast.message}
@@ -238,149 +247,172 @@ const Clients = () => {
         />
       )}
 
-      {/* MODALE CONFIRMATION SUPPRESSION */}
+      {/* Modale Confirmation Suppression */}
       <ConfirmModal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleConfirmDelete}
-        title="Supprimer le client"
-        message="Êtes-vous sûr de vouloir supprimer ce client ? Son historique de rendez-vous sera également supprimé."
+        title={`Supprimer le ${term.client.toLowerCase()}`}
+        message={`Êtes-vous sûr de vouloir supprimer ce ${term.client.toLowerCase()} ? Son historique sera également supprimé.`}
         confirmText="Supprimer définitivement"
         type="danger"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
-            <p className="mt-2 text-gray-600">
-              Gérez vos clients et communiquez avec eux
-            </p>
+        {/* Header with gradient */}
+        <div className="mb-8">
+          <div className={`bg-gradient-to-r ${config.gradient} rounded-2xl p-6 sm:p-8 text-white shadow-soft-xl`}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center">
+                <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl mr-4">
+                  <UsersIcon className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-display font-bold">
+                    {term.clients}
+                  </h1>
+                  <p className="text-white/80 mt-1">
+                    Gérez vos {term.clients.toLowerCase()} et communiquez avec eux
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleOpenModal()}
+                className="flex items-center justify-center px-5 py-3 bg-white text-slate-800 rounded-xl hover:bg-white/90 transition-all duration-300 font-semibold shadow-soft"
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                {term.clientAdd}
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => handleOpenModal()}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-md"
-          >
-            + Nouveau client
-          </button>
         </div>
 
-        {/* Recherche */}
+        {/* Search */}
         <div className="mb-6">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={handleSearch}
-            placeholder="Rechercher un client (nom, email, téléphone)..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
-          />
+          <div className="relative">
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={handleSearch}
+              placeholder={`Rechercher un ${term.client.toLowerCase()} (nom, email, téléphone)...`}
+              className={`w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent shadow-soft transition-all duration-300`}
+            />
+          </div>
         </div>
 
-        {/* Liste */}
-        <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
+        {/* List */}
+        <div className="bg-white shadow-soft-xl rounded-2xl overflow-hidden border border-slate-200">
           {loading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Chargement...</p>
+            <div className="p-12 text-center">
+              <div className={`animate-spin rounded-full h-10 w-10 border-b-2 ${config.borderColor} mx-auto`}></div>
+              <p className="mt-4 text-slate-600">Chargement...</p>
             </div>
           ) : clients.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-lg">Aucun client trouvé</p>
-              <p className="text-sm mt-2">
-                Commencez par ajouter votre premier client
+            <div className="p-12 text-center">
+              <div className={`mx-auto w-16 h-16 ${config.lightBg} rounded-2xl flex items-center justify-center mb-4`}>
+                <UsersIcon className={`h-8 w-8 ${config.textColor}`} />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">{term.noClients}</h3>
+              <p className="text-slate-500 mb-6">
+                Commencez par ajouter votre premier {term.client.toLowerCase()}
               </p>
+              <button
+                onClick={() => handleOpenModal()}
+                className={`px-6 py-3 bg-gradient-to-r ${config.gradient} text-white rounded-xl font-medium shadow-soft hover:shadow-glow transition-all duration-300`}
+              >
+                {term.clientAdd}
+              </button>
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nom
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Téléphone
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Créé le
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {clients.map((client) => (
-                  <tr
-                    key={client.id}
-                    onClick={() => {
-                      setDetailClient(client);
-                      setShowDetailModal(true);
-                    }}
-                    className="hover:bg-gray-50 transition-colors cursor-pointer"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <span className="text-indigo-700 font-medium">
-                            {client.first_name?.charAt(0)}
-                            {client.last_name?.charAt(0)}
-                          </span>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {client.first_name} {client.last_name}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className={`${config.lightBg}`}>
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Nom
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Téléphone
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      Créé le
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-100">
+                  {clients.map((client) => (
+                    <tr
+                      key={client.id}
+                      onClick={() => {
+                        setDetailClient(client);
+                        setShowDetailModal(true);
+                      }}
+                      className={`${config.hoverBg} transition-colors cursor-pointer`}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className={`flex-shrink-0 h-10 w-10 rounded-full ${config.lightBg} flex items-center justify-center`}>
+                            <span className={`${config.darkTextColor} font-semibold`}>
+                              {client.first_name?.charAt(0)}
+                              {client.last_name?.charAt(0)}
+                            </span>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-semibold text-slate-800">
+                              {client.first_name} {client.last_name}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500 flex items-center">
-                        {client.email ? (
-                          <>
-                            <EnvelopeIcon className="h-4 w-4 mr-1 text-gray-400" />
-                            {client.email}
-                          </>
-                        ) : (
-                          "-"
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {client.phone || "-"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
-                        {new Date(client.created_at).toLocaleDateString(
-                          "fr-FR"
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-slate-600 flex items-center">
+                          {client.email ? (
+                            <>
+                              <EnvelopeIcon className="h-4 w-4 mr-2 text-slate-400" />
+                              {client.email}
+                            </>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-slate-600">
+                          {client.phone || <span className="text-slate-400">-</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-slate-500">
+                          {new Date(client.created_at).toLocaleDateString("fr-FR")}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Modal Édition/Création (inchangée) */}
+      {/* Modal Création/Édition */}
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white animate-scale-in">
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900">
-                {editingClient ? "Modifier le client" : "Nouveau client"}
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-md bg-white shadow-soft-2xl rounded-2xl animate-scale-in">
+            <div className={`bg-gradient-to-r ${config.gradient} px-6 py-4 rounded-t-2xl`}>
+              <h3 className="text-lg font-display font-semibold text-white">
+                {editingClient ? term.clientEdit : term.clientAdd}
               </h3>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     Prénom *
                   </label>
                   <input
@@ -389,12 +421,12 @@ const Clients = () => {
                     required
                     value={formData.first_name}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     Nom *
                   </label>
                   <input
@@ -403,13 +435,13 @@ const Clients = () => {
                     required
                     value={formData.last_name}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Email
                 </label>
                 <input
@@ -417,12 +449,12 @@ const Clients = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all`}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Téléphone
                 </label>
                 <input
@@ -430,12 +462,12 @@ const Clients = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all`}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Notes
                 </label>
                 <textarea
@@ -443,22 +475,22 @@ const Clients = () => {
                   rows="3"
                   value={formData.notes}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all resize-none`}
                 ></textarea>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition-colors"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                  className={`px-5 py-2.5 bg-gradient-to-r ${config.gradient} text-white rounded-xl font-medium shadow-soft hover:shadow-glow disabled:opacity-50 transition-all duration-300`}
                 >
                   {loading ? "Enregistrement..." : "Enregistrer"}
                 </button>
@@ -468,48 +500,47 @@ const Clients = () => {
         </div>
       )}
 
-      {/* Modal Messagerie (inchangée) */}
+      {/* Modal Messagerie */}
       {showMessageModal && messagingClient && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-6 border w-[500px] shadow-xl rounded-lg bg-white animate-scale-in">
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex items-center">
-                <ChatBubbleLeftRightIcon className="h-6 w-6 text-indigo-600 mr-3" />
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Contacter {messagingClient.first_name}{" "}
-                    {messagingClient.last_name}
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Envoyez un message personnalisé à votre client
-                  </p>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-lg bg-white shadow-soft-2xl rounded-2xl animate-scale-in">
+            <div className={`bg-gradient-to-r ${config.gradient} px-6 py-4 rounded-t-2xl`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <ChatBubbleLeftRightIcon className="h-6 w-6 text-white mr-3" />
+                  <div>
+                    <h3 className="text-lg font-display font-semibold text-white">
+                      Contacter {messagingClient.first_name} {messagingClient.last_name}
+                    </h3>
+                    <p className="text-sm text-white/80">
+                      Envoyez un message personnalisé
+                    </p>
+                  </div>
                 </div>
+                <button
+                  onClick={handleCloseMessageModal}
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
               </div>
-              <button
-                onClick={handleCloseMessageModal}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
             </div>
 
-            <form onSubmit={handleSendMessage} className="space-y-4">
+            <form onSubmit={handleSendMessage} className="p-6 space-y-4">
               {/* Canal d'envoi */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Canal d'envoi
                 </label>
                 <div className="grid grid-cols-3 gap-3">
                   {messagingClient.email && (
                     <button
                       type="button"
-                      onClick={() =>
-                        setMessageData({ ...messageData, send_via: "email" })
-                      }
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      onClick={() => setMessageData({ ...messageData, send_via: "email" })}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                         messageData.send_via === "email"
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          ? `bg-gradient-to-r ${config.gradient} text-white shadow-soft`
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                       }`}
                     >
                       <EnvelopeIcon className="h-4 w-4 inline mr-1" />
@@ -519,13 +550,11 @@ const Clients = () => {
                   {messagingClient.phone && (
                     <button
                       type="button"
-                      onClick={() =>
-                        setMessageData({ ...messageData, send_via: "sms" })
-                      }
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      onClick={() => setMessageData({ ...messageData, send_via: "sms" })}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                         messageData.send_via === "sms"
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          ? `bg-gradient-to-r ${config.gradient} text-white shadow-soft`
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                       }`}
                     >
                       <ChatBubbleLeftRightIcon className="h-4 w-4 inline mr-1" />
@@ -535,13 +564,11 @@ const Clients = () => {
                   {messagingClient.email && messagingClient.phone && (
                     <button
                       type="button"
-                      onClick={() =>
-                        setMessageData({ ...messageData, send_via: "both" })
-                      }
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      onClick={() => setMessageData({ ...messageData, send_via: "both" })}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                         messageData.send_via === "both"
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          ? `bg-gradient-to-r ${config.gradient} text-white shadow-soft`
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                       }`}
                     >
                       Les deux
@@ -550,11 +577,10 @@ const Clients = () => {
                 </div>
               </div>
 
-              {/* Sujet (pour email uniquement) */}
-              {(messageData.send_via === "email" ||
-                messageData.send_via === "both") && (
+              {/* Sujet (pour email) */}
+              {(messageData.send_via === "email" || messageData.send_via === "both") && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
                     Sujet
                   </label>
                   <input
@@ -562,15 +588,15 @@ const Clients = () => {
                     name="subject"
                     value={messageData.subject}
                     onChange={handleMessageChange}
-                    placeholder="Message de votre salon"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder={`Message de votre ${config.terminology.establishment.toLowerCase()}`}
+                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all`}
                   />
                 </div>
               )}
 
               {/* Message */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Message *
                 </label>
                 <textarea
@@ -580,47 +606,41 @@ const Clients = () => {
                   value={messageData.message}
                   onChange={handleMessageChange}
                   placeholder="Saisissez votre message..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all resize-none`}
                 ></textarea>
               </div>
 
               {/* Info envoi */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start">
-                <ExclamationCircleIcon className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-800">
+              <div className={`${config.lightBg} ${config.lightBorderColor} border rounded-xl p-4 flex items-start`}>
+                <ExclamationCircleIcon className={`h-5 w-5 ${config.textColor} mr-3 flex-shrink-0 mt-0.5`} />
+                <div className={`text-sm ${config.darkTextColor}`}>
                   {messageData.send_via === "email" && (
-                    <p>L'email sera envoyé immédiatement au client.</p>
+                    <p>L'email sera envoyé immédiatement.</p>
                   )}
                   {messageData.send_via === "sms" && (
-                    <p>
-                      WhatsApp s'ouvrira dans un nouvel onglet avec le message
-                      pré-rempli.
-                    </p>
+                    <p>WhatsApp s'ouvrira dans un nouvel onglet avec le message pré-rempli.</p>
                   )}
                   {messageData.send_via === "both" && (
-                    <p>
-                      L'email sera envoyé et WhatsApp s'ouvrira dans un nouvel
-                      onglet.
-                    </p>
+                    <p>L'email sera envoyé et WhatsApp s'ouvrira dans un nouvel onglet.</p>
                   )}
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleCloseMessageModal}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition-colors"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={sending}
-                  className="px-4 py-2 bg-green-600 border border-transparent rounded-lg text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 shadow-md inline-flex items-center"
+                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-medium shadow-soft hover:shadow-glow disabled:opacity-50 transition-all duration-300 inline-flex items-center"
                 >
                   <PaperAirplaneIcon className="h-4 w-4 mr-2" />
-                  {sending ? "Envoi..." : "Envoyer le message"}
+                  {sending ? "Envoi..." : "Envoyer"}
                 </button>
               </div>
             </form>
@@ -628,7 +648,7 @@ const Clients = () => {
         </div>
       )}
 
-      {/* Modal Historique Client */}
+      {/* Modal Historique */}
       {showHistoryModal && historyClient && (
         <ClientHistory
           client={historyClient}
@@ -639,29 +659,27 @@ const Clients = () => {
         />
       )}
 
-      {/* Modal Détails Client (Modifié pour delete via state) */}
+      {/* Modal Détails Client */}
       {showDetailModal && detailClient && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-0 border w-full max-w-2xl shadow-2xl rounded-xl bg-white animate-scale-in">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-2xl bg-white shadow-soft-2xl rounded-2xl animate-scale-in">
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-6 rounded-t-xl">
+            <div className={`bg-gradient-to-r ${config.gradient} px-6 py-6 rounded-t-2xl`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="h-16 w-16 rounded-full bg-white flex items-center justify-center shadow-lg">
-                    <span className="text-indigo-700 font-bold text-2xl">
+                  <div className="h-16 w-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-soft">
+                    <span className="text-white font-bold text-2xl">
                       {detailClient.first_name?.charAt(0)}
                       {detailClient.last_name?.charAt(0)}
                     </span>
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-2xl font-bold text-white">
+                    <h3 className="text-2xl font-display font-bold text-white">
                       {detailClient.first_name} {detailClient.last_name}
                     </h3>
-                    <p className="text-indigo-100 text-sm mt-1">
-                      Client depuis le{" "}
-                      {new Date(detailClient.created_at).toLocaleDateString(
-                        "fr-FR"
-                      )}
+                    <p className="text-white/80 text-sm mt-1">
+                      {term.client} depuis le{" "}
+                      {new Date(detailClient.created_at).toLocaleDateString("fr-FR")}
                     </p>
                   </div>
                 </div>
@@ -670,7 +688,7 @@ const Clients = () => {
                     setShowDetailModal(false);
                     setDetailClient(null);
                   }}
-                  className="text-white hover:text-gray-200 transition"
+                  className="text-white/80 hover:text-white transition-colors"
                 >
                   <XMarkIcon className="h-6 w-6" />
                 </button>
@@ -679,39 +697,31 @@ const Clients = () => {
 
             {/* Content */}
             <div className="p-6">
-              {/* Informations de contact */}
+              {/* Contact Info */}
               <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <UserCircleIcon className="h-5 w-5 mr-2 text-indigo-600" />
+                <h4 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                  <UserCircleIcon className={`h-5 w-5 mr-2 ${config.textColor}`} />
                   Informations de contact
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${config.lightBg} p-4 rounded-xl`}>
                   <div className="flex items-start">
-                    <EnvelopeIcon className="h-5 w-5 text-gray-400 mr-3 mt-0.5" />
+                    <EnvelopeIcon className="h-5 w-5 text-slate-400 mr-3 mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase font-medium">
-                        Email
-                      </p>
-                      <p className="text-sm text-gray-900 mt-1">
+                      <p className="text-xs text-slate-500 uppercase font-medium">Email</p>
+                      <p className="text-sm text-slate-800 mt-1">
                         {detailClient.email || (
-                          <span className="text-gray-400 italic">
-                            Non renseigné
-                          </span>
+                          <span className="text-slate-400 italic">Non renseigné</span>
                         )}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start">
-                    <PhoneIcon className="h-5 w-5 text-gray-400 mr-3 mt-0.5" />
+                    <PhoneIcon className="h-5 w-5 text-slate-400 mr-3 mt-0.5" />
                     <div>
-                      <p className="text-xs text-gray-500 uppercase font-medium">
-                        Téléphone
-                      </p>
-                      <p className="text-sm text-gray-900 mt-1">
+                      <p className="text-xs text-slate-500 uppercase font-medium">Téléphone</p>
+                      <p className="text-sm text-slate-800 mt-1">
                         {detailClient.phone || (
-                          <span className="text-gray-400 italic">
-                            Non renseigné
-                          </span>
+                          <span className="text-slate-400 italic">Non renseigné</span>
                         )}
                       </p>
                     </div>
@@ -722,21 +732,21 @@ const Clients = () => {
               {/* Notes */}
               {detailClient.notes && (
                 <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <InformationCircleIcon className="h-5 w-5 mr-2 text-indigo-600" />
+                  <h4 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
+                    <InformationCircleIcon className={`h-5 w-5 mr-2 ${config.textColor}`} />
                     Notes
                   </h4>
-                  <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">
                       {detailClient.notes}
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Actions rapides */}
-              <div className="border-t pt-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">
+              {/* Actions */}
+              <div className="border-t border-slate-200 pt-6">
+                <h4 className="text-lg font-semibold text-slate-800 mb-4">
                   Actions rapides
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
@@ -746,10 +756,10 @@ const Clients = () => {
                       setHistoryClient(detailClient);
                       setShowHistoryModal(true);
                     }}
-                    className="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium shadow-md"
+                    className={`flex items-center justify-center px-4 py-3 bg-gradient-to-r ${config.gradient} text-white rounded-xl hover:shadow-glow transition-all duration-300 font-medium`}
                   >
                     <ClockIcon className="h-5 w-5 mr-2" />
-                    Voir l'historique
+                    {term.clientHistory}
                   </button>
 
                   {(detailClient.email || detailClient.phone) && (
@@ -758,7 +768,7 @@ const Clients = () => {
                         setShowDetailModal(false);
                         handleOpenMessageModal(detailClient);
                       }}
-                      className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium shadow-md"
+                      className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:shadow-glow transition-all duration-300 font-medium"
                     >
                       <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
                       Contacter
@@ -771,7 +781,7 @@ const Clients = () => {
                         setShowDetailModal(false);
                         handleOpenModal(detailClient);
                       }}
-                      className="flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium shadow-md"
+                      className="flex items-center justify-center px-4 py-3 bg-slate-600 text-white rounded-xl hover:bg-slate-700 transition-all duration-300 font-medium"
                     >
                       <PencilIcon className="h-5 w-5 mr-2" />
                       Modifier
@@ -781,7 +791,7 @@ const Clients = () => {
                   {can.deleteClient && (
                     <button
                       onClick={() => initiateDelete(detailClient.id)}
-                      className="flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium shadow-md"
+                      className="flex items-center justify-center px-4 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-300 font-medium"
                     >
                       <TrashIcon className="h-5 w-5 mr-2" />
                       Supprimer

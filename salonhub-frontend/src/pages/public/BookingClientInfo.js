@@ -1,17 +1,17 @@
 /**
- * Page du formulaire client
- * Collecte les informations du client pour finaliser la réservation
+ * Public Booking Client Info Page - Purple Dynasty Theme
+ * Multi-Sector Adaptive with Business Type Terminology
  */
 
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
 import PromoCodeInput from "../../components/common/PromoCodeInput";
 import api from "../../services/api";
 import { getImageUrl } from "../../utils/imageUtils";
 import {
-  // <-- Import Heroicons
   ClockIcon,
   PhoneIcon as PhoneIconOutline,
   EnvelopeIcon,
@@ -33,13 +33,18 @@ const BookingClientInfo = () => {
   const { salon, loading, error, fetchSalon, createAppointment, clearError } =
     usePublicBooking(slug);
 
+  // Business type configuration
+  const businessType = salon?.business_type || "beauty";
+  const config = getBusinessTypeConfig(businessType);
+  const term = config.terminology;
+
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
     phone: "",
     email: "",
     notes: "",
-    preferred_contact_method: "email", // Par défaut: email
+    preferred_contact_method: "email",
   });
 
   const [formErrors, setFormErrors] = useState({});
@@ -68,7 +73,6 @@ const BookingClientInfo = () => {
       [name]: value,
     }));
 
-    // Clear error for this field when user starts typing
     if (formErrors[name]) {
       setFormErrors((prev) => ({
         ...prev,
@@ -129,7 +133,6 @@ const BookingClientInfo = () => {
 
       const result = await createAppointment(appointmentData);
 
-      // Navigation vers la page de confirmation avec les données
       navigate(`/book/${slug}/confirmation`, {
         state: {
           service,
@@ -140,7 +143,7 @@ const BookingClientInfo = () => {
         },
       });
     } catch (err) {
-      console.error("Erreur lors de la création du rendez-vous:", err);
+      console.error("Error creating appointment:", err);
       setSubmitting(false);
     }
   };
@@ -151,7 +154,6 @@ const BookingClientInfo = () => {
 
   const handleValidatePromoCode = async (code) => {
     if (!code) {
-      // Retirer le code promo
       setPromoCode(null);
       setFinalAmount(service.price);
       return { success: true };
@@ -175,7 +177,7 @@ const BookingClientInfo = () => {
         return response.data;
       }
     } catch (error) {
-      console.error("Erreur validation promo:", error);
+      console.error("Error validating promo:", error);
       throw error;
     }
   };
@@ -187,15 +189,12 @@ const BookingClientInfo = () => {
       month: "long",
       day: "numeric",
     };
-    return new Date(dateString + "T00:00:00").toLocaleDateString(
-      "fr-FR",
-      options
-    );
+    return new Date(dateString + "T00:00:00").toLocaleDateString("fr-FR", options);
   };
 
   return (
     <div className="min-h-screen relative">
-      {/* Background Image avec Overlay */}
+      {/* Background Image with Overlay */}
       {service?.image_url && (
         <div className="fixed inset-0 z-0">
           <img
@@ -210,19 +209,19 @@ const BookingClientInfo = () => {
       {/* Content */}
       <div className="relative z-10">
         {/* Header */}
-        <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-200">
+        <header className="bg-white/80 backdrop-blur-md shadow-soft border-b border-slate-200">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center justify-between">
               <button
                 onClick={handleBack}
-                className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors font-medium"
+                className={`flex items-center ${config.textColor} hover:${config.darkTextColor} transition-colors font-medium`}
               >
                 <ChevronLeftIcon className="w-5 h-5 mr-2" />
                 Retour
               </button>
               <div className="text-center flex-1">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {salon?.name || "Salon de Beauté"}
+                <h1 className="text-2xl font-display font-bold text-slate-900">
+                  {salon?.name || term.establishment}
                 </h1>
               </div>
               <div className="w-20"></div>
@@ -233,58 +232,57 @@ const BookingClientInfo = () => {
         {/* Main Content */}
         <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center mb-10">
-            <p className="text-sm font-medium text-indigo-600 mb-2">
+            <p className={`text-sm font-medium ${config.textColor} mb-2`}>
               Étape 3/3
             </p>
-            <h2 className="text-3xl font-bold text-gray-900">
+            <h2 className="text-3xl font-display font-bold text-slate-900">
               Vos coordonnées
             </h2>
-            <p className="text-gray-600 mt-2">
-              Vérifiez et complétez vos informations pour finaliser la
-              réservation
+            <p className="text-slate-600 mt-2">
+              Vérifiez et complétez vos informations pour finaliser la réservation
             </p>
           </div>
 
-          {/* Récapitulatif - Enhanced Box Style */}
+          {/* Recap - Enhanced Box Style */}
           {service && date && slot && (
-            <div className="bg-white border border-indigo-200 rounded-xl shadow-lg p-4 sm:p-6 mb-8 space-y-4">
-              <h3 className="font-semibold text-gray-900 text-lg sm:text-xl border-b pb-3 mb-4 flex items-center">
-                <CalendarDaysIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-indigo-600" />
-                Votre Réservation
+            <div className={`bg-white border ${config.lightBorderColor} rounded-2xl shadow-soft-xl p-4 sm:p-6 mb-8 space-y-4`}>
+              <h3 className="font-semibold text-slate-900 text-lg sm:text-xl border-b border-slate-100 pb-3 mb-4 flex items-center">
+                <CalendarDaysIcon className={`w-5 h-5 sm:w-6 sm:h-6 mr-2 ${config.textColor}`} />
+                Votre {term.appointment}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">Service</p>
-                  <p className="font-medium text-gray-900">{service.name}</p>
+                  <p className="text-sm text-slate-500">{term.service}</p>
+                  <p className="font-medium text-slate-900">{service.name}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Prix</p>
+                  <p className="text-sm text-slate-500">{term.servicePrice}</p>
                   {promoCode ? (
                     <div>
-                      <p className="text-sm text-gray-400 line-through">
+                      <p className="text-sm text-slate-400 line-through">
                         {formatPrice(service.price)}
                       </p>
-                      <p className="font-bold text-green-600 text-lg flex items-center">
+                      <p className="font-bold text-emerald-600 text-lg flex items-center">
                         <CurrencyDollarIcon className="w-5 h-5 mr-1" />
                         {formatPrice(finalAmount)}
                       </p>
                     </div>
                   ) : (
-                    <p className="font-bold text-indigo-600 text-lg flex items-center">
+                    <p className={`font-bold ${config.textColor} text-lg flex items-center`}>
                       <CurrencyDollarIcon className="w-5 h-5 mr-1" />
                       {formatPrice(service.price)}
                     </p>
                   )}
                 </div>
                 <div className="sm:col-span-2">
-                  <p className="text-sm text-gray-500">Date & Heure</p>
-                  <p className="font-medium text-gray-900">
+                  <p className="text-sm text-slate-500">Date & Heure</p>
+                  <p className="font-medium text-slate-900">
                     {formatDate(date)} à {slot.time}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Durée</p>
-                  <p className="font-medium text-gray-900 flex items-center">
+                  <p className="text-sm text-slate-500">{term.serviceDuration}</p>
+                  <p className="font-medium text-slate-900 flex items-center">
                     <ClockIcon className="w-4 h-4 mr-1 inline-block" />
                     {service.duration} minutes
                   </p>
@@ -293,21 +291,18 @@ const BookingClientInfo = () => {
             </div>
           )}
 
-          {/* Formulaire */}
-          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100">
+          {/* Form */}
+          <div className="bg-white rounded-2xl shadow-soft-xl p-4 sm:p-6 border border-slate-200">
             <form onSubmit={handleSubmit} className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center border-b pb-3">
-                <UserCircleIcon className="w-5 h-5 mr-2 text-indigo-600" />
+              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center border-b border-slate-100 pb-3">
+                <UserCircleIcon className={`w-5 h-5 mr-2 ${config.textColor}`} />
                 Vos coordonnées personnelles
               </h3>
 
-              {/* Prénom et Nom */}
+              {/* First & Last Name */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label
-                    htmlFor="first_name"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
+                  <label htmlFor="first_name" className="block text-sm font-medium text-slate-700 mb-2">
                     Prénom *
                   </label>
                   <input
@@ -316,25 +311,18 @@ const BookingClientInfo = () => {
                     name="first_name"
                     value={formData.first_name}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                      formErrors.first_name
-                        ? "border-red-500"
-                        : "border-gray-300"
+                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent ${
+                      formErrors.first_name ? "border-red-500" : "border-slate-200"
                     }`}
                     required
                   />
                   {formErrors.first_name && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {formErrors.first_name}
-                    </p>
+                    <p className="mt-1 text-sm text-red-600">{formErrors.first_name}</p>
                   )}
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="last_name"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
+                  <label htmlFor="last_name" className="block text-sm font-medium text-slate-700 mb-2">
                     Nom *
                   </label>
                   <input
@@ -343,27 +331,20 @@ const BookingClientInfo = () => {
                     name="last_name"
                     value={formData.last_name}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                      formErrors.last_name
-                        ? "border-red-500"
-                        : "border-gray-300"
+                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent ${
+                      formErrors.last_name ? "border-red-500" : "border-slate-200"
                     }`}
                     required
                   />
                   {formErrors.last_name && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {formErrors.last_name}
-                    </p>
+                    <p className="mt-1 text-sm text-red-600">{formErrors.last_name}</p>
                   )}
                 </div>
               </div>
 
-              {/* Téléphone */}
+              {/* Phone */}
               <div>
-                <label
-                  htmlFor="phone"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
+                <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-2">
                   Téléphone *
                 </label>
                 <input
@@ -373,24 +354,19 @@ const BookingClientInfo = () => {
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="+33 6 12 34 56 78"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                    formErrors.phone ? "border-red-500" : "border-gray-300"
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent ${
+                    formErrors.phone ? "border-red-500" : "border-slate-200"
                   }`}
                   required
                 />
                 {formErrors.phone && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {formErrors.phone}
-                  </p>
+                  <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>
                 )}
               </div>
 
               {/* Email */}
               <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
+                <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
                   Email (optionnel)
                 </label>
                 <input
@@ -400,47 +376,38 @@ const BookingClientInfo = () => {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="vous@exemple.com"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                    formErrors.email ? "border-red-500" : "border-gray-300"
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent ${
+                    formErrors.email ? "border-red-500" : "border-slate-200"
                   }`}
                 />
                 {formErrors.email && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {formErrors.email}
-                  </p>
+                  <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
                 )}
               </div>
 
-              {/* Moyen de notification préféré - Enhanced Selector */}
+              {/* Contact Preference - Enhanced Selector */}
               <div className="pt-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center border-b pb-3">
-                  <EnvelopeIcon className="w-5 h-5 mr-2 text-indigo-600" />
+                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center border-b border-slate-100 pb-3">
+                  <EnvelopeIcon className={`w-5 h-5 mr-2 ${config.textColor}`} />
                   Préférence de Contact
                 </h3>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-slate-700 mb-3">
                   Comment souhaitez-vous être notifié ? *
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   {/* Email Option */}
                   <button
                     type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        preferred_contact_method: "email",
-                      })
-                    }
-                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-lg transition-all ${
+                    onClick={() => setFormData({ ...formData, preferred_contact_method: "email" })}
+                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-xl transition-all ${
                       formData.preferred_contact_method === "email"
-                        ? "border-indigo-600 bg-indigo-50 shadow-md"
-                        : "border-gray-300 hover:border-indigo-300 bg-white"
+                        ? `${config.borderColor} ${config.lightBg} shadow-soft`
+                        : "border-slate-200 hover:border-slate-300 bg-white"
                     }`}
                   >
                     <EnvelopeIcon
                       className={`w-7 h-7 mb-2 ${
-                        formData.preferred_contact_method === "email"
-                          ? "text-indigo-600"
-                          : "text-gray-400"
+                        formData.preferred_contact_method === "email" ? config.textColor : "text-slate-400"
                       }`}
                     />
                     <span className="text-sm font-medium">Email</span>
@@ -449,48 +416,34 @@ const BookingClientInfo = () => {
                   {/* SMS Option */}
                   <button
                     type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        preferred_contact_method: "sms",
-                      })
-                    }
-                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-lg transition-all ${
+                    onClick={() => setFormData({ ...formData, preferred_contact_method: "sms" })}
+                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-xl transition-all ${
                       formData.preferred_contact_method === "sms"
-                        ? "border-indigo-600 bg-indigo-50 shadow-md"
-                        : "border-gray-300 hover:border-indigo-300 bg-white"
+                        ? `${config.borderColor} ${config.lightBg} shadow-soft`
+                        : "border-slate-200 hover:border-slate-300 bg-white"
                     }`}
                   >
                     <ChatBubbleBottomCenterTextIcon
                       className={`w-7 h-7 mb-2 ${
-                        formData.preferred_contact_method === "sms"
-                          ? "text-indigo-600"
-                          : "text-gray-400"
+                        formData.preferred_contact_method === "sms" ? config.textColor : "text-slate-400"
                       }`}
                     />
                     <span className="text-sm font-medium">SMS</span>
                   </button>
 
-                  {/* WhatsApp Option (Using Phone Icon for simplicity) */}
+                  {/* WhatsApp Option */}
                   <button
                     type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        preferred_contact_method: "whatsapp",
-                      })
-                    }
-                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-lg transition-all ${
+                    onClick={() => setFormData({ ...formData, preferred_contact_method: "whatsapp" })}
+                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-xl transition-all ${
                       formData.preferred_contact_method === "whatsapp"
-                        ? "border-indigo-600 bg-indigo-50 shadow-md"
-                        : "border-gray-300 hover:border-indigo-300 bg-white"
+                        ? `${config.borderColor} ${config.lightBg} shadow-soft`
+                        : "border-slate-200 hover:border-slate-300 bg-white"
                     }`}
                   >
                     <ChatBubbleOvalLeftEllipsisIcon
                       className={`w-7 h-7 mb-2 ${
-                        formData.preferred_contact_method === "whatsapp"
-                          ? "text-indigo-600"
-                          : "text-gray-400"
+                        formData.preferred_contact_method === "whatsapp" ? config.textColor : "text-slate-400"
                       }`}
                     />
                     <span className="text-sm font-medium">WhatsApp</span>
@@ -499,44 +452,33 @@ const BookingClientInfo = () => {
                   {/* Phone Option */}
                   <button
                     type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        preferred_contact_method: "phone",
-                      })
-                    }
-                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-lg transition-all ${
+                    onClick={() => setFormData({ ...formData, preferred_contact_method: "phone" })}
+                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-xl transition-all ${
                       formData.preferred_contact_method === "phone"
-                        ? "border-indigo-600 bg-indigo-50 shadow-md"
-                        : "border-gray-300 hover:border-indigo-300 bg-white"
+                        ? `${config.borderColor} ${config.lightBg} shadow-soft`
+                        : "border-slate-200 hover:border-slate-300 bg-white"
                     }`}
                   >
                     <PhoneIconOutline
                       className={`w-7 h-7 mb-2 ${
-                        formData.preferred_contact_method === "phone"
-                          ? "text-indigo-600"
-                          : "text-gray-400"
+                        formData.preferred_contact_method === "phone" ? config.textColor : "text-slate-400"
                       }`}
                     />
                     <span className="text-sm font-medium">Téléphone</span>
                   </button>
                 </div>
-                <p className="mt-2 text-sm text-gray-500">
-                  Nous vous contacterons via ce moyen pour confirmer votre
-                  rendez-vous
+                <p className="mt-2 text-sm text-slate-500">
+                  Nous vous contacterons via ce moyen pour confirmer votre {term.appointment.toLowerCase()}
                 </p>
               </div>
 
               {/* Notes */}
               <div className="pt-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center border-b pb-3">
-                  <ChatBubbleBottomCenterTextIcon className="w-5 h-5 mr-2 text-indigo-600" />
+                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center border-b border-slate-100 pb-3">
+                  <ChatBubbleBottomCenterTextIcon className={`w-5 h-5 mr-2 ${config.textColor}`} />
                   Notes (Optionnel)
                 </h3>
-                <label
-                  htmlFor="notes"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
+                <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-2">
                   Notes ou demandes particulières
                 </label>
                 <textarea
@@ -546,11 +488,11 @@ const BookingClientInfo = () => {
                   onChange={handleChange}
                   rows="3"
                   placeholder="Précisez vos demandes ou préférences..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className={`w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent resize-none`}
                 />
               </div>
 
-              {/* Code Promo */}
+              {/* Promo Code */}
               <div className="pt-4">
                 <PromoCodeInput
                   onValidate={handleValidatePromoCode}
@@ -561,7 +503,7 @@ const BookingClientInfo = () => {
 
               {/* Error Message */}
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-6">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mt-6">
                   <p className="text-red-800 font-medium">{error}</p>
                 </div>
               )}
@@ -570,7 +512,7 @@ const BookingClientInfo = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-indigo-600 text-white py-4 px-6 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 mt-6 shadow-xl"
+                className={`w-full bg-gradient-to-r ${config.gradient} text-white py-4 px-6 rounded-xl font-medium hover:shadow-glow focus:outline-none focus:ring-2 ${config.focusRing} focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 mt-6 shadow-soft-xl`}
               >
                 {submitting ? (
                   <span className="flex items-center justify-center">
@@ -596,7 +538,7 @@ const BookingClientInfo = () => {
                     Confirmation en cours...
                   </span>
                 ) : (
-                  "✓ Confirmer la réservation"
+                  `Confirmer ${businessType === "restaurant" ? "la réservation" : businessType === "training" ? "l'inscription" : businessType === "medical" ? "le rendez-vous" : "la réservation"}`
                 )}
               </button>
             </form>

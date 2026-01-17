@@ -1,6 +1,6 @@
 /**
- * Dashboard - Page d'accueil admin AMÉLIORÉE
- * Vue d'ensemble avec statistiques avancées, graphiques et insights
+ * Dashboard - Purple Dynasty Premium Theme
+ * Multi-Sector Adaptive Dashboard with Business Type Customization
  */
 
 import { useState, useEffect } from "react";
@@ -25,11 +25,77 @@ import {
   ShareIcon,
   ClipboardDocumentIcon,
   Cog6ToothIcon,
+  BuildingStorefrontIcon,
+  AcademicCapIcon,
+  HeartIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
+
+// Business Type Configuration
+const BUSINESS_TYPE_CONFIG = {
+  beauty: {
+    label: "Beauté",
+    icon: ScissorsIcon,
+    gradient: "from-violet-500 to-indigo-600",
+    cardGradient: "from-violet-500 to-violet-600",
+    lightBg: "bg-violet-50",
+    textColor: "text-violet-600",
+    borderColor: "border-violet-500",
+    servicesLabel: "Services actifs",
+    appointmentsLabel: "RDV aujourd'hui",
+    pendingLabel: "En attente",
+    welcomeMessage: "Voici un aperçu de votre salon.",
+  },
+  restaurant: {
+    label: "Restaurant",
+    icon: BuildingStorefrontIcon,
+    gradient: "from-amber-500 to-orange-600",
+    cardGradient: "from-amber-500 to-amber-600",
+    lightBg: "bg-amber-50",
+    textColor: "text-amber-600",
+    borderColor: "border-amber-500",
+    servicesLabel: "Plats au menu",
+    appointmentsLabel: "Réservations",
+    pendingLabel: "À confirmer",
+    welcomeMessage: "Voici un aperçu de votre restaurant.",
+  },
+  training: {
+    label: "Formation",
+    icon: AcademicCapIcon,
+    gradient: "from-emerald-500 to-green-600",
+    cardGradient: "from-emerald-500 to-emerald-600",
+    lightBg: "bg-emerald-50",
+    textColor: "text-emerald-600",
+    borderColor: "border-emerald-500",
+    servicesLabel: "Formations",
+    appointmentsLabel: "Sessions",
+    pendingLabel: "À valider",
+    welcomeMessage: "Voici un aperçu de votre centre de formation.",
+  },
+  medical: {
+    label: "Médical",
+    icon: HeartIcon,
+    gradient: "from-cyan-500 to-teal-600",
+    cardGradient: "from-cyan-500 to-cyan-600",
+    lightBg: "bg-cyan-50",
+    textColor: "text-cyan-600",
+    borderColor: "border-cyan-500",
+    servicesLabel: "Prestations",
+    appointmentsLabel: "Consultations",
+    pendingLabel: "En attente",
+    welcomeMessage: "Voici un aperçu de votre cabinet.",
+  },
+};
 
 const Dashboard = () => {
   const { user, tenant } = useAuth();
   const { formatPrice } = useCurrency();
+
+  // Get business type config
+  const businessType = tenant?.business_type || "beauty";
+  const config = BUSINESS_TYPE_CONFIG[businessType] || BUSINESS_TYPE_CONFIG.beauty;
+  const BusinessIcon = config.icon;
+
   const [stats, setStats] = useState({
     todayAppointments: 0,
     totalClients: 0,
@@ -49,161 +115,103 @@ const Dashboard = () => {
   const [runTutorial, setRunTutorial] = useState(false);
   const [hasBusinessHours, setHasBusinessHours] = useState(true);
 
-  // Étapes du tutoriel - Workflow principal
+  // Tutorial steps
   const tutorialSteps = [
     {
       target: ".dashboard-header",
-      content: "🎉 Bienvenue sur SalonHub ! Ce tutoriel va vous guider à travers le workflow complet pour gérer votre salon. Commençons !",
+      content: "🎉 Bienvenue sur SalonHub ! Ce tutoriel va vous guider à travers le workflow complet. Commençons !",
       disableBeacon: true,
       placement: "bottom",
     },
     {
       target: "body",
-      content: "📋 Workflow Principal :\n\n1️⃣ Configurer vos horaires d'ouverture\n2️⃣ Ajouter vos services\n3️⃣ Ajouter vos clients\n4️⃣ Partager votre lien de réservation\n5️⃣ Recevoir et gérer les rendez-vous\n6️⃣ Suivre vos performances\n\nSuivez ce guide pour démarrer rapidement !",
+      content: `📋 Workflow Principal :\n\n1️⃣ Configurer vos horaires d'ouverture\n2️⃣ Ajouter vos ${config.servicesLabel.toLowerCase()}\n3️⃣ Ajouter vos clients\n4️⃣ Partager votre lien de réservation\n5️⃣ Recevoir et gérer les ${config.appointmentsLabel.toLowerCase()}\n6️⃣ Suivre vos performances`,
       placement: "center",
     },
-    // Ajout conditionnel de l'alerte horaires si non configurés
     ...(!hasBusinessHours ? [{
       target: ".business-hours-alert",
-      content: "🚨 ALERTE IMPORTANTE !\n\nSi vous voyez cette bannière rouge, cela signifie que vos horaires ne sont pas configurés. Cliquez sur ce lien pour accéder directement à l'onglet Horaires dans les Paramètres et configurer vos jours et heures d'ouverture.",
+      content: "🚨 ALERTE IMPORTANTE !\n\nVos horaires ne sont pas configurés. Cliquez sur ce lien pour accéder à l'onglet Horaires dans les Paramètres.",
       placement: "bottom",
     }] : []),
     {
-      target: "body",
-      content: "⚠️ ÉTAPE CRUCIALE :\n\n⏰ Configuration des Horaires d'Ouverture\n\nAvant toute chose, vous DEVEZ configurer vos horaires d'ouverture dans les Paramètres. Sans cette configuration, vos clients ne pourront PAS réserver en ligne !\n\nAllez dans : Menu → Paramètres → Onglet Horaires",
-      placement: "center",
-    },
-    {
       target: ".stats-services",
-      content: "Étape 2 : Configurez vos services (coupes, colorations, soins...). Cliquez sur 'Gérer les services' pour ajouter vos prestations, leurs durées et tarifs.",
+      content: `Configurez vos ${config.servicesLabel.toLowerCase()} avec leurs tarifs et durées.`,
       placement: "bottom",
     },
     {
       target: ".stats-clients",
-      content: "Étape 3 : Ajoutez vos clients existants dans le système. Gérez leurs informations, historique et préférences. Les nouveaux clients peuvent aussi s'enregistrer lors de la réservation en ligne.",
+      content: "Gérez vos clients et leur historique.",
       placement: "bottom",
     },
     {
       target: ".share-btn",
-      content: "Étape 4 : Partagez votre lien de réservation ! Utilisez ce bouton pour envoyer le lien à vos clients par WhatsApp, Email ou SMS. C'est votre outil de marketing principal.",
-      placement: "bottom",
-    },
-    {
-      target: ".view-public-page-btn",
-      content: "💡 Astuce : Prévisualisez votre page de réservation publique pour voir ce que vos clients verront. Vérifiez que vos services, horaires et créneaux disponibles sont corrects.",
+      content: "Partagez votre lien de réservation avec vos clients !",
       placement: "bottom",
     },
     {
       target: ".stats-pending",
-      content: "Étape 5a : Lorsque vos clients réservent en ligne, les rendez-vous apparaissent ici en 'En attente'. Vous devez les confirmer rapidement pour valider la réservation.",
+      content: `Les ${config.pendingLabel.toLowerCase()} apparaissent ici. Validez-les rapidement !`,
       placement: "bottom",
     },
     {
       target: ".stats-today",
-      content: "Étape 5b : Les rendez-vous confirmés pour aujourd'hui s'affichent ici. Cliquez pour voir le planning complet et gérer vos rendez-vous (confirmer, annuler, modifier).",
+      content: `Vos ${config.appointmentsLabel.toLowerCase()} du jour s'affichent ici.`,
       placement: "bottom",
-    },
-    {
-      target: ".today-appointments",
-      content: "📅 Vue détaillée de vos rendez-vous du jour : client, service, horaire et statut. Vous pouvez marquer les rendez-vous comme 'Terminés' une fois complétés.",
-      placement: "left",
-    },
-    {
-      target: ".revenue-section",
-      content: "Étape 6 : Suivez vos performances financières ! Consultez vos revenus quotidiens et mensuels, le nombre de rendez-vous complétés et annulés.",
-      placement: "top",
-    },
-    {
-      target: ".popular-services",
-      content: "📊 Analysez vos services les plus populaires pour optimiser votre offre et vos prix. Concentrez-vous sur ce qui fonctionne le mieux !",
-      placement: "left",
-    },
-    {
-      target: "body",
-      content: "🎯 Récapitulatif du Workflow :\n\n✅ 1. Configurez vos HORAIRES (Paramètres) ⚠️ CRUCIAL\n✅ 2. Ajoutez vos services et tarifs\n✅ 3. Ajoutez vos clients\n✅ 4. Partagez votre lien de réservation\n✅ 5. Validez les rendez-vous entrants\n✅ 6. Gérez votre planning quotidien\n✅ 7. Suivez vos performances\n\nVous êtes prêt à démarrer ! 🚀",
-      placement: "center",
     },
   ];
 
   useEffect(() => {
     loadDashboardData();
-
-    // Vérifier si c'est la première visite
     const hasSeenTutorial = localStorage.getItem("dashboardTutorialSeen");
     if (!hasSeenTutorial) {
-      // Démarrer le tutoriel après un court délai pour laisser la page se charger
-      setTimeout(() => {
-        setRunTutorial(true);
-      }, 1000);
+      setTimeout(() => setRunTutorial(true), 1000);
     }
   }, []);
 
   const handleJoyrideCallback = (data) => {
     const { status } = data;
-    const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
-
-    if (finishedStatuses.includes(status)) {
+    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
       setRunTutorial(false);
       localStorage.setItem("dashboardTutorialSeen", "true");
     }
-  };
-
-  const startTutorial = () => {
-    setRunTutorial(true);
   };
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
 
-      // Vérifier si les horaires sont configurés
       const settingsRes = await api.get("/settings");
-
-      // L'API retourne directement l'objet settings dans data
       const settings = settingsRes.data;
 
-      // Vérifier s'il y a au moins un jour ouvert avec des horaires valides
       let hasValidBusinessHours = false;
-
-      if (settings && settings.business_hours) {
-        // Parcourir tous les jours
+      if (settings?.business_hours) {
         for (const dayData of Object.values(settings.business_hours)) {
-          // Un jour est considéré comme valide s'il n'est pas fermé
-          // ET qu'il a des heures d'ouverture/fermeture différentes de 00:00
           const isValid = !dayData.closed &&
-                         dayData.open &&
-                         dayData.close &&
-                         (dayData.open !== "00:00" || dayData.close !== "00:00") &&
-                         dayData.open !== dayData.close;
-
+            dayData.open && dayData.close &&
+            (dayData.open !== "00:00" || dayData.close !== "00:00") &&
+            dayData.open !== dayData.close;
           if (isValid) {
             hasValidBusinessHours = true;
             break;
           }
         }
       }
-
       setHasBusinessHours(hasValidBusinessHours);
 
-      // Charger RDV du jour
       const todayRes = await api.get("/appointments/today");
       const today = todayRes.data.data || [];
       setTodayAppointments(today);
 
-      // Charger clients récents (limité à 5)
       const clientsRes = await api.get("/clients", { params: { limit: 5 } });
       setRecentClients(clientsRes.data.data.slice(0, 5));
 
-      // Charger tous les services
       const servicesRes = await api.get("/services");
       const allServices = servicesRes.data.data;
 
-      // Charger tous les RDV pour les statistiques
       const appointmentsRes = await api.get("/appointments", {
         params: { status: "pending" },
       });
 
-      // Calculer les statistiques du mois
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const allAppointmentsRes = await api.get("/appointments");
@@ -214,28 +222,21 @@ const Dashboard = () => {
         return aptDate >= firstDayOfMonth;
       });
 
-      const completedThisMonth = monthAppointments.filter(
-        (a) => a.status === "completed"
-      ).length;
-      const cancelledThisMonth = monthAppointments.filter(
-        (a) => a.status === "cancelled"
-      ).length;
+      const completedThisMonth = monthAppointments.filter(a => a.status === "completed").length;
+      const cancelledThisMonth = monthAppointments.filter(a => a.status === "cancelled").length;
 
-      // Calculer le revenu du mois et d'aujourd'hui
       const monthRevenue = monthAppointments
-        .filter((a) => a.status === "completed")
+        .filter(a => a.status === "completed")
         .reduce((sum, a) => sum + (parseFloat(a.service_price) || 0), 0);
 
       const todayRevenue = today
-        .filter((a) => a.status === "completed")
+        .filter(a => a.status === "completed")
         .reduce((sum, a) => sum + (parseFloat(a.service_price) || 0), 0);
 
-      // Services populaires (basé sur le nombre de RDV)
       const serviceCount = {};
       allAppointments.forEach((apt) => {
         if (apt.service_id) {
-          serviceCount[apt.service_id] =
-            (serviceCount[apt.service_id] || 0) + 1;
+          serviceCount[apt.service_id] = (serviceCount[apt.service_id] || 0) + 1;
         }
       });
 
@@ -290,7 +291,7 @@ const Dashboard = () => {
   const handleShareEmail = () => {
     const url = getBookingUrl();
     const subject = "Réservez votre rendez-vous";
-    const body = `Bonjour,\n\nVous pouvez réserver votre rendez-vous en ligne en cliquant sur ce lien:\n${url}\n\nÀ bientôt!`;
+    const body = `Bonjour,\n\nVous pouvez réserver en ligne:\n${url}\n\nÀ bientôt!`;
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
@@ -302,23 +303,19 @@ const Dashboard = () => {
 
   const getStatusBadge = (status) => {
     const styles = {
-      pending: "bg-yellow-100 text-yellow-800 border border-yellow-200",
-      confirmed: "bg-green-100 text-green-800 border border-green-200",
+      pending: "bg-amber-100 text-amber-800 border border-amber-200",
+      confirmed: "bg-emerald-100 text-emerald-800 border border-emerald-200",
       cancelled: "bg-red-100 text-red-800 border border-red-200",
-      completed: "bg-blue-100 text-blue-800 border border-blue-200",
+      completed: "bg-violet-100 text-violet-800 border border-violet-200",
     };
-
     const labels = {
       pending: "En attente",
       confirmed: "Confirmé",
       cancelled: "Annulé",
       completed: "Terminé",
     };
-
     return (
-      <span
-        className={`px-3 py-1 text-xs font-medium rounded-full ${styles[status]}`}
-      >
+      <span className={`px-3 py-1 text-xs font-medium rounded-full ${styles[status]}`}>
         {labels[status]}
       </span>
     );
@@ -329,8 +326,8 @@ const Dashboard = () => {
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement...</p>
+            <div className={`w-12 h-12 rounded-xl border-2 border-slate-200 border-t-violet-600 animate-elegant-spin mx-auto`}></div>
+            <p className="mt-4 text-slate-600 font-medium">Chargement...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -339,7 +336,6 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      {/* Tutoriel interactif */}
       <Joyride
         steps={tutorialSteps}
         run={runTutorial}
@@ -348,83 +344,47 @@ const Dashboard = () => {
         showSkipButton
         callback={handleJoyrideCallback}
         styles={{
-          options: {
-            primaryColor: "#4F46E5",
-            zIndex: 10000,
-          },
-          buttonNext: {
-            backgroundColor: "#4F46E5",
-            fontSize: 14,
-            padding: "8px 16px",
-            borderRadius: "6px",
-          },
-          buttonBack: {
-            color: "#6B7280",
-            fontSize: 14,
-            marginRight: 10,
-          },
-          buttonSkip: {
-            color: "#6B7280",
-            fontSize: 14,
-          },
-          tooltip: {
-            borderRadius: "8px",
-            fontSize: 14,
-          },
-          tooltipContent: {
-            padding: "12px 8px",
-          },
+          options: { primaryColor: "#8B5CF6", zIndex: 10000 },
+          buttonNext: { backgroundColor: "#8B5CF6", fontSize: 14, padding: "8px 16px", borderRadius: "12px" },
+          buttonBack: { color: "#64748B", fontSize: 14, marginRight: 10 },
+          buttonSkip: { color: "#64748B", fontSize: 14 },
+          tooltip: { borderRadius: "16px", fontSize: 14 },
         }}
-        locale={{
-          back: "Précédent",
-          close: "Fermer",
-          last: "Terminer",
-          next: "Suivant",
-          skip: "Passer",
-        }}
+        locale={{ back: "Précédent", close: "Fermer", last: "Terminer", next: "Suivant", skip: "Passer" }}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 dashboard-header">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="mt-2 text-sm sm:text-base text-gray-600">
-              Bienvenue, {user?.first_name} ! Voici un aperçu de votre activité.
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`p-2 rounded-xl bg-gradient-to-br ${config.gradient}`}>
+                <BusinessIcon className="h-6 w-6 text-white" />
+              </div>
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-800">Dashboard</h1>
+            </div>
+            <p className="text-slate-500">
+              Bienvenue, <span className="font-semibold text-slate-700">{user?.first_name}</span> ! {config.welcomeMessage}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
             <button
-              onClick={startTutorial}
-              className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-1 sm:flex-none"
-              title="Relancer le tutoriel"
+              onClick={() => setRunTutorial(true)}
+              className="inline-flex items-center justify-center px-4 py-2.5 border border-slate-200 text-sm font-medium rounded-xl shadow-soft text-slate-600 bg-white hover:bg-slate-50 transition-all duration-300 flex-1 sm:flex-none"
             >
-              <svg
-                className="h-5 w-5 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span className="ml-2 hidden sm:inline">Aide</span>
+              <SparklesIcon className="h-5 w-5 mr-2" />
+              <span className="hidden sm:inline">Aide</span>
             </button>
             <Link
               to={`/book/${tenant?.slug}`}
               target="_blank"
-              rel="noopener noreferrer"
-              className="view-public-page-btn inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-1 sm:flex-none"
+              className={`view-public-page-btn inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-xl shadow-soft text-white bg-gradient-to-r ${config.gradient} hover:shadow-glow transition-all duration-300 flex-1 sm:flex-none`}
             >
-              <span className="truncate">Page publique</span>
+              Page publique
             </Link>
             <button
               onClick={() => setShowShareModal(true)}
-              className="share-btn inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-1 sm:flex-none"
+              className="share-btn inline-flex items-center justify-center px-4 py-2.5 border border-slate-200 text-sm font-medium rounded-xl shadow-soft text-slate-600 bg-white hover:bg-slate-50 transition-all duration-300 flex-1 sm:flex-none"
             >
               <ShareIcon className="h-5 w-5 sm:mr-2" />
               <span className="ml-2 sm:ml-0">Partager</span>
@@ -432,180 +392,120 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Modal de partage */}
+        {/* Share Modal */}
         {showShareModal && (
           <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-              {/* Overlay */}
-              <div
-                className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
-                onClick={() => setShowShareModal(false)}
-              ></div>
+              <div className="fixed inset-0 transition-opacity bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowShareModal(false)}></div>
+              <div className="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-soft-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full animate-scale-in">
+                <div className={`mx-auto flex items-center justify-center h-14 w-14 rounded-2xl bg-gradient-to-br ${config.gradient}`}>
+                  <ShareIcon className="h-7 w-7 text-white" />
+                </div>
+                <div className="mt-4 text-center">
+                  <h3 className="font-display text-xl font-semibold text-slate-800">Partager votre page</h3>
+                  <p className="mt-2 text-sm text-slate-500">Partagez ce lien avec vos clients</p>
 
-              {/* Modal */}
-              <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-                <div>
-                  <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100">
-                    <ShareIcon className="h-6 w-6 text-indigo-600" />
+                  <div className="mt-5 flex rounded-xl shadow-inner-soft border border-slate-200 overflow-hidden">
+                    <input
+                      type="text"
+                      readOnly
+                      value={getBookingUrl()}
+                      className="flex-1 min-w-0 block w-full px-4 py-3 bg-slate-50 text-sm text-slate-600 border-0 focus:outline-none"
+                    />
+                    <button
+                      onClick={handleCopyLink}
+                      className={`inline-flex items-center px-4 py-3 bg-white border-l border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors`}
+                    >
+                      <ClipboardDocumentIcon className="h-5 w-5" />
+                    </button>
                   </div>
-                  <div className="mt-3 text-center sm:mt-5">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      Partager votre page de réservation
-                    </h3>
-                    <div className="mt-4">
-                      <p className="text-sm text-gray-500 mb-4">
-                        Partagez ce lien avec vos clients pour qu'ils puissent
-                        réserver en ligne
-                      </p>
 
-                      {/* Lien de réservation */}
-                      <div className="mt-4 flex rounded-md shadow-sm">
-                        <input
-                          type="text"
-                          readOnly
-                          value={getBookingUrl()}
-                          className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md border border-gray-300 bg-gray-50 text-sm text-gray-600"
-                        />
-                        <button
-                          onClick={handleCopyLink}
-                          className="inline-flex items-center px-4 py-2 border border-l-0 border-gray-300 rounded-r-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                          <ClipboardDocumentIcon className="h-5 w-5" />
-                        </button>
-                      </div>
+                  {copySuccess && (
+                    <p className="mt-2 text-sm text-emerald-600 font-medium flex items-center justify-center gap-1">
+                      <CheckCircleIcon className="h-4 w-4" /> Lien copié !
+                    </p>
+                  )}
 
-                      {/* Message de succès */}
-                      {copySuccess && (
-                        <p className="mt-2 text-sm text-green-600 font-medium">
-                          ✓ Lien copié dans le presse-papiers !
-                        </p>
-                      )}
-
-                      {/* Boutons de partage */}
-                      <div className="mt-6">
-                        <p className="text-sm font-medium text-gray-700 mb-3">
-                          Partager via :
-                        </p>
-                        <div className="grid grid-cols-3 gap-3">
-                          <button
-                            onClick={handleShareWhatsApp}
-                            className="inline-flex flex-col items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-green-50 hover:border-green-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                          >
-                            <svg
-                              className="h-6 w-6 mb-1 text-green-600"
-                              fill="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-                            </svg>
-                            WhatsApp
-                          </button>
-
-                          <button
-                            onClick={handleShareEmail}
-                            className="inline-flex flex-col items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-blue-50 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                          >
-                            <svg
-                              className="h-6 w-6 mb-1 text-blue-600"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                              />
-                            </svg>
-                            Email
-                          </button>
-
-                          <button
-                            onClick={handleShareSMS}
-                            className="inline-flex flex-col items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-purple-50 hover:border-purple-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                          >
-                            <svg
-                              className="h-6 w-6 mb-1 text-purple-600"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                              />
-                            </svg>
-                            SMS
-                          </button>
-                        </div>
-                      </div>
+                  <div className="mt-6">
+                    <p className="text-sm font-medium text-slate-700 mb-3">Partager via :</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <button
+                        onClick={handleShareWhatsApp}
+                        className="flex flex-col items-center justify-center px-4 py-4 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 bg-white hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-all duration-300"
+                      >
+                        <svg className="h-6 w-6 mb-2 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                        </svg>
+                        WhatsApp
+                      </button>
+                      <button
+                        onClick={handleShareEmail}
+                        className="flex flex-col items-center justify-center px-4 py-4 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 bg-white hover:bg-violet-50 hover:border-violet-300 hover:text-violet-700 transition-all duration-300"
+                      >
+                        <svg className="h-6 w-6 mb-2 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Email
+                      </button>
+                      <button
+                        onClick={handleShareSMS}
+                        className="flex flex-col items-center justify-center px-4 py-4 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 bg-white hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 transition-all duration-300"
+                      >
+                        <svg className="h-6 w-6 mb-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        SMS
+                      </button>
                     </div>
                   </div>
                 </div>
-                <div className="mt-5 sm:mt-6">
-                  <button
-                    type="button"
-                    onClick={() => setShowShareModal(false)}
-                    className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm"
-                  >
-                    Fermer
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="mt-6 w-full inline-flex justify-center rounded-xl border border-slate-200 shadow-soft px-4 py-3 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Fermer
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Alerte horaires non configurés */}
+        {/* Business Hours Alert */}
         {!hasBusinessHours && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg">
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 rounded-xl p-4 shadow-soft animate-fade-in">
             <div className="flex">
               <div className="flex-shrink-0">
-                <ClockIcon className="h-5 w-5 text-red-400" />
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  ⚠️ Configuration requise : Horaires d'ouverture
-                </h3>
-                <div className="mt-2 text-sm text-red-700">
-                  <p>
-                    Vos horaires d'ouverture ne sont pas configurés. Sans cette
-                    configuration, <strong>vos clients ne pourront PAS réserver en ligne</strong> !
-                  </p>
-                  <p className="mt-2">
-                    <Link
-                      to="/settings?tab=hours"
-                      className="business-hours-alert font-medium underline hover:text-red-900 inline-flex items-center"
-                    >
-                      <Cog6ToothIcon className="h-4 w-4 mr-1" />
-                      Configurer mes horaires maintenant →
-                    </Link>
-                  </p>
-                </div>
+                <h3 className="text-sm font-semibold text-red-800">⚠️ Configuration requise</h3>
+                <p className="mt-1 text-sm text-red-700">
+                  Vos horaires ne sont pas configurés. <strong>Vos clients ne peuvent pas réserver en ligne !</strong>
+                </p>
+                <Link
+                  to="/settings?tab=hours"
+                  className="business-hours-alert mt-2 inline-flex items-center text-sm font-medium text-red-800 hover:text-red-900 underline"
+                >
+                  <Cog6ToothIcon className="h-4 w-4 mr-1" />
+                  Configurer maintenant →
+                </Link>
               </div>
             </div>
           </div>
         )}
 
-        {/* Notification pour RDV en attente */}
+        {/* Pending Appointments Alert */}
         {stats.pendingAppointments > 0 && (
-          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+          <div className="mb-6 bg-amber-50 border-l-4 border-amber-500 rounded-xl p-4 shadow-soft animate-fade-in">
             <div className="flex">
               <div className="flex-shrink-0">
-                <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />
+                <ClockIcon className="h-5 w-5 text-amber-500" />
               </div>
               <div className="ml-3">
-                <p className="text-sm text-yellow-700">
-                  Vous avez <strong>{stats.pendingAppointments}</strong>{" "}
-                  rendez-vous en attente de validation.{" "}
-                  <Link
-                    to="/appointments"
-                    className="font-medium underline hover:text-yellow-800"
-                  >
-                    Voir les rendez-vous →
+                <p className="text-sm text-amber-800">
+                  Vous avez <strong>{stats.pendingAppointments}</strong> {config.pendingLabel.toLowerCase()}.{" "}
+                  <Link to="/appointments" className="font-medium underline hover:text-amber-900">
+                    Voir →
                   </Link>
                 </p>
               </div>
@@ -613,229 +513,167 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Stats Cards - Ligne 1 */}
+        {/* Stats Cards Row 1 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* RDV aujourd'hui */}
-          <div className="stats-today bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-shadow">
+          {/* Today's Appointments */}
+          <div className={`stats-today bg-gradient-to-br ${config.cardGradient} text-white rounded-2xl p-6 shadow-soft hover:shadow-glow transition-all duration-300`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-indigo-100 text-xs sm:text-sm font-medium">
-                  RDV aujourd'hui
-                </p>
-                <p className="mt-2 text-3xl sm:text-4xl font-bold">
-                  {stats.todayAppointments}
-                </p>
-                <Link
-                  to="/appointments"
-                  className="mt-3 text-xs sm:text-sm text-indigo-100 hover:text-white inline-flex items-center"
-                >
+                <p className="text-white/80 text-sm font-medium">{config.appointmentsLabel}</p>
+                <p className="mt-2 text-4xl font-bold font-display">{stats.todayAppointments}</p>
+                <Link to="/appointments" className="mt-3 text-sm text-white/80 hover:text-white inline-flex items-center transition-colors">
                   Voir le planning →
                 </Link>
               </div>
-              <div className="p-2 sm:p-3 bg-white bg-opacity-20 rounded-lg">
-                <CalendarDaysIcon className="h-8 w-8 sm:h-10 sm:w-10" />
+              <div className="p-3 bg-white/20 rounded-xl">
+                <CalendarDaysIcon className="h-10 w-10" />
               </div>
             </div>
           </div>
 
-          {/* Total clients */}
-          <div className="stats-clients bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-shadow">
+          {/* Total Clients */}
+          <div className="stats-clients bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-2xl p-6 shadow-soft hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-xs sm:text-sm font-medium">
-                  Total clients
-                </p>
-                <p className="mt-2 text-3xl sm:text-4xl font-bold">{stats.totalClients}</p>
-                <Link
-                  to="/clients"
-                  className="mt-3 text-xs sm:text-sm text-green-100 hover:text-white inline-flex items-center"
-                >
+                <p className="text-white/80 text-sm font-medium">Total clients</p>
+                <p className="mt-2 text-4xl font-bold font-display">{stats.totalClients}</p>
+                <Link to="/clients" className="mt-3 text-sm text-white/80 hover:text-white inline-flex items-center transition-colors">
                   Gérer les clients →
                 </Link>
               </div>
-              <div className="p-2 sm:p-3 bg-white bg-opacity-20 rounded-lg">
-                <UserGroupIcon className="h-8 w-8 sm:h-10 sm:w-10" />
+              <div className="p-3 bg-white/20 rounded-xl">
+                <UserGroupIcon className="h-10 w-10" />
               </div>
             </div>
           </div>
 
-          {/* Services actifs */}
-          <div className="stats-services bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-shadow">
+          {/* Total Services */}
+          <div className="stats-services bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-2xl p-6 shadow-soft hover:shadow-glow transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-xs sm:text-sm font-medium">
-                  Services actifs
-                </p>
-                <p className="mt-2 text-3xl sm:text-4xl font-bold">{stats.totalServices}</p>
-                <Link
-                  to="/services"
-                  className="mt-3 text-xs sm:text-sm text-purple-100 hover:text-white inline-flex items-center"
-                >
-                  Gérer les services →
+                <p className="text-white/80 text-sm font-medium">{config.servicesLabel}</p>
+                <p className="mt-2 text-4xl font-bold font-display">{stats.totalServices}</p>
+                <Link to="/services" className="mt-3 text-sm text-white/80 hover:text-white inline-flex items-center transition-colors">
+                  Gérer →
                 </Link>
               </div>
-              <div className="p-2 sm:p-3 bg-white bg-opacity-20 rounded-lg">
-                <ScissorsIcon className="h-8 w-8 sm:h-10 sm:w-10" />
+              <div className="p-3 bg-white/20 rounded-xl">
+                <BusinessIcon className="h-10 w-10" />
               </div>
             </div>
           </div>
 
-          {/* En attente */}
-          <div className="stats-pending bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-shadow">
+          {/* Pending */}
+          <div className="stats-pending bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-2xl p-6 shadow-soft hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-yellow-100 text-xs sm:text-sm font-medium">
-                  En attente
-                </p>
-                <p className="mt-2 text-3xl sm:text-4xl font-bold">
-                  {stats.pendingAppointments}
-                </p>
-                <Link
-                  to="/appointments?status=pending"
-                  className="mt-3 text-xs sm:text-sm text-yellow-100 hover:text-white inline-flex items-center"
-                >
-                  Valider les RDV →
+                <p className="text-white/80 text-sm font-medium">{config.pendingLabel}</p>
+                <p className="mt-2 text-4xl font-bold font-display">{stats.pendingAppointments}</p>
+                <Link to="/appointments?status=pending" className="mt-3 text-sm text-white/80 hover:text-white inline-flex items-center transition-colors">
+                  Valider →
                 </Link>
               </div>
-              <div className="p-2 sm:p-3 bg-white bg-opacity-20 rounded-lg">
-                <ClockIcon className="h-8 w-8 sm:h-10 sm:w-10" />
+              <div className="p-3 bg-white/20 rounded-xl">
+                <ClockIcon className="h-10 w-10" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Stats Cards - Ligne 2: Revenus et performance */}
+        {/* Stats Cards Row 2: Revenue */}
         <div className="revenue-section grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Revenu aujourd'hui */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-lg transition-shadow">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-soft hover:shadow-soft-lg transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-xs sm:text-sm font-medium text-gray-600">
-                Revenu aujourd'hui
-              </p>
-              <CurrencyDollarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
+              <p className="text-sm font-medium text-slate-500">Revenu aujourd'hui</p>
+              <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-              {formatPrice(stats.todayRevenue)}
-            </p>
-            <div className="mt-2 flex items-center text-xs sm:text-sm text-green-600">
+            <p className="text-3xl font-bold font-display text-slate-800">{formatPrice(stats.todayRevenue)}</p>
+            <div className="mt-2 flex items-center text-sm text-emerald-600">
               <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-              <span className="truncate">RDV complétés</span>
+              <span>Terminés</span>
             </div>
           </div>
 
-          {/* Revenu du mois */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-lg transition-shadow">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-soft hover:shadow-soft-lg transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-gray-600">
-                Revenu ce mois
-              </p>
-              <ChartBarIcon className="h-6 w-6 text-indigo-500" />
+              <p className="text-sm font-medium text-slate-500">Revenu ce mois</p>
+              <ChartBarIcon className="h-6 w-6 text-violet-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">
-              {formatPrice(stats.monthRevenue)}
-            </p>
-            <div className="mt-2 flex items-center text-sm text-gray-500">
-              {stats.completedThisMonth} RDV complétés
-            </div>
+            <p className="text-3xl font-bold font-display text-slate-800">{formatPrice(stats.monthRevenue)}</p>
+            <div className="mt-2 text-sm text-slate-500">{stats.completedThisMonth} complétés</div>
           </div>
 
-          {/* RDV complétés ce mois */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-lg transition-shadow">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-soft hover:shadow-soft-lg transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-gray-600">
-                Complétés ce mois
-              </p>
-              <CheckCircleIcon className="h-6 w-6 text-blue-500" />
+              <p className="text-sm font-medium text-slate-500">Complétés ce mois</p>
+              <CheckCircleIcon className="h-6 w-6 text-violet-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">
-              {stats.completedThisMonth}
-            </p>
-            <div className="mt-2 flex items-center text-sm text-blue-600">
+            <p className="text-3xl font-bold font-display text-slate-800">{stats.completedThisMonth}</p>
+            <div className="mt-2 flex items-center text-sm text-violet-600">
               <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-              Rendez-vous terminés
+              Terminés
             </div>
           </div>
 
-          {/* RDV annulés ce mois */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-lg transition-shadow">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-soft hover:shadow-soft-lg transition-all duration-300">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-gray-600">
-                Annulés ce mois
-              </p>
+              <p className="text-sm font-medium text-slate-500">Annulés ce mois</p>
               <XCircleIcon className="h-6 w-6 text-red-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">
-              {stats.cancelledThisMonth}
-            </p>
+            <p className="text-3xl font-bold font-display text-slate-800">{stats.cancelledThisMonth}</p>
             <div className="mt-2 flex items-center text-sm text-red-600">
-              <ArrowTrendingDownIcon className="h-4 w-4 mr-1" />À surveiller
+              <ArrowTrendingDownIcon className="h-4 w-4 mr-1" />
+              À surveiller
             </div>
           </div>
         </div>
 
-        {/* Grille 2 colonnes */}
+        {/* Two Column Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Colonne gauche (2/3) - RDV du jour */}
+          {/* Today's Appointments List */}
           <div className="lg:col-span-2">
-            <div className="today-appointments bg-white border border-gray-200 rounded-xl shadow-sm">
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <CalendarDaysIcon className="h-5 w-5 mr-2 text-indigo-600" />
-                  Rendez-vous d'aujourd'hui
+            <div className="today-appointments bg-white border border-slate-200 rounded-2xl shadow-soft overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="font-display text-lg font-semibold text-slate-800 flex items-center">
+                  <CalendarDaysIcon className={`h-5 w-5 mr-2 ${config.textColor}`} />
+                  {config.appointmentsLabel} du jour
                 </h2>
-                <Link
-                  to="/appointments"
-                  className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                >
+                <Link to="/appointments" className={`text-sm ${config.textColor} hover:opacity-80 font-medium transition-colors`}>
                   Voir tout
                 </Link>
               </div>
 
               {todayAppointments.length === 0 ? (
                 <div className="px-6 py-12 text-center">
-                  <CalendarDaysIcon className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">
-                    Aucun rendez-vous
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Aucun rendez-vous prévu pour aujourd'hui.
-                  </p>
+                  <CalendarDaysIcon className="mx-auto h-12 w-12 text-slate-300" />
+                  <h3 className="mt-3 font-medium text-slate-600">Aucun rendez-vous</h3>
+                  <p className="mt-1 text-sm text-slate-400">Aucun rendez-vous prévu pour aujourd'hui.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-200">
+                <div className="divide-y divide-slate-100">
                   {todayAppointments.map((apt) => (
-                    <div
-                      key={apt.id}
-                      className="px-6 py-4 hover:bg-gray-50 transition-colors"
-                    >
+                    <div key={apt.id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div className="flex items-center space-x-3 sm:space-x-4 flex-1">
-                          <div className="flex-shrink-0">
-                            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-indigo-100 flex items-center justify-center">
-                              <span className="text-indigo-700 font-medium text-base sm:text-lg">
-                                {apt.client_first_name?.charAt(0)}
-                                {apt.client_last_name?.charAt(0)}
-                              </span>
-                            </div>
+                        <div className="flex items-center space-x-4 flex-1">
+                          <div className={`h-12 w-12 rounded-xl ${config.lightBg} flex items-center justify-center`}>
+                            <span className={`${config.textColor} font-semibold text-lg`}>
+                              {apt.client_first_name?.charAt(0)}{apt.client_last_name?.charAt(0)}
+                            </span>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-medium text-slate-800 truncate">
                               {apt.client_first_name} {apt.client_last_name}
                             </p>
-                            <p className="text-sm text-gray-500 truncate">
-                              {apt.service_name}
-                            </p>
+                            <p className="text-sm text-slate-500 truncate">{apt.service_name}</p>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
-                          <div className="text-sm text-gray-500 whitespace-nowrap">
-                            <span className="font-medium">
-                              {apt.start_time?.substring(0, 5)}
-                            </span>
+                        <div className="flex items-center justify-between sm:justify-end gap-4">
+                          <div className="text-sm text-slate-500">
+                            <span className="font-medium">{apt.start_time?.substring(0, 5)}</span>
                             <span className="mx-1">-</span>
                             <span>{apt.end_time?.substring(0, 5)}</span>
                           </div>
-                          <div>{getStatusBadge(apt.status)}</div>
+                          {getStatusBadge(apt.status)}
                         </div>
                       </div>
                     </div>
@@ -845,49 +683,34 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Colonne droite (1/3) */}
+          {/* Right Column */}
           <div className="space-y-8">
-            {/* Services populaires */}
-            <div className="popular-services bg-white border border-gray-200 rounded-xl shadow-sm">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <ChartBarIcon className="h-5 w-5 mr-2 text-purple-600" />
-                  Services populaires
+            {/* Popular Services */}
+            <div className="popular-services bg-white border border-slate-200 rounded-2xl shadow-soft overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <h2 className="font-display text-lg font-semibold text-slate-800 flex items-center">
+                  <ChartBarIcon className="h-5 w-5 mr-2 text-violet-500" />
+                  {config.servicesLabel} populaires
                 </h2>
               </div>
               <div className="p-6 space-y-4">
                 {popularServices.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    Aucune donnée disponible
-                  </p>
+                  <p className="text-sm text-slate-400 text-center py-4">Aucune donnée</p>
                 ) : (
                   popularServices.map((service, index) => (
-                    <div
-                      key={service.id}
-                      className="flex items-center justify-between"
-                    >
+                    <div key={service.id} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
-                            <span className="text-purple-700 font-semibold text-sm">
-                              {index + 1}
-                            </span>
-                          </div>
+                        <div className={`h-8 w-8 rounded-lg ${config.lightBg} flex items-center justify-center`}>
+                          <span className={`${config.textColor} font-semibold text-sm`}>{index + 1}</span>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {service.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatPrice(service.price)}
-                          </p>
+                          <p className="text-sm font-medium text-slate-800">{service.name}</p>
+                          <p className="text-xs text-slate-400">{formatPrice(service.price)}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {service.bookingCount}
-                        </p>
-                        <p className="text-xs text-gray-500">réservations</p>
+                        <p className="text-sm font-semibold text-slate-800">{service.bookingCount}</p>
+                        <p className="text-xs text-slate-400">réserv.</p>
                       </div>
                     </div>
                   ))
@@ -895,44 +718,33 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Clients récents */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <UserGroupIcon className="h-5 w-5 mr-2 text-green-600" />
+            {/* Recent Clients */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-soft overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="font-display text-lg font-semibold text-slate-800 flex items-center">
+                  <UserGroupIcon className="h-5 w-5 mr-2 text-emerald-500" />
                   Clients récents
                 </h2>
-                <Link
-                  to="/clients"
-                  className="text-sm text-green-600 hover:text-green-700 font-medium"
-                >
+                <Link to="/clients" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
                   Voir tout
                 </Link>
               </div>
               <div className="p-6 space-y-3">
                 {recentClients.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    Aucun client
-                  </p>
+                  <p className="text-sm text-slate-400 text-center py-4">Aucun client</p>
                 ) : (
                   recentClients.map((client) => (
-                    <div
-                      key={client.id}
-                      className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg transition-colors"
-                    >
-                      <div className="flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                          <span className="text-green-700 font-medium">
-                            {client.first_name?.charAt(0)}
-                            {client.last_name?.charAt(0)}
-                          </span>
-                        </div>
+                    <div key={client.id} className="flex items-center space-x-3 p-2 hover:bg-slate-50 rounded-xl transition-colors">
+                      <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <span className="text-emerald-700 font-medium">
+                          {client.first_name?.charAt(0)}{client.last_name?.charAt(0)}
+                        </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
+                        <p className="text-sm font-medium text-slate-800 truncate">
                           {client.first_name} {client.last_name}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">
+                        <p className="text-xs text-slate-400 truncate">
                           {client.email || client.phone || "Pas de contact"}
                         </p>
                       </div>

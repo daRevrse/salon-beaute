@@ -162,6 +162,15 @@ app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/promotions", require("./routes/promotions"));
 app.use("/api/scheduler", require("./routes/scheduler"));
 
+// Routes Restaurant (multi-secteur)
+app.use("/api/restaurant", require("./routes/restaurant"));
+
+// Routes Training (multi-secteur)
+app.use("/api/training", require("./routes/training"));
+
+// Routes Medical (multi-secteur)
+app.use("/api/medical", require("./routes/medical"));
+
 // Routes SuperAdmin (système SaaS)
 // IMPORTANT: Plus spécifiques d'abord, générales ensuite
 app.use("/api/admin/billing", require("./routes/billing"));

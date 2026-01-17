@@ -33,6 +33,9 @@ router.post("/register", async (req, res) => {
 
       // Plan (optionnel)
       subscription_plan,
+
+      // Business type (multi-secteur)
+      business_type,
     } = req.body;
 
     // Validation
@@ -74,6 +77,12 @@ router.post("/register", async (req, res) => {
         error: "Le mot de passe doit contenir au moins 8 caractères",
       });
     }
+
+    // Validation business_type
+    const validBusinessTypes = ['beauty', 'restaurant', 'training', 'medical'];
+    const finalBusinessType = business_type && validBusinessTypes.includes(business_type)
+      ? business_type
+      : 'beauty'; // Default to beauty for backwards compatibility
 
     // Vérifier que l'email salon n'existe pas déjà
     const [existingTenant] = await query(
@@ -129,8 +138,8 @@ router.post("/register", async (req, res) => {
       const [tenantResult] = await connection.query(
         `INSERT INTO tenants (
           name, slug, email, phone, address, city, postal_code,
-          subscription_plan, subscription_status, trial_ends_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(NOW(), INTERVAL 14 DAY))`,
+          subscription_plan, subscription_status, trial_ends_at, business_type
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(NOW(), INTERVAL 14 DAY), ?)`,
         [
           salon_name,
           finalSlug,
@@ -140,6 +149,7 @@ router.post("/register", async (req, res) => {
           salon_city || null,
           salon_postal_code || null,
           subscription_plan || "starter",
+          finalBusinessType,
         ]
       );
 
@@ -204,6 +214,7 @@ router.post("/register", async (req, res) => {
           id: result.tenantId,
           name: salon_name,
           slug: finalSlug,
+          business_type: finalBusinessType,
         },
       },
     });
@@ -233,14 +244,15 @@ router.post("/login", async (req, res) => {
 
     // Récupérer l'utilisateur
     const [user] = await query(
-      `SELECT 
+      `SELECT
         u.*,
         t.id as tenant_id,
         t.name as tenant_name,
         t.slug as tenant_slug,
         t.subscription_status,
         t.trial_ends_at,
-        t.logo_url as logo_url
+        t.logo_url as logo_url,
+        t.business_type
       FROM users u
       JOIN tenants t ON u.tenant_id = t.id
       WHERE u.email = ?`,
@@ -336,6 +348,7 @@ router.post("/login", async (req, res) => {
           slug: user.tenant_slug,
           subscription_status: user.subscription_status,
           logo_url: user.logo_url,
+          business_type: user.business_type,
         },
       },
     });
@@ -354,15 +367,16 @@ router.post("/login", async (req, res) => {
 router.get("/me", authMiddleware, async (req, res) => {
   try {
     const [user] = await query(
-      `SELECT 
-        u.id, u.email, u.first_name, u.last_name, u.phone, u.role, 
+      `SELECT
+        u.id, u.email, u.first_name, u.last_name, u.phone, u.role,
         u.is_active, u.last_login_at, u.created_at, u.avatar_url,
         t.id as tenant_id,
         t.name as tenant_name,
         t.slug as tenant_slug,
         t.subscription_plan,
         t.subscription_status,
-        t.trial_ends_at
+        t.trial_ends_at,
+        t.business_type
       FROM users u
       JOIN tenants t ON u.tenant_id = t.id
       WHERE u.id = ?`,
