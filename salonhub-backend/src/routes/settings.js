@@ -81,7 +81,7 @@ router.get("/salon", async (req, res) => {
     const tenantId = req.tenantId;
 
     const tenant = await db.query(
-      `SELECT id, name, slug, phone, email, address, city, postal_code, logo_url, banner_url, currency, business_type,
+      `SELECT id, name, slug, phone, email, address, city, postal_code, logo_url, banner_url, slogan, currency, business_type,
               subscription_status, subscription_plan, trial_ends_at
        FROM tenants
        WHERE id = ?`,
@@ -193,7 +193,7 @@ router.get("/subscription", async (req, res) => {
 router.put("/salon", async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { name, slug, phone, email, address, city, postal_code, logo_url, banner_url } = req.body;
+    const { name, slug, phone, email, address, city, postal_code, logo_url, banner_url, slogan } = req.body;
 
     // Construire la requête de mise à jour dynamiquement
     const updates = [];
@@ -235,6 +235,10 @@ router.put("/salon", async (req, res) => {
       updates.push("banner_url = ?");
       params.push(banner_url);
     }
+    if (slogan !== undefined) {
+      updates.push("slogan = ?");
+      params.push(slogan);
+    }
 
     if (updates.length === 0) {
       return res.status(400).json({
@@ -270,7 +274,7 @@ router.put("/salon", async (req, res) => {
 router.put("/", async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { business_hours, slot_duration, currency } = req.body;
+    const { business_hours, slot_duration, currency, theme_settings } = req.body;
 
     // Mettre à jour business_hours
     if (business_hours) {
@@ -349,6 +353,29 @@ router.put("/", async (req, res) => {
           `INSERT INTO settings (tenant_id, setting_key, setting_value, setting_type)
            VALUES (?, 'currency', ?, 'string')`,
           [tenantId, currency]
+        );
+      }
+    }
+
+    // Mettre à jour theme_settings
+    if (theme_settings) {
+      const existing = await db.query(
+        "SELECT id FROM settings WHERE tenant_id = ? AND setting_key = ?",
+        [tenantId, "theme_settings"]
+      );
+
+      if (existing.length > 0) {
+        await db.query(
+          `UPDATE settings
+           SET setting_value = ?, setting_type = 'json', updated_at = NOW()
+           WHERE tenant_id = ? AND setting_key = ?`,
+          [JSON.stringify(theme_settings), tenantId, "theme_settings"]
+        );
+      } else {
+        await db.query(
+          `INSERT INTO settings (tenant_id, setting_key, setting_value, setting_type)
+           VALUES (?, 'theme_settings', ?, 'json')`,
+          [tenantId, JSON.stringify(theme_settings)]
         );
       }
     }

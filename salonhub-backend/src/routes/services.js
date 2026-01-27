@@ -20,7 +20,7 @@ router.get("/", async (req, res) => {
   try {
     const { category, is_active, search } = req.query;
 
-    let sql = "SELECT * FROM services WHERE tenant_id = ?";
+    let sql = "SELECT id, tenant_id, name, description, duration, price, category, is_active, requires_deposit, deposit_amount, available_for_online_booking, image_url, gallery, booking_count, created_at, updated_at FROM services WHERE tenant_id = ?";
     const params = [req.tenantId];
 
     // Filtres optionnels
@@ -74,7 +74,7 @@ router.get("/:id", async (req, res) => {
     const { id } = req.params;
 
     const [service] = await query(
-      "SELECT * FROM services WHERE id = ? AND tenant_id = ?",
+      "SELECT id, tenant_id, name, description, duration, price, category, is_active, requires_deposit, deposit_amount, available_for_online_booking, image_url, gallery, booking_count, created_at, updated_at FROM services WHERE id = ? AND tenant_id = ?",
       [id, req.tenantId]
     );
 
@@ -129,6 +129,7 @@ router.post("/", async (req, res) => {
       deposit_amount,
       available_for_online_booking,
       image_url,
+      gallery,
     } = req.body;
 
     // Validation
@@ -151,8 +152,8 @@ router.post("/", async (req, res) => {
       `INSERT INTO services (
         tenant_id, name, description, duration, price, category,
         is_active, requires_deposit, deposit_amount,
-        available_for_online_booking, image_url
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        available_for_online_booking, image_url, gallery
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.tenantId,
         name,
@@ -167,6 +168,7 @@ router.post("/", async (req, res) => {
           ? available_for_online_booking
           : true,
         image_url || null,
+        gallery ? JSON.stringify(gallery) : null,
       ]
     );
 
@@ -203,6 +205,7 @@ router.put("/:id", async (req, res) => {
       deposit_amount,
       available_for_online_booking,
       image_url,
+      gallery,
     } = req.body;
 
     // Vérifier existence
@@ -245,7 +248,8 @@ router.put("/:id", async (req, res) => {
         requires_deposit = ?,
         deposit_amount = ?,
         available_for_online_booking = ?,
-        image_url = COALESCE(?, image_url)
+        image_url = COALESCE(?, image_url),
+        gallery = ?
       WHERE id = ? AND tenant_id = ?`,
       [
         name,
@@ -260,6 +264,7 @@ router.put("/:id", async (req, res) => {
           ? available_for_online_booking
           : true,
         image_url || null,
+        gallery ? JSON.stringify(gallery) : null,
         id,
         req.tenantId,
       ]

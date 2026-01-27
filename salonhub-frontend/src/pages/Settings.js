@@ -33,6 +33,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   PencilSquareIcon,
+  PaintBrushIcon,
 } from "@heroicons/react/24/outline";
 
 import { useToast } from "../hooks/useToast";
@@ -92,6 +93,7 @@ const Settings = () => {
     phone: "",
     email: "",
     address: "",
+    slogan: "",
   });
   const [copied, setCopied] = useState(false);
   const [staff, setStaff] = useState([]);
@@ -129,6 +131,22 @@ const Settings = () => {
     is_public: true,
   });
 
+  // Theme settings state
+  const [themeSettings, setThemeSettings] = useState({
+    primaryColor: "#8B5CF6",
+    secondaryColor: "#6366F1",
+    fontFamily: "Inter",
+  });
+
+  // Font options for theme
+  const FONT_OPTIONS = [
+    { value: "Inter", label: "Inter (Moderne)" },
+    { value: "Poppins", label: "Poppins (Elegant)" },
+    { value: "Roboto", label: "Roboto (Classique)" },
+    { value: "Playfair Display", label: "Playfair Display (Luxe)" },
+    { value: "Montserrat", label: "Montserrat (Sans-serif)" },
+  ];
+
   useEffect(() => {
     fetchSettings();
     fetchSalonInfo();
@@ -164,6 +182,10 @@ const Settings = () => {
       if (settings.currency) {
         setSelectedCurrency(settings.currency);
       }
+
+      if (settings.theme_settings) {
+        setThemeSettings(settings.theme_settings);
+      }
     } catch (err) {
       console.error("Erreur lors du chargement des paramètres:", err);
       setError(err.response?.data?.error || "Erreur lors du chargement");
@@ -186,6 +208,7 @@ const Settings = () => {
           phone: salon.phone || "",
           email: salon.email || "",
           address: salon.address || "",
+          slogan: salon.slogan || "",
         });
         if (salon.logo_url) {
           setLogoUrl(salon.logo_url);
@@ -483,6 +506,7 @@ const Settings = () => {
           business_hours: businessHours,
           slot_duration: slotDuration,
           currency: selectedCurrency,
+          theme_settings: themeSettings,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -612,6 +636,7 @@ const Settings = () => {
                 { id: "hours", label: "Horaires", icon: ClockIcon },
                 { id: "staff", label: term.staff, icon: UsersIcon },
                 { id: "promotions", label: "Promotions", icon: TagIcon },
+                { id: "theme", label: "Thème", icon: PaintBrushIcon },
                 { id: "pwa", label: "Notifications", icon: BellIcon },
               ].map((tab) => {
                 const TabIcon = tab.icon;
@@ -713,6 +738,23 @@ const Settings = () => {
                             {copied ? "Copié !" : "Copier"}
                           </button>
                         </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Slogan
+                        </label>
+                        <input
+                          type="text"
+                          value={salonInfo.slogan}
+                          onChange={(e) => setSalonInfo({ ...salonInfo, slogan: e.target.value })}
+                          placeholder="Votre slogan ou phrase d'accroche"
+                          className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                          maxLength={255}
+                        />
+                        <p className="mt-1 text-xs text-slate-500">
+                          Apparaitra sur votre page de reservation publique
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1173,6 +1215,106 @@ const Settings = () => {
                       })}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Theme Tab */}
+            {activeTab === "theme" && (
+              <div className="space-y-6 sm:space-y-8">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-800 mb-4 sm:mb-6 flex items-center border-b border-slate-200 pb-3">
+                    <PaintBrushIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${config.textColor} mr-2 sm:mr-3`} />
+                    Thème de votre page de réservation
+                  </h2>
+
+                  <div className="max-w-md space-y-6">
+                    {/* Primary Color */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Couleur principale
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={themeSettings.primaryColor}
+                          onChange={(e) => setThemeSettings({ ...themeSettings, primaryColor: e.target.value })}
+                          className="h-10 w-20 rounded-lg cursor-pointer border border-slate-200"
+                        />
+                        <input
+                          type="text"
+                          value={themeSettings.primaryColor}
+                          onChange={(e) => setThemeSettings({ ...themeSettings, primaryColor: e.target.value })}
+                          className={`flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                          placeholder="#8B5CF6"
+                        />
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">Couleur des boutons et éléments principaux</p>
+                    </div>
+
+                    {/* Secondary Color */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Couleur secondaire
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={themeSettings.secondaryColor}
+                          onChange={(e) => setThemeSettings({ ...themeSettings, secondaryColor: e.target.value })}
+                          className="h-10 w-20 rounded-lg cursor-pointer border border-slate-200"
+                        />
+                        <input
+                          type="text"
+                          value={themeSettings.secondaryColor}
+                          onChange={(e) => setThemeSettings({ ...themeSettings, secondaryColor: e.target.value })}
+                          className={`flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                          placeholder="#6366F1"
+                        />
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">Couleur des accents et dégradés</p>
+                    </div>
+
+                    {/* Font Family */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Police de caractères
+                      </label>
+                      <select
+                        value={themeSettings.fontFamily}
+                        onChange={(e) => setThemeSettings({ ...themeSettings, fontFamily: e.target.value })}
+                        className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                      >
+                        {FONT_OPTIONS.map((font) => (
+                          <option key={font.value} value={font.value}>
+                            {font.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-slate-500">Police utilisée sur votre page publique</p>
+                    </div>
+
+                    {/* Preview Card */}
+                    <div className="mt-8 p-6 rounded-2xl border-2 border-slate-200">
+                      <h3 className="text-sm font-medium text-slate-700 mb-4">Aperçu</h3>
+                      <div
+                        className="p-4 rounded-xl text-white text-center font-medium shadow-soft"
+                        style={{
+                          background: `linear-gradient(135deg, ${themeSettings.primaryColor}, ${themeSettings.secondaryColor})`,
+                          fontFamily: themeSettings.fontFamily
+                        }}
+                      >
+                        Votre bouton de réservation
+                      </div>
+                    </div>
+
+                    {/* Info Banner */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                      <p className="text-sm text-amber-800">
+                        <strong>Note :</strong> Les modifications de thème seront appliquées à votre page de réservation dans une prochaine mise à jour.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

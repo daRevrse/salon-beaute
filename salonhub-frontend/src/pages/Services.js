@@ -10,6 +10,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { usePermissions } from "../contexts/PermissionContext";
 import { useServices } from "../hooks/useServices";
 import ImageUploader from "../components/common/ImageUploader";
+import GalleryUploader from "../components/common/GalleryUploader";
 import { ImageWithFallback, getImageUrl } from "../utils/imageUtils";
 import { getBusinessTypeConfig } from "../utils/businessTypeConfig";
 import { useToast } from "../hooks/useToast";
@@ -29,7 +30,7 @@ import {
 
 const Services = () => {
   const { tenant } = useAuth();
-  const { formatPrice: formatCurrency } = useCurrency();
+  const { formatPrice: formatCurrency, getCurrencySymbol } = useCurrency();
   const { can } = usePermissions();
 
   const businessType = tenant?.business_type || "beauty";
@@ -62,6 +63,7 @@ const Services = () => {
     category: "",
     is_active: true,
     image_url: "",
+    gallery: [],
   });
 
   const categories = [...new Set(services.map((s) => s.category).filter(Boolean))];
@@ -69,6 +71,13 @@ const Services = () => {
   const handleOpenModal = (service = null) => {
     if (service) {
       setEditingService(service);
+      // Parse gallery if it's a string
+      let galleryData = [];
+      if (service.gallery) {
+        galleryData = typeof service.gallery === 'string'
+          ? JSON.parse(service.gallery)
+          : service.gallery;
+      }
       setFormData({
         name: service.name,
         description: service.description || "",
@@ -77,6 +86,7 @@ const Services = () => {
         category: service.category || "",
         is_active: service.is_active,
         image_url: service.image_url || "",
+        gallery: galleryData,
       });
     } else {
       setEditingService(null);
@@ -88,6 +98,7 @@ const Services = () => {
         category: "",
         is_active: true,
         image_url: "",
+        gallery: [],
       });
     }
     setShowModal(true);
@@ -375,6 +386,14 @@ const Services = () => {
                   aspectRatio="aspect-[16/9]"
                 />
 
+                {/* Gallery Uploader */}
+                <GalleryUploader
+                  images={formData.gallery}
+                  onImagesChange={(urls) => setFormData({ ...formData, gallery: urls })}
+                  maxImages={6}
+                  label="Galerie photos (optionnel)"
+                />
+
                 <div>
                   <label className="label-premium">Nom *</label>
                   <input
@@ -421,19 +440,24 @@ const Services = () => {
                   <div>
                     <label className="label-premium flex items-center">
                       <CurrencyDollarIcon className="h-4 w-4 mr-1.5" />
-                      {term.servicePrice} *
+                      {term.servicePrice} ({getCurrencySymbol()}) *
                     </label>
-                    <input
-                      type="number"
-                      name="price"
-                      required
-                      min="0"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={handleChange}
-                      className="input-premium"
-                      placeholder="35.00"
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium pointer-events-none">
+                        {getCurrencySymbol()}
+                      </span>
+                      <input
+                        type="number"
+                        name="price"
+                        required
+                        min="0"
+                        step="0.01"
+                        value={formData.price}
+                        onChange={handleChange}
+                        className="input-premium pl-10"
+                        placeholder="35.00"
+                      />
+                    </div>
                   </div>
                 </div>
 

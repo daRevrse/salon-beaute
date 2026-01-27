@@ -3,7 +3,7 @@
  * Multi-Sector Adaptive with Business Type Terminology
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
@@ -16,7 +16,9 @@ import {
   ClockIcon,
   ChevronRightIcon,
   SparklesIcon,
+  PhotoIcon,
 } from "@heroicons/react/24/outline";
+import GalleryLightbox from "../../components/common/GalleryLightbox";
 
 const BookingLanding = () => {
   const { slug } = useParams();
@@ -27,6 +29,24 @@ const BookingLanding = () => {
     usePublicBooking(slug);
 
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState([]);
+
+  // Open gallery lightbox for a service
+  const openGallery = useCallback((service, e) => {
+    e.stopPropagation();
+    // Parse gallery if it's a string
+    let galleryData = [];
+    if (service.gallery) {
+      galleryData = typeof service.gallery === 'string'
+        ? JSON.parse(service.gallery)
+        : service.gallery;
+    }
+    // Combine main image with gallery images
+    const allImages = [service.image_url, ...galleryData].filter(Boolean);
+    setLightboxImages(allImages);
+    setLightboxOpen(true);
+  }, []);
 
   // Business type configuration
   const businessType = salon?.business_type || "beauty";
@@ -142,7 +162,7 @@ const BookingLanding = () => {
           </h1>
 
           <p className="mt-4 text-base sm:text-lg md:text-xl text-white/90 max-w-2xl drop-shadow-md px-4">
-            {config.bookingSubtitle}
+            {salon?.slogan || config.bookingSubtitle}
           </p>
 
           {salon?.phone && (
@@ -207,6 +227,21 @@ const BookingLanding = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/20 transition"></div>
+
+                  {/* Gallery button */}
+                  {service.gallery && (
+                    typeof service.gallery === 'string'
+                      ? JSON.parse(service.gallery).length > 0
+                      : service.gallery.length > 0
+                  ) && (
+                    <button
+                      onClick={(e) => openGallery(service, e)}
+                      className={`absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md ${config.textColor} hover:bg-white transition-all opacity-0 group-hover:opacity-100`}
+                      title="Voir la galerie"
+                    >
+                      <PhotoIcon className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Content */}
@@ -275,6 +310,13 @@ const BookingLanding = () => {
           </p>
         </div>
       </footer>
+
+      {/* Gallery Lightbox */}
+      <GalleryLightbox
+        images={lightboxImages}
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   );
 };

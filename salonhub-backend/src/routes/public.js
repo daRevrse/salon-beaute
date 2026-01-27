@@ -24,7 +24,7 @@ router.get("/tenant/:slug", checkPublicSubscription('slug'), async (req, res) =>
 
     const tenant = await db.query(
       `SELECT id, name, slug, phone, email, address, city, postal_code,
-              logo_url, banner_url, currency, business_type
+              logo_url, banner_url, slogan, currency, business_type
        FROM tenants
        WHERE slug = ? AND is_active = TRUE`,
       [slug]
@@ -105,7 +105,7 @@ router.get("/salon/:slug", checkPublicSubscription('slug'), async (req, res) => 
 
     const tenant = await db.query(
       `SELECT id, name, slug, phone, address, city, postal_code,
-              subscription_status, logo_url, banner_url, currency
+              subscription_status, logo_url, banner_url, slogan, currency
        FROM tenants
        WHERE slug = ? `,
       [slug]
@@ -164,7 +164,7 @@ router.get("/salon/:slug/services", checkPublicSubscription('slug'), async (req,
 
     // Récupérer les services actifs et disponibles pour réservation en ligne
     const services = await db.query(
-      `SELECT id, name, description, duration, price, category, image_url
+      `SELECT id, name, description, duration, price, category, image_url, gallery
        FROM services
        WHERE tenant_id = ?
          AND is_active = 1
