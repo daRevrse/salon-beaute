@@ -42,10 +42,26 @@ self.addEventListener('activate', (event) => {
 });
 
 // Stratégie de cache: Network First, puis Cache
+// Only cache GET requests - POST/PUT/DELETE cannot be cached
 self.addEventListener('fetch', (event) => {
+  // Skip non-GET requests - they cannot be cached
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Skip API requests from caching (they should always be fresh)
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
+        // Don't cache if not a valid response
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
+
         // Clone la réponse
         const responseToCache = response.clone();
 

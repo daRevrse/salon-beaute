@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
 
     sql += ' ORDER BY last_name ASC, first_name ASC';
 
-    const [patients] = await query(sql, params);
+    const patients = await query(sql, params);
 
     res.json({ success: true, count: patients.length, data: patients });
   } catch (error) {
@@ -49,7 +49,7 @@ router.get('/', async (req, res) => {
 // GET - Détails d'un patient avec historique complet
 router.get('/:id', async (req, res) => {
   try {
-    const [patients] = await query(
+    const patients = await query(
       'SELECT * FROM medical_patients WHERE id = ? AND tenant_id = ?',
       [req.params.id, req.tenantId]
     );
@@ -59,22 +59,22 @@ router.get('/:id', async (req, res) => {
     }
 
     // Récupérer l'historique
-    const [allergies] = await query(
+    const allergies = await query(
       'SELECT * FROM medical_allergies WHERE patient_id = ? AND is_active = 1',
       [req.params.id]
     );
 
-    const [conditions] = await query(
+    const conditions = await query(
       'SELECT * FROM medical_conditions WHERE patient_id = ? ORDER BY diagnosis_date DESC',
       [req.params.id]
     );
 
-    const [medications] = await query(
+    const medications = await query(
       'SELECT * FROM medical_medications WHERE patient_id = ? AND is_active = 1 ORDER BY start_date DESC',
       [req.params.id]
     );
 
-    const [records] = await query(
+    const records = await query(
       'SELECT * FROM medical_records WHERE patient_id = ? ORDER BY visit_date DESC LIMIT 10',
       [req.params.id]
     );
@@ -115,7 +115,7 @@ router.post('/', async (req, res) => {
 
     const patient_number = generatePatientNumber();
 
-    const [result] = await query(
+    const result = await query(
       `INSERT INTO medical_patients (
         tenant_id, patient_number, first_name, last_name, date_of_birth, gender,
         blood_type, email, phone, address,
@@ -130,7 +130,7 @@ router.post('/', async (req, res) => {
       ]
     );
 
-    const [newPatient] = await query(
+    const newPatient = await query(
       'SELECT * FROM medical_patients WHERE id = ?',
       [result.insertId]
     );
@@ -156,7 +156,7 @@ router.put('/:id', async (req, res) => {
       insurance_provider, insurance_number, notes
     } = req.body;
 
-    const [result] = await query(
+    const result = await query(
       `UPDATE medical_patients SET
         first_name = COALESCE(?, first_name),
         last_name = COALESCE(?, last_name),
@@ -186,7 +186,7 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Patient not found' });
     }
 
-    const [updated] = await query(
+    const updated = await query(
       'SELECT * FROM medical_patients WHERE id = ?',
       [req.params.id]
     );

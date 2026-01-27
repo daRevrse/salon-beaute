@@ -198,6 +198,10 @@ router.post("/register", async (req, res) => {
         // Ne pas bloquer l'inscription si l'email échoue
       });
 
+    // Calculer la date de fin d'essai (14 jours à partir de maintenant)
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
     res.status(201).json({
       success: true,
       message: "Inscription réussie ! Bienvenue sur SalonHub",
@@ -215,6 +219,9 @@ router.post("/register", async (req, res) => {
           name: salon_name,
           slug: finalSlug,
           business_type: finalBusinessType,
+          subscription_status: "trial",
+          subscription_plan: subscription_plan || "starter",
+          trial_ends_at: trialEndsAt.toISOString(),
         },
       },
     });
@@ -250,6 +257,7 @@ router.post("/login", async (req, res) => {
         t.name as tenant_name,
         t.slug as tenant_slug,
         t.subscription_status,
+        t.subscription_plan,
         t.trial_ends_at,
         t.logo_url as logo_url,
         t.business_type
@@ -285,36 +293,9 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Vérifier statut abonnement
-    if (user.subscription_status === "suspended") {
-      return res.status(403).json({
-        success: false,
-        error: "Abonnement suspendu",
-        message:
-          "Votre abonnement a été suspendu. Veuillez mettre à jour votre paiement.",
-      });
-    }
-
-    if (user.subscription_status === "cancelled") {
-      return res.status(403).json({
-        success: false,
-        error: "Abonnement annulé",
-        message: "Votre abonnement a été annulé.",
-      });
-    }
-
-    // Vérifier fin de période d'essai
-    if (user.subscription_status === "trial" && user.trial_ends_at) {
-      const trialEnd = new Date(user.trial_ends_at);
-      if (trialEnd < new Date()) {
-        return res.status(403).json({
-          success: false,
-          error: "Période d'essai expirée",
-          message:
-            "Votre période d'essai est terminée. Veuillez souscrire à un abonnement.",
-        });
-      }
-    }
+    // NOTE: On ne bloque PAS la connexion même si l'abonnement est expiré/suspendu/annulé
+    // Le tenant doit pouvoir accéder à son dashboard pour gérer son compte
+    // Les pages publiques (booking, menu, etc.) sont bloquées séparément via checkPublicSubscription
 
     // Mettre à jour last_login_at
     await query("UPDATE users SET last_login_at = NOW() WHERE id = ?", [
@@ -328,6 +309,17 @@ router.post("/login", async (req, res) => {
       email: user.email,
       role: user.role,
     });
+
+    // Calculer le statut effectif de l'abonnement
+    let effectiveStatus = user.subscription_status;
+    if (user.subscription_status === 'trial' && user.trial_ends_at) {
+      const trialEnd = new Date(user.trial_ends_at);
+      if (trialEnd < new Date()) {
+        effectiveStatus = 'expired';
+        // Mettre à jour le statut dans la BDD
+        await query("UPDATE tenants SET subscription_status = 'expired' WHERE id = ?", [user.tenant_id]);
+      }
+    }
 
     res.json({
       success: true,
@@ -344,9 +336,12 @@ router.post("/login", async (req, res) => {
           avatar_url: user.avatar_url,
         },
         tenant: {
+          id: user.tenant_id,
           name: user.tenant_name,
           slug: user.tenant_slug,
-          subscription_status: user.subscription_status,
+          subscription_status: effectiveStatus,
+          subscription_plan: user.subscription_plan,
+          trial_ends_at: user.trial_ends_at,
           logo_url: user.logo_url,
           business_type: user.business_type,
         },

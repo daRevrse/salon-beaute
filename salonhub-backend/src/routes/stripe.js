@@ -217,17 +217,28 @@ router.post("/verify-session", async (req, res) => {
 router.get("/subscription", async (req, res) => {
   try {
     const [tenant] = await query(
-      `SELECT 
+      `SELECT
         subscription_plan,
         subscription_status,
         stripe_subscription_id,
         stripe_customer_id,
         trial_ends_at,
         subscription_started_at
-      FROM tenants 
+      FROM tenants
       WHERE id = ?`,
       [req.tenantId]
     );
+
+    // Vérifier si le trial est expiré et mettre à jour le statut
+    let effectiveStatus = tenant.subscription_status;
+    if (tenant.subscription_status === 'trial' && tenant.trial_ends_at) {
+      const trialEnd = new Date(tenant.trial_ends_at);
+      if (trialEnd < new Date()) {
+        effectiveStatus = 'expired';
+        // Mettre à jour dans la BDD
+        await query("UPDATE tenants SET subscription_status = 'expired' WHERE id = ?", [req.tenantId]);
+      }
+    }
 
     let subscriptionInfo = null;
 
@@ -243,7 +254,7 @@ router.get("/subscription", async (req, res) => {
       success: true,
       data: {
         plan: tenant.subscription_plan,
-        status: tenant.subscription_status,
+        status: effectiveStatus,
         hasStripeSubscription: !!tenant.stripe_subscription_id,
         trialEndsAt: tenant.trial_ends_at,
         subscriptionStartedAt: tenant.subscription_started_at,

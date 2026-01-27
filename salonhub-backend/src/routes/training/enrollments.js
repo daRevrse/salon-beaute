@@ -55,7 +55,7 @@ router.get('/', async (req, res) => {
 
     sql += ' ORDER BY e.enrolled_at DESC';
 
-    const [enrollments] = await query(sql, params);
+    const enrollments = await query(sql, params);
 
     res.json({
       success: true,
@@ -71,7 +71,7 @@ router.get('/', async (req, res) => {
 // GET - Détails d'une inscription
 router.get('/:id', async (req, res) => {
   try {
-    const [enrollments] = await query(
+    const enrollments = await query(
       `SELECT e.*,
         c.name as student_name,
         c.email as student_email,
@@ -114,7 +114,7 @@ router.post('/', async (req, res) => {
     }
 
     // Vérifier disponibilité de la session
-    const [sessions] = await query(
+    const sessions = await query(
       'SELECT current_students, max_students, status FROM training_sessions WHERE id = ? AND tenant_id = ?',
       [session_id, req.tenantId]
     );
@@ -131,7 +131,7 @@ router.post('/', async (req, res) => {
     const enrollment_number = generateEnrollmentNumber();
     const enrollment_date = new Date().toISOString().split('T')[0];
 
-    const [result] = await query(
+    const result = await query(
       `INSERT INTO training_enrollments (
         tenant_id, session_id, student_id, enrollment_number,
         enrollment_date, amount_due, payment_method, notes
@@ -145,7 +145,7 @@ router.post('/', async (req, res) => {
       [session_id]
     );
 
-    const [newEnrollment] = await query(
+    const newEnrollment = await query(
       'SELECT * FROM training_enrollments WHERE id = ?',
       [result.insertId]
     );
@@ -171,7 +171,7 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid status', valid: validStatuses });
     }
 
-    const [result] = await query(
+    const result = await query(
       'UPDATE training_enrollments SET status = ? WHERE id = ? AND tenant_id = ?',
       [status, req.params.id, req.tenantId]
     );
@@ -192,7 +192,7 @@ router.patch('/:id/payment', async (req, res) => {
   try {
     const { amount_paid, payment_status, payment_method } = req.body;
 
-    const [result] = await query(
+    const result = await query(
       `UPDATE training_enrollments SET
         amount_paid = COALESCE(?, amount_paid),
         payment_status = COALESCE(?, payment_status),
@@ -216,7 +216,7 @@ router.patch('/:id/payment', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     // Récupérer session_id avant suppression
-    const [enrollment] = await query(
+    const enrollment = await query(
       'SELECT session_id FROM training_enrollments WHERE id = ? AND tenant_id = ?',
       [req.params.id, req.tenantId]
     );
@@ -225,7 +225,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Enrollment not found' });
     }
 
-    const [result] = await query(
+    const result = await query(
       'DELETE FROM training_enrollments WHERE id = ? AND tenant_id = ?',
       [req.params.id, req.tenantId]
     );

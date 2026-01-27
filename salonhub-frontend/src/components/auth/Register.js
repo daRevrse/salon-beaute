@@ -1,16 +1,14 @@
 /**
  * Premium Register Page - SalonHub
- * Purple Dynasty Theme - 4-Step Multi-Sector Wizard
+ * Purple Dynasty Theme - 3-Step Multi-Sector Wizard
  */
 
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { useCurrency } from "../../contexts/CurrencyContext";
 import {
   BuildingStorefrontIcon,
   UserIcon,
-  CreditCardIcon,
   CheckCircleIcon,
   ArrowRightIcon,
   ArrowLeftIcon,
@@ -20,8 +18,6 @@ import {
   MapPinIcon,
   LockClosedIcon,
   SparklesIcon,
-  StarIcon,
-  ShieldCheckIcon,
   ScissorsIcon,
   AcademicCapIcon,
   HeartIcon,
@@ -81,13 +77,11 @@ const STEPS = [
   { id: 1, name: "Activite", icon: Squares2X2Icon },
   { id: 2, name: "Etablissement", icon: BuildingStorefrontIcon },
   { id: 3, name: "Compte", icon: UserIcon },
-  { id: 4, name: "Formule", icon: CreditCardIcon },
 ];
 
 const Register = () => {
   const navigate = useNavigate();
   const { register, loading } = useAuth();
-  const { formatPrice } = useCurrency();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState("");
@@ -108,8 +102,6 @@ const Register = () => {
     email: "",
     password: "",
     password_confirm: "",
-    // Plan
-    subscription_plan: "professional",
   });
 
   const handleChange = (e) => {
@@ -221,33 +213,6 @@ const Register = () => {
     }
   };
 
-  const plans = [
-    {
-      id: "starter",
-      name: "Starter",
-      price: 9.99,
-      description: "Pour demarrer",
-      features: ["100 clients max", "Reservations en ligne", "Gestion agenda"],
-      icon: SparklesIcon,
-    },
-    {
-      id: "professional",
-      name: "Professionnel",
-      price: 29.99,
-      description: "Le plus populaire",
-      popular: true,
-      features: ["Clients illimites", "Personnel illimite", "Statistiques avancees"],
-      icon: StarIcon,
-    },
-    {
-      id: "business",
-      name: "Business",
-      price: 69.99,
-      description: "Pour les groupes",
-      features: ["Multi-etablissements", "API & integrations", "Support prioritaire"],
-      icon: ShieldCheckIcon,
-    },
-  ];
 
   // Get current business type config
   const currentBusinessType = BUSINESS_TYPES.find(
@@ -660,124 +625,6 @@ const Register = () => {
                 </div>
               )}
 
-              {/* Step 4: Plan Selection */}
-              {currentStep === 4 && (
-                <div className="space-y-6 animate-fade-in-up">
-                  <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 mb-4">
-                      <CreditCardIcon className="h-8 w-8 text-violet-700" />
-                    </div>
-                    <h3 className="font-display text-2xl text-slate-800 mb-2">
-                      Choisissez votre formule
-                    </h3>
-                    <p className="text-slate-500">
-                      14 jours d'essai gratuit sur toutes les formules
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    {plans.map((plan) => {
-                      const Icon = plan.icon;
-                      const isSelected = formData.subscription_plan === plan.id;
-
-                      return (
-                        <label
-                          key={plan.id}
-                          className={`
-                            relative flex flex-col p-6 rounded-2xl cursor-pointer
-                            transition-all duration-300 ease-premium
-                            border-2 hover:-translate-y-1
-                            ${isSelected
-                              ? "border-violet-500 bg-gradient-to-br from-violet-50 to-indigo-50 shadow-soft-lg"
-                              : "border-slate-200 bg-white hover:border-violet-300 hover:shadow-soft"
-                            }
-                          `}
-                        >
-                          <input
-                            type="radio"
-                            name="subscription_plan"
-                            value={plan.id}
-                            checked={isSelected}
-                            onChange={handleChange}
-                            className="sr-only"
-                          />
-
-                          {/* Popular Badge */}
-                          {plan.popular && (
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                              <span className="badge-premium">
-                                Populaire
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Selected Indicator */}
-                          {isSelected && (
-                            <div className="absolute top-4 right-4">
-                              <CheckCircleSolid className="h-6 w-6 text-violet-600" />
-                            </div>
-                          )}
-
-                          {/* Plan Icon */}
-                          <div className={`
-                            w-12 h-12 rounded-xl flex items-center justify-center mb-4
-                            ${isSelected
-                              ? "bg-gradient-to-br from-violet-500 to-indigo-600"
-                              : "bg-violet-100"
-                            }
-                          `}>
-                            <Icon className={`w-6 h-6 ${isSelected ? "text-white" : "text-violet-600"}`} />
-                          </div>
-
-                          {/* Plan Name */}
-                          <span className="font-display text-xl text-slate-800 mb-1">
-                            {plan.name}
-                          </span>
-                          <span className="text-sm text-slate-400 mb-4">
-                            {plan.description}
-                          </span>
-
-                          {/* Price */}
-                          <div className="mb-5">
-                            <span className="font-display text-3xl text-slate-800">
-                              {formatPrice(plan.price)}
-                            </span>
-                            <span className="text-slate-500">/mois</span>
-                          </div>
-
-                          {/* Features */}
-                          <ul className="space-y-2.5">
-                            {plan.features.map((feature, idx) => (
-                              <li key={idx} className="flex items-start gap-2.5 text-sm text-slate-600">
-                                <CheckCircleIcon className="h-5 w-5 text-violet-500 flex-shrink-0" />
-                                <span>{feature}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </label>
-                      );
-                    })}
-                  </div>
-
-                  {/* Trial Info */}
-                  <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-violet-50 via-indigo-50 to-violet-50 border border-violet-200">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-soft flex-shrink-0">
-                        <SparklesIcon className="w-5 h-5 text-violet-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-slate-800 mb-1">
-                          Periode d'essai gratuite
-                        </h4>
-                        <p className="text-sm text-slate-600 leading-relaxed">
-                          Profitez de 14 jours d'essai gratuit sur toutes les formules.
-                          Aucune carte bancaire requise. Changez de formule a tout moment.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Navigation Buttons */}
               <div className="flex justify-between mt-10 pt-8 border-t border-slate-200">
@@ -800,7 +647,7 @@ const Register = () => {
                   </Link>
                 )}
 
-                {currentStep < 4 ? (
+                {currentStep < 3 ? (
                   <button
                     type="button"
                     onClick={handleNext}

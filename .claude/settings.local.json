@@ -20,7 +20,13 @@
       "Skill(frontend-design)",
       "Bash(powershell -Command:*)",
       "Bash(start \"\" \"C:\\\\Users\\\\Administrateur\\\\salon-beaute\\\\landing-page\\\\index.html\")",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(tree:*)",
+      "Bash(wc:*)",
+      "Bash(node -e:*)",
+      "Bash(tasklist:*)",
+      "Bash(python3:*)",
+      "Bash(npx eslint:*)"
     ]
   }
 }

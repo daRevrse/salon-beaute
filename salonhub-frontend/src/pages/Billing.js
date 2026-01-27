@@ -28,7 +28,7 @@ import {
 
 const Billing = () => {
   const navigate = useNavigate();
-  const { tenant } = useAuth();
+  const { tenant, refreshSubscription } = useAuth();
   const { formatPrice } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
@@ -45,12 +45,15 @@ const Billing = () => {
       // Charger abonnement actuel
       const subRes = await api.get('/stripe/subscription');
       setSubscription(subRes.data.data);
+
+      // Rafraîchir les données d'abonnement dans le contexte
+      await refreshSubscription();
     } catch (err) {
       console.error('Erreur chargement billing:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshSubscription]);
 
   const verifyPayment = useCallback(
     async (sessionId) => {
@@ -128,6 +131,7 @@ const Billing = () => {
       active: 'bg-green-100 text-green-800 border border-green-200',
       suspended: 'bg-red-100 text-red-800 border border-red-200',
       cancelled: 'bg-gray-100 text-gray-800 border border-gray-200',
+      expired: 'bg-orange-100 text-orange-800 border border-orange-200',
     };
 
     const labels = {
@@ -135,6 +139,7 @@ const Billing = () => {
       active: 'Actif',
       suspended: 'Suspendu',
       cancelled: 'Annulé',
+      expired: 'Expiré',
     };
 
     const icons = {
@@ -142,15 +147,27 @@ const Billing = () => {
       active: <CheckCircleIcon className="h-4 w-4 inline mr-1" />,
       suspended: <XCircleIcon className="h-4 w-4 inline mr-1" />,
       cancelled: <XCircleIcon className="h-4 w-4 inline mr-1" />,
+      expired: <XCircleIcon className="h-4 w-4 inline mr-1" />,
     };
 
     return (
-      <span className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-full ${styles[status]}`}>
-        {icons[status]}
-        {labels[status]}
+      <span className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-full ${styles[status] || styles.expired}`}>
+        {icons[status] || icons.expired}
+        {labels[status] || 'Inconnu'}
       </span>
     );
   };
+
+  // Calculer les jours restants d'essai
+  const getTrialDaysRemaining = () => {
+    if (!subscription?.trialEndsAt) return null;
+    const trialEnd = new Date(subscription.trialEndsAt);
+    const now = new Date();
+    if (trialEnd <= now) return 0;
+    return Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const trialDaysRemaining = getTrialDaysRemaining();
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -265,19 +282,50 @@ const Billing = () => {
             </div>
           )}
 
-          {subscription?.status === 'trial' && (
-            <div className="mt-6 bg-white bg-opacity-20 rounded-lg p-4 flex items-start">
+          {subscription?.status === 'trial' && trialDaysRemaining !== null && trialDaysRemaining > 0 && (
+            <div className={`mt-6 rounded-lg p-4 flex items-start ${
+              trialDaysRemaining <= 3 ? 'bg-orange-500 bg-opacity-40' : 'bg-white bg-opacity-20'
+            }`}>
               <SparklesIcon className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
               <p className="text-sm">
-                <strong>Essai gratuit actif !</strong> Profitez de toutes les fonctionnalités jusqu'au{' '}
-                {formatDate(subscription.trialEndsAt)}. Aucune carte requise.
+                {trialDaysRemaining <= 3 ? (
+                  <>
+                    <strong>Attention !</strong> Il vous reste seulement <strong>{trialDaysRemaining} jour{trialDaysRemaining > 1 ? 's' : ''}</strong> d'essai gratuit.
+                    Choisissez un plan ci-dessous pour continuer à utiliser toutes les fonctionnalités.
+                  </>
+                ) : (
+                  <>
+                    <strong>Essai gratuit actif !</strong> Profitez de toutes les fonctionnalités jusqu'au{' '}
+                    {formatDate(subscription.trialEndsAt)} ({trialDaysRemaining} jours restants). Aucune carte requise.
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
+          {(subscription?.status === 'expired' || (subscription?.status === 'trial' && trialDaysRemaining === 0)) && (
+            <div className="mt-6 bg-red-500 bg-opacity-40 rounded-lg p-4 flex items-start">
+              <XCircleIcon className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+              <p className="text-sm">
+                <strong>Période d'essai expirée !</strong> Votre page de réservation publique est désactivée.
+                Choisissez un plan ci-dessous pour réactiver toutes les fonctionnalités.
+              </p>
+            </div>
+          )}
+
+          {subscription?.status === 'suspended' && (
+            <div className="mt-6 bg-red-500 bg-opacity-40 rounded-lg p-4 flex items-start">
+              <XCircleIcon className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+              <p className="text-sm">
+                <strong>Abonnement suspendu !</strong> Un problème de paiement a été détecté.
+                Veuillez mettre à jour vos informations de paiement pour réactiver votre compte.
               </p>
             </div>
           )}
         </div>
 
         {/* Plans disponibles */}
-        {(!subscription?.hasStripeSubscription || subscription?.status === 'trial') && (
+        {(!subscription?.hasStripeSubscription || ['trial', 'expired', 'suspended', 'cancelled'].includes(subscription?.status)) && (
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Choisissez votre plan</h2>
             <p className="text-gray-600 text-center mb-8">

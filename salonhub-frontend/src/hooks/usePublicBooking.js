@@ -30,8 +30,13 @@ export const usePublicBooking = (salonSlug) => {
       setSalon(response.data);
       return response.data;
     } catch (err) {
-      const errorMsg =
-        err.response?.data?.error || "Erreur lors du chargement du salon";
+      let errorMsg;
+      if (err.response?.status === 403) {
+        // Subscription expired or inactive
+        errorMsg = err.response?.data?.message || "Cette page de réservation n'est pas disponible actuellement.";
+      } else {
+        errorMsg = err.response?.data?.error || "Erreur lors du chargement du salon";
+      }
       setError(errorMsg);
       console.error("Erreur fetchSalon:", err);
       throw err;

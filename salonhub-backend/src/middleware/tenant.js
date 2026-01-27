@@ -98,7 +98,87 @@ const checkSubscriptionStatus = async (req, res, next) => {
   }
 };
 
+/**
+ * Middleware pour les routes publiques: Vérifie si le tenant a un abonnement actif
+ * Bloque l'accès aux pages publiques (booking, menu, etc.) si abonnement expiré
+ * MAIS n'affecte PAS l'accès au dashboard admin du tenant
+ *
+ * @param {string} slugParam - Nom du paramètre contenant le slug (par défaut 'slug')
+ */
+const checkPublicSubscription = (slugParam = 'slug') => {
+  return async (req, res, next) => {
+    const { query } = require("../config/database");
+
+    try {
+      const slug = req.params[slugParam];
+
+      if (!slug) {
+        return next(); // Pas de slug, on laisse passer (erreur sera gérée ailleurs)
+      }
+
+      const [tenant] = await query(
+        `SELECT id, name, subscription_status, trial_ends_at, is_active
+         FROM tenants WHERE slug = ?`,
+        [slug]
+      );
+
+      if (!tenant) {
+        return res.status(404).json({
+          success: false,
+          error: "Établissement non trouvé"
+        });
+      }
+
+      // Vérifier si le tenant est actif
+      if (!tenant.is_active) {
+        return res.status(403).json({
+          success: false,
+          error: "Page indisponible",
+          message: "Cette page de réservation n'est pas disponible actuellement."
+        });
+      }
+
+      // Vérifier le statut de l'abonnement
+      const invalidStatuses = ['suspended', 'cancelled', 'expired'];
+      if (invalidStatuses.includes(tenant.subscription_status)) {
+        return res.status(403).json({
+          success: false,
+          error: "Page indisponible",
+          message: "Cette page de réservation n'est pas disponible actuellement."
+        });
+      }
+
+      // Vérifier si la période d'essai est expirée
+      if (tenant.subscription_status === 'trial' && tenant.trial_ends_at) {
+        const trialEnd = new Date(tenant.trial_ends_at);
+        if (trialEnd < new Date()) {
+          // Mettre à jour le statut dans la BDD pour cohérence
+          await query("UPDATE tenants SET subscription_status = 'expired' WHERE id = ?", [tenant.id]);
+
+          return res.status(403).json({
+            success: false,
+            error: "Page indisponible",
+            message: "Cette page de réservation n'est pas disponible actuellement."
+          });
+        }
+      }
+
+      // Injecter les infos du tenant dans la requête pour les routes suivantes
+      req.publicTenant = tenant;
+
+      next();
+    } catch (error) {
+      console.error("Erreur vérification abonnement public:", error);
+      return res.status(500).json({
+        success: false,
+        error: "Erreur serveur"
+      });
+    }
+  };
+};
+
 module.exports = {
   tenantMiddleware,
   checkSubscriptionStatus,
+  checkPublicSubscription,
 };

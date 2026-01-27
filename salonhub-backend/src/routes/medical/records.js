@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
         p.first_name as patient_first_name,
         p.last_name as patient_last_name,
         p.patient_number,
-        u.name as doctor_name
+        CONCAT(u.first_name, ' ', u.last_name) as doctor_name
       FROM medical_records r
       LEFT JOIN medical_patients p ON r.patient_id = p.id
       LEFT JOIN users u ON r.doctor_id = u.id
@@ -58,7 +58,7 @@ router.get('/', async (req, res) => {
 
     sql += ' ORDER BY r.visit_date DESC, r.visit_time DESC';
 
-    const [records] = await query(sql, params);
+    const records = await query(sql, params);
     res.json({ success: true, count: records.length, data: records });
   } catch (error) {
     console.error('Error fetching records:', error);
@@ -69,14 +69,14 @@ router.get('/', async (req, res) => {
 // GET - Détails d'un dossier
 router.get('/:id', async (req, res) => {
   try {
-    const [records] = await query(
+    const records = await query(
       `SELECT r.*,
         p.first_name as patient_first_name,
         p.last_name as patient_last_name,
         p.patient_number,
         p.date_of_birth,
         p.blood_type,
-        u.name as doctor_name
+        CONCAT(u.first_name, ' ', u.last_name) as doctor_name
       FROM medical_records r
       LEFT JOIN medical_patients p ON r.patient_id = p.id
       LEFT JOIN users u ON r.doctor_id = u.id
@@ -116,7 +116,7 @@ router.post('/', async (req, res) => {
 
     const record_number = generateRecordNumber();
 
-    const [result] = await query(
+    const result = await query(
       `INSERT INTO medical_records (
         tenant_id, patient_id, appointment_id, doctor_id, record_number,
         visit_date, visit_time, visit_type,
@@ -134,7 +134,7 @@ router.post('/', async (req, res) => {
       ]
     );
 
-    const [newRecord] = await query(
+    const newRecord = await query(
       'SELECT * FROM medical_records WHERE id = ?',
       [result.insertId]
     );
@@ -159,7 +159,7 @@ router.put('/:id', async (req, res) => {
       follow_up_required, follow_up_date
     } = req.body;
 
-    const [result] = await query(
+    const result = await query(
       `UPDATE medical_records SET
         chief_complaint = COALESCE(?, chief_complaint),
         history_of_present_illness = COALESCE(?, history_of_present_illness),

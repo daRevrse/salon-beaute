@@ -138,6 +138,11 @@ app.use("/api/auth", require("./routes/auth"));
 // Routes Stripe (partiellement publiques - webhook)
 app.use("/api/stripe", require("./routes/stripe"));
 
+// Routes publiques sectorielles (plus spécifiques - doivent être avant /api/public)
+app.use("/api/public/restaurant", require("./routes/restaurant/public"));
+app.use("/api/public/training", require("./routes/training/public"));
+app.use("/api/public/medical", require("./routes/medical/public"));
+
 // Routes publiques pour le booking (sans authentification)
 app.use("/api/public", require("./routes/public"));
 

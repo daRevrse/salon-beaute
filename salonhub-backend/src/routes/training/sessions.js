@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
       SELECT s.*,
         c.title as course_title,
         c.duration_hours,
-        u.name as instructor_name
+        CONCAT(u.first_name, ' ', u.last_name) as instructor_name
       FROM training_sessions s
       LEFT JOIN training_courses c ON s.course_id = c.id
       LEFT JOIN users u ON s.instructor_id = u.id
@@ -59,7 +59,7 @@ router.get('/', async (req, res) => {
 
     sql += ' ORDER BY s.start_date DESC, s.start_time ASC';
 
-    const [sessions] = await query(sql, params);
+    const sessions = await query(sql, params);
 
     res.json({
       success: true,
@@ -80,13 +80,13 @@ router.get('/', async (req, res) => {
 // ==========================================
 router.get('/:id', async (req, res) => {
   try {
-    const [sessions] = await query(
+    const sessions = await query(
       `SELECT s.*,
         c.title as course_title,
         c.description as course_description,
         c.duration_hours,
         c.price,
-        u.name as instructor_name,
+        CONCAT(u.first_name, ' ', u.last_name) as instructor_name,
         u.email as instructor_email
       FROM training_sessions s
       LEFT JOIN training_courses c ON s.course_id = c.id
@@ -103,7 +103,7 @@ router.get('/:id', async (req, res) => {
     }
 
     // Récupérer les inscriptions
-    const [enrollments] = await query(
+    const enrollments = await query(
       `SELECT e.*,
         c.name as student_name,
         c.email as student_email,
@@ -159,7 +159,7 @@ router.post('/', async (req, res) => {
     }
 
     // Vérifier que le cours existe
-    const [courses] = await query(
+    const courses = await query(
       'SELECT max_students FROM training_courses WHERE id = ? AND tenant_id = ?',
       [course_id, req.tenantId]
     );
@@ -174,7 +174,7 @@ router.post('/', async (req, res) => {
     const session_number = generateSessionNumber();
     const finalMaxStudents = max_students || courses[0].max_students;
 
-    const [result] = await query(
+    const result = await query(
       `INSERT INTO training_sessions (
         tenant_id, course_id, session_number, instructor_id,
         start_date, end_date, start_time, end_time,
@@ -189,7 +189,7 @@ router.post('/', async (req, res) => {
       ]
     );
 
-    const [newSession] = await query(
+    const newSession = await query(
       'SELECT * FROM training_sessions WHERE id = ?',
       [result.insertId]
     );
@@ -219,7 +219,7 @@ router.put('/:id', async (req, res) => {
       location, meeting_url, meeting_password, max_students, notes
     } = req.body;
 
-    const [existing] = await query(
+    const existing = await query(
       'SELECT id FROM training_sessions WHERE id = ? AND tenant_id = ?',
       [req.params.id, req.tenantId]
     );
@@ -251,7 +251,7 @@ router.put('/:id', async (req, res) => {
       ]
     );
 
-    const [updated] = await query(
+    const updated = await query(
       'SELECT * FROM training_sessions WHERE id = ?',
       [req.params.id]
     );
@@ -286,7 +286,7 @@ router.patch('/:id/status', async (req, res) => {
       });
     }
 
-    const [result] = await query(
+    const result = await query(
       'UPDATE training_sessions SET status = ? WHERE id = ? AND tenant_id = ?',
       [status, req.params.id, req.tenantId]
     );
@@ -317,7 +317,7 @@ router.patch('/:id/status', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     // Vérifier qu'il n'y a pas d'inscriptions confirmées
-    const [enrollments] = await query(
+    const enrollments = await query(
       'SELECT COUNT(*) as count FROM training_enrollments WHERE session_id = ? AND tenant_id = ? AND status IN (?, ?)',
       [req.params.id, req.tenantId, 'confirmed', 'active']
     );
@@ -330,7 +330,7 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    const [result] = await query(
+    const result = await query(
       'DELETE FROM training_sessions WHERE id = ? AND tenant_id = ?',
       [req.params.id, req.tenantId]
     );

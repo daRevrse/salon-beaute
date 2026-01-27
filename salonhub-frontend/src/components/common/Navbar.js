@@ -26,6 +26,12 @@ import {
   AcademicCapIcon,
   HeartIcon,
   SparklesIcon,
+  TableCellsIcon,
+  ClipboardDocumentListIcon,
+  FireIcon,
+  BookOpenIcon,
+  UserGroupIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 
 // Business Type Configuration
@@ -43,20 +49,27 @@ const BUSINESS_TYPE_CONFIG = {
     activeBorder: "border-violet-600",
     servicesLabel: "Services",
     appointmentsLabel: "Rendez-vous",
+    sectorLinks: [],
   },
   restaurant: {
     label: "Restaurant",
     icon: BuildingStorefrontIcon,
     primaryColor: "amber",
-    gradient: "from-amber-500 to-orange-600",
+    gradient: "from-amber-700 to-orange-700",
     lightBg: "bg-amber-50",
-    textColor: "text-amber-600",
+    textColor: "text-amber-700",
     hoverBg: "hover:bg-amber-50",
-    activeBg: "bg-amber-50",
-    activeText: "text-amber-700",
+    activeBg: "bg-gradient-to-r from-amber-100 to-orange-100",
+    activeText: "text-amber-800",
     activeBorder: "border-amber-600",
-    servicesLabel: "Menu",
+    servicesLabel: "La Carte",
+    servicesPath: "/restaurant/menus",
     appointmentsLabel: "Réservations",
+    sectorLinks: [
+      { path: "/restaurant/tables", label: "Tables", icon: TableCellsIcon },
+      { path: "/restaurant/orders", label: "Commandes", icon: ClipboardDocumentListIcon },
+      { path: "/restaurant/kitchen", label: "Cuisine", icon: FireIcon },
+    ],
   },
   training: {
     label: "Formation",
@@ -71,6 +84,12 @@ const BUSINESS_TYPE_CONFIG = {
     activeBorder: "border-emerald-600",
     servicesLabel: "Formations",
     appointmentsLabel: "Sessions",
+    sectorLinks: [
+      { path: "/training/courses", label: "Cours", icon: BookOpenIcon },
+      { path: "/training/sessions", label: "Sessions", icon: CalendarDaysIcon },
+      { path: "/training/enrollments", label: "Inscriptions", icon: UserGroupIcon },
+      { path: "/training/certificates", label: "Certificats", icon: DocumentTextIcon },
+    ],
   },
   medical: {
     label: "Médical",
@@ -85,6 +104,11 @@ const BUSINESS_TYPE_CONFIG = {
     activeBorder: "border-cyan-600",
     servicesLabel: "Prestations",
     appointmentsLabel: "Consultations",
+    sectorLinks: [
+      { path: "/medical/patients", label: "Patients", icon: UserGroupIcon },
+      { path: "/medical/records", label: "Dossiers", icon: DocumentTextIcon },
+      { path: "/medical/prescriptions", label: "Ordonnances", icon: ClipboardDocumentListIcon },
+    ],
   },
 };
 
@@ -108,6 +132,11 @@ const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
 
+  // Check if current path matches sector links
+  const isInSectorSection = (path) => {
+    return location.pathname.startsWith(path.split("/").slice(0, 2).join("/"));
+  };
+
   // Navigation principale - adaptive labels based on business type
   const navLinks = [
     {
@@ -129,12 +158,15 @@ const Navbar = () => {
       visible: can.viewClients,
     },
     {
-      path: "/services",
+      path: config.servicesPath || "/services",
       label: config.servicesLabel,
       icon: <BusinessIcon className="h-5 w-5" />,
       visible: can.viewServices,
     },
   ].filter((link) => link.visible);
+
+  // Sector-specific links
+  const sectorLinks = config.sectorLinks || [];
 
   return (
     <nav className="bg-white border-b border-slate-200 shadow-soft">
@@ -182,6 +214,31 @@ const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
+
+              {/* Sector-specific links */}
+              {sectorLinks.length > 0 && (
+                <>
+                  <div className="w-px h-8 bg-slate-200 mx-2 self-center"></div>
+                  {sectorLinks.map((link) => {
+                    const LinkIcon = link.icon;
+                    const isLinkActive = isActive(link.path) || isInSectorSection(link.path) && location.pathname === link.path;
+                    return (
+                      <Link
+                        key={link.path}
+                        to={link.path}
+                        className={`flex items-center px-3 py-2 text-sm font-medium rounded-xl transition-all duration-300 ${
+                          isLinkActive
+                            ? `${config.activeBg} ${config.activeText}`
+                            : `text-slate-600 hover:text-slate-900 ${config.hoverBg}`
+                        }`}
+                      >
+                        <LinkIcon className={`h-4 w-4 mr-1.5 ${isLinkActive ? config.textColor : "text-slate-400"}`} />
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+                </>
+              )}
             </div>
           </div>
 
@@ -331,6 +388,33 @@ const Navbar = () => {
                 {link.label}
               </Link>
             ))}
+
+            {/* Sector-specific links for mobile */}
+            {sectorLinks.length > 0 && (
+              <div className="pt-2 mt-2 border-t border-slate-100">
+                <p className={`px-4 py-1 text-xs font-medium ${config.textColor} uppercase`}>
+                  {config.label}
+                </p>
+                {sectorLinks.map((link) => {
+                  const LinkIcon = link.icon;
+                  return (
+                    <Link
+                      key={link.path}
+                      to={link.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center px-4 py-3 text-sm font-medium ${
+                        isActive(link.path)
+                          ? `${config.activeBg} ${config.activeText} border-l-4 ${config.activeBorder}`
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      <LinkIcon className={`h-5 w-5 mr-3 ${isActive(link.path) ? config.textColor : "text-slate-400"}`} />
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="py-3 border-t border-slate-200">

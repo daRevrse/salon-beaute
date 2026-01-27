@@ -27,11 +27,41 @@ import Billing from "./pages/Billing";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 
+// Pages Restaurant
+import RestaurantTables from "./pages/restaurant/Tables";
+import RestaurantMenus from "./pages/restaurant/Menus";
+import RestaurantOrders from "./pages/restaurant/Orders";
+import RestaurantKitchen from "./pages/restaurant/Kitchen";
+
+// Pages Training
+import TrainingCourses from "./pages/training/Courses";
+import TrainingSessions from "./pages/training/Sessions";
+import TrainingEnrollments from "./pages/training/Enrollments";
+import TrainingCertificates from "./pages/training/Certificates";
+
+// Pages Medical
+import MedicalPatients from "./pages/medical/Patients";
+import MedicalRecords from "./pages/medical/Records";
+import MedicalPrescriptions from "./pages/medical/Prescriptions";
+
+// Pages publiques Restaurant
+import RestaurantLanding from "./pages/public/restaurant/RestaurantLanding";
+import RestaurantReservation from "./pages/public/restaurant/RestaurantReservation";
+import RestaurantOrder from "./pages/public/restaurant/RestaurantOrder";
+import RestaurantQRCode from "./pages/public/restaurant/RestaurantQRCode";
+
 // Pages publiques (Booking)
+import PublicRouter from "./pages/public/PublicRouter";
 import BookingLanding from "./pages/public/BookingLanding";
 import BookingDateTime from "./pages/public/BookingDateTime";
 import BookingClientInfo from "./pages/public/BookingClientInfo";
 import BookingConfirmation from "./pages/public/BookingConfirmation";
+
+// Pages publiques Training
+import TrainingLanding from "./pages/public/training/TrainingLanding";
+
+// Pages publiques Medical
+import MedicalLanding from "./pages/public/medical/MedicalLanding";
 
 // Pages SuperAdmin
 import SuperAdminLogin from "./pages/admin/SuperAdminLogin";
@@ -105,8 +135,14 @@ function App() {
                   element={<AdvancedAnalytics />}
                 />
 
-                {/* Routes publiques - Booking (Réservation client) */}
-                <Route path="/book/:slug" element={<BookingLanding />} />
+                {/* Routes publiques - Restaurant */}
+                <Route path="/r/:slug" element={<RestaurantLanding />} />
+                <Route path="/r/:slug/reserve" element={<RestaurantReservation />} />
+                <Route path="/r/:slug/order" element={<RestaurantOrder />} />
+                <Route path="/r/:slug/qr" element={<RestaurantQRCode />} />
+
+                {/* Routes publiques - Booking (Router dynamique selon secteur) */}
+                <Route path="/book/:slug" element={<PublicRouter />} />
                 <Route
                   path="/book/:slug/datetime"
                   element={<BookingDateTime />}
@@ -119,6 +155,12 @@ function App() {
                   path="/book/:slug/confirmation"
                   element={<BookingConfirmation />}
                 />
+
+                {/* Routes publiques - Training */}
+                <Route path="/t/:slug" element={<TrainingLanding />} />
+
+                {/* Routes publiques - Medical */}
+                <Route path="/m/:slug" element={<MedicalLanding />} />
 
                 {/* Routes protégées - Admin */}
                 <Route
@@ -189,6 +231,100 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Routes Restaurant */}
+                <Route
+                  path="/restaurant/tables"
+                  element={
+                    <ProtectedRoute>
+                      <RestaurantTables />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/restaurant/menus"
+                  element={
+                    <ProtectedRoute>
+                      <RestaurantMenus />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/restaurant/orders"
+                  element={
+                    <ProtectedRoute>
+                      <RestaurantOrders />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/restaurant/kitchen"
+                  element={
+                    <ProtectedRoute>
+                      <RestaurantKitchen />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Routes Training */}
+                <Route
+                  path="/training/courses"
+                  element={
+                    <ProtectedRoute>
+                      <TrainingCourses />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/training/sessions"
+                  element={
+                    <ProtectedRoute>
+                      <TrainingSessions />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/training/enrollments"
+                  element={
+                    <ProtectedRoute>
+                      <TrainingEnrollments />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/training/certificates"
+                  element={
+                    <ProtectedRoute>
+                      <TrainingCertificates />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Routes Medical */}
+                <Route
+                  path="/medical/patients"
+                  element={
+                    <ProtectedRoute>
+                      <MedicalPatients />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/medical/records"
+                  element={
+                    <ProtectedRoute>
+                      <MedicalRecords />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/medical/prescriptions"
+                  element={
+                    <ProtectedRoute>
+                      <MedicalPrescriptions />
                     </ProtectedRoute>
                   }
                 />

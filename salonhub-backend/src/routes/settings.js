@@ -81,7 +81,8 @@ router.get("/salon", async (req, res) => {
     const tenantId = req.tenantId;
 
     const tenant = await db.query(
-      `SELECT id, name, slug, phone, email, address, city, postal_code, logo_url, banner_url, currency
+      `SELECT id, name, slug, phone, email, address, city, postal_code, logo_url, banner_url, currency, business_type,
+              subscription_status, subscription_plan, trial_ends_at
        FROM tenants
        WHERE id = ?`,
       [tenantId]
@@ -94,12 +95,90 @@ router.get("/salon", async (req, res) => {
       });
     }
 
+    // Vérifier si le trial est expiré et mettre à jour le statut
+    const tenantData = tenant[0];
+    if (tenantData.subscription_status === 'trial' && tenantData.trial_ends_at) {
+      const trialEnd = new Date(tenantData.trial_ends_at);
+      if (trialEnd < new Date()) {
+        tenantData.subscription_status = 'expired';
+        // Mettre à jour dans la BDD
+        await db.query("UPDATE tenants SET subscription_status = 'expired' WHERE id = ?", [tenantId]);
+      }
+    }
+
     res.json({
       success: true,
-      data: tenant[0],
+      data: tenantData,
     });
   } catch (error) {
     console.error("Erreur lors de la récupération du salon:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur",
+    });
+  }
+});
+
+/**
+ * GET /api/settings/subscription
+ * Récupérer les informations d'abonnement du tenant
+ */
+router.get("/subscription", async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+
+    const tenant = await db.query(
+      `SELECT subscription_status, subscription_plan, trial_ends_at,
+              subscription_started_at, stripe_customer_id, stripe_subscription_id
+       FROM tenants
+       WHERE id = ?`,
+      [tenantId]
+    );
+
+    if (tenant.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Tenant introuvable",
+      });
+    }
+
+    const tenantData = tenant[0];
+
+    // Vérifier si le trial est expiré et mettre à jour le statut
+    let effectiveStatus = tenantData.subscription_status;
+    let isTrialExpired = false;
+    let daysRemaining = null;
+
+    if (tenantData.subscription_status === 'trial' && tenantData.trial_ends_at) {
+      const trialEnd = new Date(tenantData.trial_ends_at);
+      const now = new Date();
+
+      if (trialEnd < now) {
+        effectiveStatus = 'expired';
+        isTrialExpired = true;
+        // Mettre à jour dans la BDD
+        await db.query("UPDATE tenants SET subscription_status = 'expired' WHERE id = ?", [tenantId]);
+      } else {
+        // Calculer les jours restants
+        const diffTime = trialEnd.getTime() - now.getTime();
+        daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        status: effectiveStatus,
+        plan: tenantData.subscription_plan,
+        trial_ends_at: tenantData.trial_ends_at,
+        subscription_started_at: tenantData.subscription_started_at,
+        has_stripe_subscription: !!tenantData.stripe_subscription_id,
+        is_trial_expired: isTrialExpired,
+        days_remaining: daysRemaining,
+      },
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'abonnement:", error);
     res.status(500).json({
       success: false,
       error: "Erreur serveur",

@@ -19,7 +19,7 @@ const generatePrescriptionNumber = () => {
 router.get('/', async (req, res) => {
   try {
     const { patient_id, status } = req.query;
-    let sql = `SELECT p.*, pat.first_name, pat.last_name, pat.patient_number, u.name as doctor_name
+    let sql = `SELECT p.*, pat.first_name, pat.last_name, pat.patient_number, CONCAT(u.first_name, ' ', u.last_name) as doctor_name
                FROM medical_prescriptions p
                LEFT JOIN medical_patients pat ON p.patient_id = pat.id
                LEFT JOIN users u ON p.doctor_id = u.id
@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
     }
 
     sql += ' ORDER BY p.prescription_date DESC';
-    const [prescriptions] = await query(sql, params);
+    const prescriptions = await query(sql, params);
     res.json({ success: true, count: prescriptions.length, data: prescriptions });
   } catch (error) {
     console.error('Error fetching prescriptions:', error);

@@ -67,11 +67,28 @@ const BookingLanding = () => {
   }
 
   if (error) {
+    const isUnavailable = error.includes("n'est pas disponible");
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center max-w-md mx-auto p-6">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Erreur</h2>
+          <div className={`w-16 h-16 ${isUnavailable ? 'bg-amber-100' : 'bg-red-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+            {isUnavailable ? (
+              <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            ) : (
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            {isUnavailable ? "Page temporairement indisponible" : "Erreur"}
+          </h2>
           <p className="text-slate-600">{error}</p>
+          {isUnavailable && (
+            <p className="text-slate-500 text-sm mt-2">Veuillez réessayer plus tard ou contacter directement l'établissement.</p>
+          )}
         </div>
       </div>
     );

@@ -51,7 +51,7 @@ router.get('/', async (req, res) => {
 
     sql += ' ORDER BY cert.issue_date DESC';
 
-    const [certificates] = await query(sql, params);
+    const certificates = await query(sql, params);
 
     res.json({ success: true, count: certificates.length, data: certificates });
   } catch (error) {
@@ -63,7 +63,7 @@ router.get('/', async (req, res) => {
 // GET - Vérifier un certificat (public - par code)
 router.get('/verify/:code', async (req, res) => {
   try {
-    const [certificates] = await query(
+    const certificates = await query(
       `SELECT cert.*,
         c.name as student_name,
         co.title as course_title,
@@ -121,7 +121,7 @@ router.post('/', async (req, res) => {
     }
 
     // Vérifier que l'inscription existe et est complétée
-    const [enrollments] = await query(
+    const enrollments = await query(
       'SELECT id, status FROM training_enrollments WHERE id = ? AND tenant_id = ?',
       [enrollment_id, req.tenantId]
     );
@@ -141,7 +141,7 @@ router.post('/', async (req, res) => {
     const verification_code = generateVerificationCode();
     const issue_date = new Date().toISOString().split('T')[0];
 
-    const [result] = await query(
+    const result = await query(
       `INSERT INTO training_certificates (
         tenant_id, enrollment_id, certificate_number, certificate_name,
         issue_date, expiry_date, grade, verification_code, notes
@@ -149,7 +149,7 @@ router.post('/', async (req, res) => {
       [req.tenantId, enrollment_id, certificate_number, certificate_name, issue_date, expiry_date, grade, verification_code, notes]
     );
 
-    const [newCertificate] = await query(
+    const newCertificate = await query(
       'SELECT * FROM training_certificates WHERE id = ?',
       [result.insertId]
     );
@@ -170,7 +170,7 @@ router.patch('/:id/validity', async (req, res) => {
   try {
     const { is_valid } = req.body;
 
-    const [result] = await query(
+    const result = await query(
       'UPDATE training_certificates SET is_valid = ? WHERE id = ? AND tenant_id = ?',
       [is_valid ? 1 : 0, req.params.id, req.tenantId]
     );

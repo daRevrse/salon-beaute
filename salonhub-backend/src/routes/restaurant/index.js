@@ -10,10 +10,12 @@ const router = express.Router();
 const tablesRoutes = require('./tables');
 const menusRoutes = require('./menus');
 const ordersRoutes = require('./orders');
+const reservationsRoutes = require('./reservations');
 
 // Mount sub-routes
 router.use('/tables', tablesRoutes);
 router.use('/menus', menusRoutes);
 router.use('/orders', ordersRoutes);
+router.use('/reservations', reservationsRoutes);
 
 module.exports = router;

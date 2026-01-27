@@ -219,23 +219,31 @@ router.post('/', async (req, res) => {
       const itemsWithPrices = [];
 
       for (const item of items) {
-        const [menuItem] = await connection.query(
-          'SELECT id, name, price FROM restaurant_menus WHERE id = ? AND tenant_id = ? AND is_active = TRUE',
-          [item.menu_item_id, req.tenantId]
-        );
+        // Support both menu_item_id and menu_id for backwards compatibility
+        const menuItemId = item.menu_item_id || item.menu_id;
 
-        if (!menuItem) {
-          throw new Error(`Item de menu ${item.menu_item_id} introuvable`);
+        if (!menuItemId) {
+          throw new Error('menu_item_id ou menu_id requis pour chaque item');
         }
 
-        const itemSubtotal = menuItem.price * item.quantity;
+        const [menuItems] = await connection.query(
+          'SELECT id, name, price FROM restaurant_menus WHERE id = ? AND tenant_id = ? AND is_active = TRUE',
+          [menuItemId, req.tenantId]
+        );
+
+        if (!menuItems || menuItems.length === 0) {
+          throw new Error(`Item de menu ${menuItemId} introuvable`);
+        }
+
+        const menuItem = menuItems[0];
+        const itemSubtotal = parseFloat(menuItem.price) * parseInt(item.quantity);
         subtotal += itemSubtotal;
 
         itemsWithPrices.push({
           menu_item_id: menuItem.id,
           menu_item_name: menuItem.name,
           quantity: item.quantity,
-          unit_price: menuItem.price,
+          unit_price: parseFloat(menuItem.price),
           subtotal: itemSubtotal,
           special_instructions: item.special_instructions || null
         });

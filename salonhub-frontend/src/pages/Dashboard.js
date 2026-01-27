@@ -198,72 +198,183 @@ const Dashboard = () => {
       }
       setHasBusinessHours(hasValidBusinessHours);
 
-      const todayRes = await api.get("/appointments/today");
-      const today = todayRes.data.data || [];
-      setTodayAppointments(today);
+      // Load data based on business type
+      if (businessType === "restaurant") {
+        await loadRestaurantData();
+      } else {
+        await loadBeautyData();
+      }
+    } catch (err) {
+      console.error("Erreur chargement dashboard:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      const clientsRes = await api.get("/clients", { params: { limit: 5 } });
-      setRecentClients(clientsRes.data.data.slice(0, 5));
+  // Load data for beauty/default business type
+  const loadBeautyData = async () => {
+    const todayRes = await api.get("/appointments/today");
+    const today = todayRes.data.data || [];
+    setTodayAppointments(today);
 
-      const servicesRes = await api.get("/services");
-      const allServices = servicesRes.data.data;
+    const clientsRes = await api.get("/clients", { params: { limit: 5 } });
+    setRecentClients(clientsRes.data.data.slice(0, 5));
 
-      const appointmentsRes = await api.get("/appointments", {
-        params: { status: "pending" },
+    const servicesRes = await api.get("/services");
+    const allServices = servicesRes.data.data;
+
+    const appointmentsRes = await api.get("/appointments", {
+      params: { status: "pending" },
+    });
+
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const allAppointmentsRes = await api.get("/appointments");
+    const allAppointments = allAppointmentsRes.data.data || [];
+
+    const monthAppointments = allAppointments.filter((apt) => {
+      const aptDate = new Date(apt.appointment_date);
+      return aptDate >= firstDayOfMonth;
+    });
+
+    const completedThisMonth = monthAppointments.filter(a => a.status === "completed").length;
+    const cancelledThisMonth = monthAppointments.filter(a => a.status === "cancelled").length;
+
+    const monthRevenue = monthAppointments
+      .filter(a => a.status === "completed")
+      .reduce((sum, a) => sum + (parseFloat(a.service_price) || 0), 0);
+
+    const todayRevenue = today
+      .filter(a => a.status === "completed")
+      .reduce((sum, a) => sum + (parseFloat(a.service_price) || 0), 0);
+
+    const serviceCount = {};
+    allAppointments.forEach((apt) => {
+      if (apt.service_id) {
+        serviceCount[apt.service_id] = (serviceCount[apt.service_id] || 0) + 1;
+      }
+    });
+
+    const popular = allServices
+      .map((service) => ({
+        ...service,
+        bookingCount: serviceCount[service.id] || 0,
+      }))
+      .sort((a, b) => b.bookingCount - a.bookingCount)
+      .slice(0, 5);
+
+    setPopularServices(popular);
+
+    setStats({
+      todayAppointments: today.length,
+      totalClients: clientsRes.data.pagination?.total || 0,
+      totalServices: allServices.length,
+      pendingAppointments: appointmentsRes.data.data.length,
+      todayRevenue,
+      monthRevenue,
+      completedThisMonth,
+      cancelledThisMonth,
+    });
+  };
+
+  // Load data for restaurant business type
+  const loadRestaurantData = async () => {
+    try {
+      // Fetch orders, menu items, and reservations
+      const [ordersRes, menusRes, reservationsRes] = await Promise.all([
+        api.get("/restaurant/orders"),
+        api.get("/restaurant/menus"),
+        api.get("/restaurant/reservations").catch(() => ({ data: { data: [] } })),
+      ]);
+
+      const orders = ordersRes.data.data || [];
+      const menus = menusRes.data.data || [];
+      const reservations = reservationsRes.data.data || [];
+
+      // Filter today's orders
+      const today = new Date().toISOString().split("T")[0];
+      const todayOrders = orders.filter(o => {
+        const orderDate = o.order_date || (o.created_at && o.created_at.split("T")[0]);
+        return orderDate === today;
       });
 
+      // Calculate stats
+      const pendingOrders = orders.filter(o => o.status === "pending").length;
+      const todayReservations = reservations.filter(r => r.reservation_date === today);
+
+      // Today's revenue from completed paid orders
+      const todayRevenue = todayOrders
+        .filter(o => o.status === "completed" && o.payment_status === "paid")
+        .reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+
+      // Month revenue
       const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const allAppointmentsRes = await api.get("/appointments");
-      const allAppointments = allAppointmentsRes.data.data || [];
-
-      const monthAppointments = allAppointments.filter((apt) => {
-        const aptDate = new Date(apt.appointment_date);
-        return aptDate >= firstDayOfMonth;
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      const monthOrders = orders.filter(o => {
+        const orderDate = o.order_date || (o.created_at && o.created_at.split("T")[0]);
+        return orderDate >= firstDayOfMonth;
       });
 
-      const completedThisMonth = monthAppointments.filter(a => a.status === "completed").length;
-      const cancelledThisMonth = monthAppointments.filter(a => a.status === "cancelled").length;
+      const monthRevenue = monthOrders
+        .filter(o => o.status === "completed" && o.payment_status === "paid")
+        .reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
 
-      const monthRevenue = monthAppointments
-        .filter(a => a.status === "completed")
-        .reduce((sum, a) => sum + (parseFloat(a.service_price) || 0), 0);
+      const completedThisMonth = monthOrders.filter(o => o.status === "completed").length;
+      const cancelledThisMonth = monthOrders.filter(o => o.status === "cancelled").length;
 
-      const todayRevenue = today
-        .filter(a => a.status === "completed")
-        .reduce((sum, a) => sum + (parseFloat(a.service_price) || 0), 0);
+      // Set today appointments as today's orders for display
+      setTodayAppointments(todayOrders.slice(0, 10).map(o => ({
+        id: o.id,
+        order_number: o.order_number,
+        status: o.status,
+        customer_name: o.customer_name || `Table ${o.table_number || '-'}`,
+        total_amount: o.total_amount,
+        order_type: o.order_type,
+        appointment_date: o.order_date,
+        appointment_time: o.order_time,
+      })));
 
-      const serviceCount = {};
-      allAppointments.forEach((apt) => {
-        if (apt.service_id) {
-          serviceCount[apt.service_id] = (serviceCount[apt.service_id] || 0) + 1;
-        }
-      });
+      // Set popular services as popular menu items
+      setPopularServices(menus.filter(m => m.is_available).slice(0, 5).map(m => ({
+        id: m.id,
+        name: m.name,
+        price: m.price,
+        category: m.category,
+        bookingCount: 0,
+      })));
 
-      const popular = allServices
-        .map((service) => ({
-          ...service,
-          bookingCount: serviceCount[service.id] || 0,
-        }))
-        .sort((a, b) => b.bookingCount - a.bookingCount)
-        .slice(0, 5);
-
-      setPopularServices(popular);
+      // Set recent clients as recent reservations
+      setRecentClients(reservations.slice(0, 5).map(r => ({
+        id: r.id,
+        first_name: r.customer_name,
+        last_name: "",
+        phone: r.customer_phone,
+        email: r.customer_email,
+      })));
 
       setStats({
-        todayAppointments: today.length,
-        totalClients: clientsRes.data.pagination?.total || 0,
-        totalServices: allServices.length,
-        pendingAppointments: appointmentsRes.data.data.length,
+        todayAppointments: todayReservations.length,
+        totalClients: reservations.length,
+        totalServices: menus.filter(m => m.is_active).length,
+        pendingAppointments: pendingOrders,
         todayRevenue,
         monthRevenue,
         completedThisMonth,
         cancelledThisMonth,
       });
     } catch (err) {
-      console.error("Erreur chargement dashboard:", err);
-    } finally {
-      setLoading(false);
+      console.error("Error loading restaurant data:", err);
+      // Set default empty stats on error
+      setStats({
+        todayAppointments: 0,
+        totalClients: 0,
+        totalServices: 0,
+        pendingAppointments: 0,
+        todayRevenue: 0,
+        monthRevenue: 0,
+        completedThisMonth: 0,
+        cancelledThisMonth: 0,
+      });
     }
   };
 

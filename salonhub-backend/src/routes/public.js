@@ -1,20 +1,105 @@
 /**
  * Routes publiques pour le système de réservation
  * Ces routes sont accessibles sans authentification
+ * MAIS vérifient que l'abonnement du tenant est actif
  */
 
 const express = require("express");
 const router = express.Router();
 const db = require("../config/database");
 const emailService = require("../services/emailService");
+const { checkPublicSubscription } = require("../middleware/tenant");
 
 // ===== ROUTES PUBLIQUES (BOOKING CLIENT) =====
 
 /**
+ * GET /api/public/tenant/:slug
+ * Récupérer les infos de base d'un tenant (avec business_type)
+ * Utilisé par PublicRouter pour rediriger vers la bonne page
+ * Vérifie que l'abonnement est actif
+ */
+router.get("/tenant/:slug", checkPublicSubscription('slug'), async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const tenant = await db.query(
+      `SELECT id, name, slug, phone, email, address, city, postal_code,
+              logo_url, banner_url, currency, business_type
+       FROM tenants
+       WHERE slug = ? AND is_active = TRUE`,
+      [slug]
+    );
+
+    if (tenant.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Établissement non trouvé ou inactif"
+      });
+    }
+
+    res.json({
+      success: true,
+      data: tenant[0]
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération du tenant:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur"
+    });
+  }
+});
+
+/**
+ * GET /api/public/services/:slug
+ * Récupérer les services d'un tenant par son slug (route générique)
+ * Vérifie que l'abonnement est actif
+ */
+router.get("/services/:slug", checkPublicSubscription('slug'), async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const tenant = await db.query(
+      "SELECT id FROM tenants WHERE slug = ? AND is_active = TRUE",
+      [slug]
+    );
+
+    if (tenant.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Établissement non trouvé"
+      });
+    }
+
+    const tenantId = tenant[0].id;
+
+    const services = await db.query(
+      `SELECT id, name, description, duration, price, category, image_url
+       FROM services
+       WHERE tenant_id = ? AND is_active = TRUE AND available_for_online_booking = TRUE
+       ORDER BY category, name`,
+      [tenantId]
+    );
+
+    res.json({
+      success: true,
+      data: services
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des services:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur"
+    });
+  }
+});
+
+/**
  * GET /api/public/salon/:slug
  * Obtenir les informations d'un salon par son slug
+ * Vérifie que l'abonnement est actif
  */
-router.get("/salon/:slug", async (req, res) => {
+router.get("/salon/:slug", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
 
@@ -22,7 +107,7 @@ router.get("/salon/:slug", async (req, res) => {
       `SELECT id, name, slug, phone, address, city, postal_code,
               subscription_status, logo_url, banner_url, currency
        FROM tenants
-       WHERE slug = ? AND subscription_status IN ('trial', 'active')`,
+       WHERE slug = ? `,
       [slug]
     );
 
@@ -59,14 +144,15 @@ router.get("/salon/:slug", async (req, res) => {
 /**
  * GET /api/public/salon/:slug/services
  * Obtenir tous les services actifs d'un salon
+ * Vérifie que l'abonnement est actif
  */
-router.get("/salon/:slug/services", async (req, res) => {
+router.get("/salon/:slug/services", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
 
     // Récupérer le tenant_id à partir du slug
     const tenant = await db.query(
-      "SELECT id FROM tenants WHERE slug = ? AND subscription_status IN ('trial', 'active')",
+      "SELECT id FROM tenants WHERE slug = ? ",
       [slug]
     );
 
@@ -97,13 +183,14 @@ router.get("/salon/:slug/services", async (req, res) => {
 /**
  * GET /api/public/salon/:slug/settings
  * Obtenir les paramètres publics du salon (horaires, etc.)
+ * Vérifie que l'abonnement est actif
  */
-router.get("/salon/:slug/settings", async (req, res) => {
+router.get("/salon/:slug/settings", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
 
     const tenant = await db.query(
-      "SELECT id FROM tenants WHERE slug = ? AND subscription_status IN ('trial', 'active')",
+      "SELECT id FROM tenants WHERE slug = ? ",
       [slug]
     );
 
@@ -175,8 +262,9 @@ router.get("/salon/:slug/settings", async (req, res) => {
  * GET /api/public/salon/:slug/availability
  * Obtenir les créneaux disponibles pour un service et une date
  * Query params: service_id, date (YYYY-MM-DD)
+ * Vérifie que l'abonnement est actif
  */
-router.get("/salon/:slug/availability", async (req, res) => {
+router.get("/salon/:slug/availability", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
     const { service_id, date } = req.query;
@@ -187,7 +275,7 @@ router.get("/salon/:slug/availability", async (req, res) => {
 
     // Récupérer le tenant
     const tenant = await db.query(
-      "SELECT id FROM tenants WHERE slug = ? AND subscription_status IN ('trial', 'active')",
+      "SELECT id FROM tenants WHERE slug = ? ",
       [slug]
     );
 
@@ -389,7 +477,7 @@ router.post("/appointments", async (req, res) => {
 
     // Récupérer le tenant
     const tenant = await db.query(
-      "SELECT id FROM tenants WHERE slug = ? AND subscription_status IN ('trial', 'active')",
+      "SELECT id FROM tenants WHERE slug = ? ",
       [salon_slug]
     );
 
@@ -652,7 +740,7 @@ router.post("/promotions/validate", async (req, res) => {
 
     // 1. Récupérer l'ID du salon (Tenant) via le slug
     const tenant = await db.query(
-      "SELECT id FROM tenants WHERE slug = ? AND subscription_status IN ('trial', 'active')",
+      "SELECT id FROM tenants WHERE slug = ? ",
       [salon_slug]
     );
 
