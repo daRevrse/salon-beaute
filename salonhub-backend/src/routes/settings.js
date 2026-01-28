@@ -82,7 +82,7 @@ router.get("/salon", async (req, res) => {
 
     const tenant = await db.query(
       `SELECT id, name, slug, phone, email, address, city, postal_code, logo_url, banner_url, slogan, currency, business_type,
-              subscription_status, subscription_plan, trial_ends_at
+              subscription_status, subscription_plan, trial_ends_at, onboarding_status
        FROM tenants
        WHERE id = ?`,
       [tenantId]
@@ -452,6 +452,31 @@ router.get("/:key", async (req, res) => {
     res.json({ [key]: value });
   } catch (error) {
     console.error("Erreur lors de la récupération du paramètre:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+/**
+ * PUT /api/settings/onboarding/complete
+ * Marquer le tutoriel/onboarding comme terminé
+ */
+router.put("/onboarding/complete", async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+
+    await db.query(
+      `UPDATE tenants
+       SET onboarding_status = 'completed', onboarding_completed_at = NOW()
+       WHERE id = ?`,
+      [tenantId]
+    );
+
+    res.json({
+      success: true,
+      message: "Onboarding marqué comme terminé",
+    });
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour du statut onboarding:", error);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });

@@ -859,21 +859,53 @@ const Settings = () => {
                       <CalendarDaysIcon className="h-5 w-5 mr-2 text-slate-600" />
                       Durée des créneaux
                     </h3>
-                    <div className="max-w-xs">
+                    <div className="max-w-md">
                       <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Durée d'un créneau (minutes)
+                        Durée d'un créneau de réservation
                       </label>
-                      <select
-                        value={slotDuration}
-                        onChange={(e) => setSlotDuration(Number(e.target.value))}
-                        className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
-                      >
-                        <option value={15}>15 minutes</option>
-                        <option value={30}>30 minutes</option>
-                        <option value={60}>60 minutes</option>
-                      </select>
-                      <p className="mt-2 text-sm text-slate-500">
-                        Les {term.clients.toLowerCase()} pourront réserver à des intervalles de {slotDuration} minutes
+                      <div className="flex gap-3">
+                        <div className="flex-1">
+                          <input
+                            type="number"
+                            min="5"
+                            max="480"
+                            value={slotDuration}
+                            onChange={(e) => setSlotDuration(Math.max(5, Math.min(480, Number(e.target.value))))}
+                            className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                            placeholder="30"
+                          />
+                        </div>
+                        <select
+                          value={slotDuration >= 60 && slotDuration % 60 === 0 ? "hours" : "minutes"}
+                          onChange={(e) => {
+                            if (e.target.value === "hours") {
+                              setSlotDuration(Math.max(60, Math.round(slotDuration / 60) * 60));
+                            }
+                          }}
+                          className={`px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                        >
+                          <option value="minutes">minutes</option>
+                          <option value="hours">heures</option>
+                        </select>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {[15, 30, 45, 60, 90, 120].map((mins) => (
+                          <button
+                            key={mins}
+                            type="button"
+                            onClick={() => setSlotDuration(mins)}
+                            className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                              slotDuration === mins
+                                ? `${config.lightBg} ${config.textColor} border-transparent`
+                                : "border-slate-200 text-slate-600 hover:border-slate-300"
+                            }`}
+                          >
+                            {mins >= 60 ? `${mins / 60}h` : `${mins} min`}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-sm text-slate-500">
+                        Les {term.clients.toLowerCase()} pourront réserver à des intervalles de {slotDuration >= 60 ? `${slotDuration / 60} heure(s)` : `${slotDuration} minutes`}
                       </p>
                     </div>
                   </div>

@@ -28,6 +28,20 @@ import {
   FunnelIcon,
 } from "@heroicons/react/24/outline";
 
+// Fonctions utilitaires pour conversion minutes <-> HH:MM
+const minutesToHHMM = (minutes) => {
+  if (!minutes && minutes !== 0) return "";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+
+const hhmmToMinutes = (hhmm) => {
+  if (!hhmm) return null;
+  const [hours, minutes] = hhmm.split(":").map(Number);
+  return (hours || 0) * 60 + (minutes || 0);
+};
+
 const Services = () => {
   const { tenant } = useAuth();
   const { formatPrice: formatCurrency, getCurrencySymbol } = useCurrency();
@@ -58,7 +72,8 @@ const Services = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    duration: "",
+    duration: "", // Format HH:MM
+    slot_duration: "", // Format HH:MM
     price: "",
     category: "",
     is_active: true,
@@ -66,7 +81,9 @@ const Services = () => {
     gallery: [],
   });
 
-  const categories = [...new Set(services.map((s) => s.category).filter(Boolean))];
+  const categories = [
+    ...new Set(services.map((s) => s.category).filter(Boolean)),
+  ];
 
   const handleOpenModal = (service = null) => {
     if (service) {
@@ -74,14 +91,16 @@ const Services = () => {
       // Parse gallery if it's a string
       let galleryData = [];
       if (service.gallery) {
-        galleryData = typeof service.gallery === 'string'
-          ? JSON.parse(service.gallery)
-          : service.gallery;
+        galleryData =
+          typeof service.gallery === "string"
+            ? JSON.parse(service.gallery)
+            : service.gallery;
       }
       setFormData({
         name: service.name,
         description: service.description || "",
-        duration: service.duration,
+        duration: minutesToHHMM(service.duration), // Convertir en HH:MM
+        slot_duration: service.slot_duration ? minutesToHHMM(service.slot_duration) : "", // Convertir en HH:MM
         price: service.price,
         category: service.category || "",
         is_active: service.is_active,
@@ -94,6 +113,7 @@ const Services = () => {
         name: "",
         description: "",
         duration: "",
+        slot_duration: "",
         price: "",
         category: "",
         is_active: true,
@@ -110,7 +130,8 @@ const Services = () => {
   };
 
   const handleChange = (e) => {
-    const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+    const value =
+      e.target.type === "checkbox" ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
@@ -118,7 +139,8 @@ const Services = () => {
     e.preventDefault();
     const serviceData = {
       ...formData,
-      duration: parseInt(formData.duration),
+      duration: hhmmToMinutes(formData.duration), // Convertir HH:MM en minutes
+      slot_duration: formData.slot_duration ? hhmmToMinutes(formData.slot_duration) : null, // Convertir HH:MM en minutes
       price: parseFloat(formData.price),
     };
 
@@ -176,11 +198,20 @@ const Services = () => {
   const getPlaceholder = () => {
     switch (businessType) {
       case "restaurant":
-        return { name: "Pizza Margherita", category: "Pizzas, Pâtes, Desserts" };
+        return {
+          name: "Pizza Margherita",
+          category: "Pizzas, Pâtes, Desserts",
+        };
       case "training":
-        return { name: "Formation React Avancé", category: "Web, Mobile, Data" };
+        return {
+          name: "Formation React Avancé",
+          category: "Web, Mobile, Data",
+        };
       case "medical":
-        return { name: "Consultation générale", category: "Consultation, Examen, Suivi" };
+        return {
+          name: "Consultation générale",
+          category: "Consultation, Examen, Suivi",
+        };
       default:
         return { name: "Coupe Femme", category: "Coupe, Coloration, Soin" };
     }
@@ -190,7 +221,14 @@ const Services = () => {
 
   return (
     <DashboardLayout>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} duration={toast.duration} />}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+          duration={toast.duration}
+        />
+      )}
 
       <ConfirmModal
         isOpen={showDeleteConfirm}
@@ -207,7 +245,9 @@ const Services = () => {
         <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className={`p-2 rounded-xl bg-gradient-to-br ${config.gradient}`}>
+              <div
+                className={`p-2 rounded-xl bg-gradient-to-br ${config.gradient}`}
+              >
                 <BusinessIcon className="h-6 w-6 text-white" />
               </div>
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-800">
@@ -233,7 +273,9 @@ const Services = () => {
         <div className="mb-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">
           <div className="flex items-center gap-2 mb-4">
             <FunnelIcon className={`h-5 w-5 ${config.textColor}`} />
-            <span className="font-medium text-slate-700">{term.serviceCategory}</span>
+            <span className="font-medium text-slate-700">
+              {term.serviceCategory}
+            </span>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -299,7 +341,9 @@ const Services = () => {
                         {service.name}
                       </h3>
                       {service.category && (
-                        <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-lg ${config.lightBg} ${config.textColor} capitalize`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-lg ${config.lightBg} ${config.textColor} capitalize`}
+                        >
                           <TagIcon className="h-3 w-3 mr-1" />
                           {service.category}
                         </span>
@@ -312,7 +356,9 @@ const Services = () => {
                         onChange={() => handleToggle(service.id)}
                         className="sr-only peer"
                       />
-                      <div className={`w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-violet-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r ${config.gradient}`}></div>
+                      <div
+                        className={`w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-violet-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r ${config.gradient}`}
+                      ></div>
                     </label>
                   </div>
 
@@ -323,7 +369,9 @@ const Services = () => {
                   )}
 
                   <div className="flex justify-between items-center mb-4">
-                    <div className={`text-2xl font-bold ${config.textColor} flex items-center`}>
+                    <div
+                      className={`text-2xl font-bold ${config.textColor} flex items-center`}
+                    >
                       {formatCurrency(service.price)}
                     </div>
                     <div className="flex items-center text-sm text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
@@ -363,14 +411,19 @@ const Services = () => {
             <div className="relative bg-white rounded-2xl shadow-soft-xl max-w-lg w-full animate-scale-in">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-xl bg-gradient-to-br ${config.gradient}`}>
+                  <div
+                    className={`p-2 rounded-xl bg-gradient-to-br ${config.gradient}`}
+                  >
                     <BusinessIcon className="h-5 w-5 text-white" />
                   </div>
                   <h3 className="font-display text-lg font-semibold text-slate-800">
                     {editingService ? term.serviceEdit : term.serviceAdd}
                   </h3>
                 </div>
-                <button onClick={handleCloseModal} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <button
+                  onClick={handleCloseModal}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
                   <XMarkIcon className="h-5 w-5 text-slate-400" />
                 </button>
               </div>
@@ -380,7 +433,9 @@ const Services = () => {
                 <ImageUploader
                   target="service-image"
                   imageUrl={formData.image_url}
-                  onImageUpload={(url) => setFormData({ ...formData, image_url: url })}
+                  onImageUpload={(url) =>
+                    setFormData({ ...formData, image_url: url })
+                  }
                   onDelete={() => setFormData({ ...formData, image_url: "" })}
                   label="Image de mise en avant (optionnel)"
                   aspectRatio="aspect-[16/9]"
@@ -389,7 +444,9 @@ const Services = () => {
                 {/* Gallery Uploader */}
                 <GalleryUploader
                   images={formData.gallery}
-                  onImagesChange={(urls) => setFormData({ ...formData, gallery: urls })}
+                  onImagesChange={(urls) =>
+                    setFormData({ ...formData, gallery: urls })
+                  }
                   maxImages={6}
                   label="Galerie photos (optionnel)"
                 />
@@ -423,18 +480,20 @@ const Services = () => {
                   <div>
                     <label className="label-premium flex items-center">
                       <ClockIcon className="h-4 w-4 mr-1.5" />
-                      {term.serviceDuration} (min) *
+                      {term.serviceDuration} *
                     </label>
                     <input
-                      type="number"
+                      type="text"
                       name="duration"
                       required
-                      min="1"
                       value={formData.duration}
                       onChange={handleChange}
                       className="input-premium"
-                      placeholder="30"
+                      placeholder="00:30"
+                      pattern="[0-9]{1,2}:[0-9]{2}"
+                      title="Format: HH:MM (ex: 01:30 pour 1h30)"
                     />
+                    <p className="mt-1 text-xs text-slate-500">Format HH:MM</p>
                   </div>
 
                   <div>
@@ -443,9 +502,6 @@ const Services = () => {
                       {term.servicePrice} ({getCurrencySymbol()}) *
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium pointer-events-none">
-                        {getCurrencySymbol()}
-                      </span>
                       <input
                         type="number"
                         name="price"
@@ -454,7 +510,7 @@ const Services = () => {
                         step="0.01"
                         value={formData.price}
                         onChange={handleChange}
-                        className="input-premium pl-10"
+                        className="input-premium"
                         placeholder="35.00"
                       />
                     </div>
@@ -482,6 +538,26 @@ const Services = () => {
                   </datalist>
                 </div>
 
+                <div>
+                  <label className="label-premium flex items-center">
+                    <ClockIcon className="h-4 w-4 mr-1.5" />
+                    Durée de créneau personnalisée (optionnel)
+                  </label>
+                  <input
+                    type="text"
+                    name="slot_duration"
+                    value={formData.slot_duration}
+                    onChange={handleChange}
+                    className="input-premium"
+                    placeholder="00:30"
+                    pattern="[0-9]{1,2}:[0-9]{2}"
+                    title="Format: HH:MM (ex: 00:30 pour 30min)"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Format HH:MM - Laissez vide pour utiliser la durée globale du salon
+                  </p>
+                </div>
+
                 <div className="flex items-center p-3 rounded-xl bg-slate-50 border border-slate-200">
                   <input
                     type="checkbox"
@@ -491,17 +567,30 @@ const Services = () => {
                     onChange={handleChange}
                     className={`h-5 w-5 rounded border-slate-300 ${config.textColor} focus:ring-violet-500`}
                   />
-                  <label htmlFor="is_active" className="ml-3 text-sm text-slate-700">
+                  <label
+                    htmlFor="is_active"
+                    className="ml-3 text-sm text-slate-700"
+                  >
                     <span className="font-medium">Actif</span>
-                    <span className="text-slate-500 ml-1">- disponible à la réservation</span>
+                    <span className="text-slate-500 ml-1">
+                      - disponible à la réservation
+                    </span>
                   </label>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">
-                  <button type="button" onClick={handleCloseModal} className="btn-premium-secondary">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="btn-premium-secondary"
+                  >
                     Annuler
                   </button>
-                  <button type="submit" disabled={loading} className="btn-premium">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-premium"
+                  >
                     {loading ? "Enregistrement..." : "Enregistrer"}
                   </button>
                 </div>

@@ -23,14 +23,21 @@ import GalleryLightbox from "../../components/common/GalleryLightbox";
 const BookingLanding = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { formatPrice, setSalonBaseCurrency } = useCurrency();
+  const { formatPrice, changeCurrency } = useCurrency();
 
-  const { salon, services, loading, error, fetchSalon, fetchServices } =
+  const { salon, services, settings, loading, error, fetchSalon, fetchServices, fetchSettings } =
     usePublicBooking(slug);
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState([]);
+
+  // Thème personnalisé du salon
+  const themeSettings = settings?.theme_settings || {
+    primaryColor: "#8B5CF6",
+    secondaryColor: "#6366F1",
+    fontFamily: "Inter"
+  };
 
   // Open gallery lightbox for a service
   const openGallery = useCallback((service, e) => {
@@ -57,9 +64,10 @@ const BookingLanding = () => {
     const loadData = async () => {
       const salonData = await fetchSalon();
       if (salonData?.currency) {
-        setSalonBaseCurrency(salonData.currency);
+        changeCurrency(salonData.currency);
       }
       await fetchServices();
+      await fetchSettings(); // Charger les settings pour le thème
     };
     loadData();
   }, []);
@@ -114,8 +122,24 @@ const BookingLanding = () => {
     );
   }
 
+  // Style dynamique pour le thème
+  const dynamicStyles = {
+    gradientBg: {
+      background: `linear-gradient(135deg, ${themeSettings.primaryColor}, ${themeSettings.secondaryColor})`
+    },
+    primaryText: {
+      color: themeSettings.primaryColor
+    },
+    primaryBg: {
+      backgroundColor: `${themeSettings.primaryColor}15`
+    },
+    fontFamily: {
+      fontFamily: themeSettings.fontFamily
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50" style={dynamicStyles.fontFamily}>
       {/* Hero Section - Slideshow + Intro */}
       <div className="relative w-full h-[60vh] md:h-[70vh] overflow-hidden rounded-b-3xl shadow-soft-xl">
         {/* Background Images */}
@@ -137,7 +161,7 @@ const BookingLanding = () => {
             />
           ))
         ) : (
-          <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient}`}></div>
+          <div className="absolute inset-0" style={dynamicStyles.gradientBg}></div>
         )}
 
         {/* Overlay */}
@@ -152,7 +176,10 @@ const BookingLanding = () => {
               className="h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 rounded-2xl border-4 border-white/30 shadow-soft-xl object-cover mb-4 bg-white p-2"
             />
           ) : (
-            <div className={`h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 rounded-2xl bg-gradient-to-br ${config.gradient} flex items-center justify-center border-4 border-white/30 shadow-soft-xl mb-4`}>
+            <div
+              className="h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 rounded-2xl flex items-center justify-center border-4 border-white/30 shadow-soft-xl mb-4"
+              style={dynamicStyles.gradientBg}
+            >
               <SparklesIcon className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
             </div>
           )}
@@ -236,7 +263,8 @@ const BookingLanding = () => {
                   ) && (
                     <button
                       onClick={(e) => openGallery(service, e)}
-                      className={`absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md ${config.textColor} hover:bg-white transition-all opacity-0 group-hover:opacity-100`}
+                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all opacity-0 group-hover:opacity-100"
+                      style={dynamicStyles.primaryText}
                       title="Voir la galerie"
                     >
                       <PhotoIcon className="w-5 h-5" />
@@ -257,7 +285,7 @@ const BookingLanding = () => {
                   )}
 
                   <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-3">
-                    <span className={`${config.textColor} text-lg sm:text-xl font-bold`}>
+                    <span className="text-lg sm:text-xl font-bold" style={dynamicStyles.primaryText}>
                       {formatPrice(service.price)}
                     </span>
 
@@ -268,17 +296,20 @@ const BookingLanding = () => {
                   </div>
 
                   {service.category && (
-                    <span className={`inline-block mt-3 px-3 py-1 text-xs font-medium ${config.lightBg} ${config.textColor} rounded-full`}>
+                    <span
+                      className="inline-block mt-3 px-3 py-1 text-xs font-medium rounded-full"
+                      style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryText }}
+                    >
                       {service.category}
                     </span>
                   )}
                 </div>
 
-                <div className={`${config.lightBg} px-4 sm:px-6 py-3 flex items-center justify-between`}>
-                  <span className={`${config.textColor} font-medium text-sm`}>
+                <div className="px-4 sm:px-6 py-3 flex items-center justify-between" style={dynamicStyles.primaryBg}>
+                  <span className="font-medium text-sm" style={dynamicStyles.primaryText}>
                     {term.book}
                   </span>
-                  <ChevronRightIcon className={`w-4 h-4 ${config.textColor}`} />
+                  <ChevronRightIcon className="w-4 h-4" style={dynamicStyles.primaryText} />
                 </div>
               </div>
             ))}

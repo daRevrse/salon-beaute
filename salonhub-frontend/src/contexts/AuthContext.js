@@ -24,6 +24,11 @@ export const AuthProvider = ({ children }) => {
           setUser(parsedUser);
           setTenant(parsedTenant);
 
+          // Synchroniser la devise du tenant
+          if (parsedTenant?.currency) {
+            localStorage.setItem('tenant_currency', parsedTenant.currency);
+          }
+
           // Vérifier que le token est toujours valide et récupérer données fraîches
           const response = await api.get('/auth/me');
           const freshUser = response.data.data;
@@ -61,10 +66,15 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(newUser));
       localStorage.setItem('tenant', JSON.stringify(newTenant));
-      
+
+      // Synchroniser la devise du tenant
+      if (newTenant?.currency) {
+        localStorage.setItem('tenant_currency', newTenant.currency);
+      }
+
       setUser(newUser);
       setTenant(newTenant);
-      
+
       return { success: true };
     } catch (err) {
       const errorMessage = err.response?.data?.error || 'Erreur lors de l\'inscription';
@@ -89,10 +99,15 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(loggedUser));
       localStorage.setItem('tenant', JSON.stringify(userTenant));
-      
+
+      // Synchroniser la devise du tenant
+      if (userTenant?.currency) {
+        localStorage.setItem('tenant_currency', userTenant.currency);
+      }
+
       setUser(loggedUser);
       setTenant(userTenant);
-      
+
       return { success: true };
     } catch (err) {
       const errorMessage = err.response?.data?.error || 'Email ou mot de passe incorrect';
@@ -108,6 +123,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('tenant');
+    localStorage.removeItem('tenant_currency');
     setUser(null);
     setTenant(null);
     setError(null);
@@ -168,6 +184,12 @@ export const AuthProvider = ({ children }) => {
         };
 
         localStorage.setItem('tenant', JSON.stringify(updatedTenant));
+
+        // Synchroniser la devise du tenant
+        if (updatedTenant?.currency) {
+          localStorage.setItem('tenant_currency', updatedTenant.currency);
+        }
+
         setTenant(updatedTenant);
 
         return { success: true, data: updatedTenant };

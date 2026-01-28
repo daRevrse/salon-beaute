@@ -162,17 +162,28 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadDashboardData();
-    const hasSeenTutorial = localStorage.getItem("dashboardTutorialSeen");
-    if (!hasSeenTutorial) {
+
+    // Vérifier si le tutoriel a été complété (priorité: base de données > localStorage)
+    const hasSeenTutorialLocal = localStorage.getItem("dashboardTutorialSeen");
+    const hasCompletedOnboarding = tenant?.onboarding_status === "completed";
+
+    if (!hasCompletedOnboarding && !hasSeenTutorialLocal) {
       setTimeout(() => setRunTutorial(true), 1000);
     }
-  }, []);
+  }, [tenant?.onboarding_status]);
 
-  const handleJoyrideCallback = (data) => {
+  const handleJoyrideCallback = async (data) => {
     const { status } = data;
     if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
       setRunTutorial(false);
       localStorage.setItem("dashboardTutorialSeen", "true");
+
+      // Marquer le tutoriel comme terminé dans la base de données
+      try {
+        await api.put("/settings/onboarding/complete");
+      } catch (error) {
+        console.error("Erreur lors de la mise à jour du statut onboarding:", error);
+      }
     }
   };
 

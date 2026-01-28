@@ -20,7 +20,7 @@ router.get("/", async (req, res) => {
   try {
     const { category, is_active, search } = req.query;
 
-    let sql = "SELECT id, tenant_id, name, description, duration, price, category, is_active, requires_deposit, deposit_amount, available_for_online_booking, image_url, gallery, booking_count, created_at, updated_at FROM services WHERE tenant_id = ?";
+    let sql = "SELECT id, tenant_id, name, description, duration, slot_duration, price, category, is_active, requires_deposit, deposit_amount, available_for_online_booking, image_url, gallery, booking_count, created_at, updated_at FROM services WHERE tenant_id = ?";
     const params = [req.tenantId];
 
     // Filtres optionnels
@@ -74,7 +74,7 @@ router.get("/:id", async (req, res) => {
     const { id } = req.params;
 
     const [service] = await query(
-      "SELECT id, tenant_id, name, description, duration, price, category, is_active, requires_deposit, deposit_amount, available_for_online_booking, image_url, gallery, booking_count, created_at, updated_at FROM services WHERE id = ? AND tenant_id = ?",
+      "SELECT id, tenant_id, name, description, duration, slot_duration, price, category, is_active, requires_deposit, deposit_amount, available_for_online_booking, image_url, gallery, booking_count, created_at, updated_at FROM services WHERE id = ? AND tenant_id = ?",
       [id, req.tenantId]
     );
 
@@ -122,6 +122,7 @@ router.post("/", async (req, res) => {
       name,
       description,
       duration,
+      slot_duration,
       price,
       category,
       is_active,
@@ -150,15 +151,16 @@ router.post("/", async (req, res) => {
     // Insertion
     const result = await query(
       `INSERT INTO services (
-        tenant_id, name, description, duration, price, category,
+        tenant_id, name, description, duration, slot_duration, price, category,
         is_active, requires_deposit, deposit_amount,
         available_for_online_booking, image_url, gallery
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.tenantId,
         name,
         description || null,
         duration,
+        slot_duration || null,
         price,
         category || null,
         is_active !== undefined ? is_active : true,
@@ -198,6 +200,7 @@ router.put("/:id", async (req, res) => {
       name,
       description,
       duration,
+      slot_duration,
       price,
       category,
       is_active,
@@ -242,6 +245,7 @@ router.put("/:id", async (req, res) => {
         name = ?,
         description = ?,
         duration = ?,
+        slot_duration = ?,
         price = ?,
         category = ?,
         is_active = ?,
@@ -255,6 +259,7 @@ router.put("/:id", async (req, res) => {
         name,
         description || null,
         duration,
+        slot_duration || null,
         price,
         category || null,
         is_active !== undefined ? is_active : true,

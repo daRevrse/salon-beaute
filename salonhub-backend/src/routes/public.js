@@ -164,7 +164,7 @@ router.get("/salon/:slug/services", checkPublicSubscription('slug'), async (req,
 
     // Récupérer les services actifs et disponibles pour réservation en ligne
     const services = await db.query(
-      `SELECT id, name, description, duration, price, category, image_url, gallery
+      `SELECT id, name, description, duration, slot_duration, price, category, image_url, gallery
        FROM services
        WHERE tenant_id = ?
          AND is_active = 1
@@ -200,12 +200,12 @@ router.get("/salon/:slug/settings", checkPublicSubscription('slug'), async (req,
 
     const tenantId = tenant[0].id;
 
-    // Récupérer les paramètres publics
+    // Récupérer les paramètres publics (inclut theme_settings pour le style de la page)
     const settings = await db.query(
       `SELECT setting_key, setting_value, setting_type
        FROM settings
        WHERE tenant_id = ?
-         AND setting_key IN ('business_hours', 'appointment_buffer', 'slot_duration')`,
+         AND setting_key IN ('business_hours', 'appointment_buffer', 'slot_duration', 'theme_settings')`,
       [tenantId]
     );
 
@@ -249,6 +249,15 @@ router.get("/salon/:slug/settings", checkPublicSubscription('slug'), async (req,
 
     if (!formattedSettings.appointment_buffer) {
       formattedSettings.appointment_buffer = 0; // Pas de buffer par défaut
+    }
+
+    // Valeurs par défaut pour le thème
+    if (!formattedSettings.theme_settings) {
+      formattedSettings.theme_settings = {
+        primaryColor: "#8B5CF6",
+        secondaryColor: "#6366F1",
+        fontFamily: "Inter"
+      };
     }
 
     res.json(formattedSettings);
