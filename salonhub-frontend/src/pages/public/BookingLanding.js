@@ -20,6 +20,16 @@ import {
 } from "@heroicons/react/24/outline";
 import GalleryLightbox from "../../components/common/GalleryLightbox";
 
+// Fonction utilitaire pour formater les minutes en HH:MM ou texte lisible
+const formatDuration = (minutes) => {
+  if (!minutes && minutes !== 0) return "-";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return h === 1 ? `1 heure` : `${h} heures`;
+  return `${h}h${String(m).padStart(2, "0")}`;
+};
+
 const BookingLanding = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -36,7 +46,9 @@ const BookingLanding = () => {
   const themeSettings = settings?.theme_settings || {
     primaryColor: "#8B5CF6",
     secondaryColor: "#6366F1",
-    fontFamily: "Inter"
+    fontFamily: "Inter",
+    footerBgColor: "#1E293B",
+    footerTextColor: "#FFFFFF"
   };
 
   // Open gallery lightbox for a service
@@ -135,6 +147,13 @@ const BookingLanding = () => {
     },
     fontFamily: {
       fontFamily: themeSettings.fontFamily
+    },
+    footer: {
+      backgroundColor: themeSettings.footerBgColor || "#1E293B",
+      color: themeSettings.footerTextColor || "#FFFFFF"
+    },
+    footerMuted: {
+      color: `${themeSettings.footerTextColor || "#FFFFFF"}99`
     }
   };
 
@@ -291,7 +310,7 @@ const BookingLanding = () => {
 
                     <div className="flex items-center gap-1 text-slate-500">
                       <ClockIcon className="w-5 h-5" />
-                      <span className="text-sm">{service.duration} min</span>
+                      <span className="text-sm">{formatDuration(service.duration)}</span>
                     </div>
                   </div>
 
@@ -318,8 +337,8 @@ const BookingLanding = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-slate-600">
+      <footer className="mt-12" style={dynamicStyles.footer}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm">
           {salon?.phone && (
             <div className="flex justify-center items-center gap-2 mb-1">
               <PhoneIcon className="w-4 h-4" />
@@ -336,7 +355,7 @@ const BookingLanding = () => {
             </div>
           )}
 
-          <p className="mt-4 text-slate-400 text-xs">
+          <p className="mt-4 text-xs" style={dynamicStyles.footerMuted}>
             © {new Date().getFullYear()} {salon?.name || "SalonHub"}. Tous droits réservés.
           </p>
         </div>

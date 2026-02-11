@@ -74,11 +74,16 @@ import PasswordResetManagement from "./pages/admin/PasswordResetManagement";
 import BillingDashboard from "./pages/admin/BillingDashboard";
 import ImpersonationManager from "./pages/admin/ImpersonationManager";
 import AdvancedAnalytics from "./pages/admin/AdvancedAnalytics";
+import AnnouncementsManager from "./pages/admin/AnnouncementsManager";
+import MessagesManager from "./pages/admin/MessagesManager";
 import { SocketProvider } from "./contexts/SocketContext";
 import ImpersonationBanner from "./components/common/ImpersonationBanner";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
 function App() {
-  return (
+  const content = (
     <BrowserRouter>
       <AuthProvider>
         <PermissionProvider>
@@ -133,6 +138,14 @@ function App() {
                 <Route
                   path="/superadmin/analytics"
                   element={<AdvancedAnalytics />}
+                />
+                <Route
+                  path="/superadmin/announcements"
+                  element={<AnnouncementsManager />}
+                />
+                <Route
+                  path="/superadmin/messages"
+                  element={<MessagesManager />}
                 />
 
                 {/* Routes publiques - Restaurant */}
@@ -350,6 +363,12 @@ function App() {
       </AuthProvider>
     </BrowserRouter>
   );
+
+  if (GOOGLE_CLIENT_ID) {
+    return <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>{content}</GoogleOAuthProvider>;
+  }
+
+  return content;
 }
 
 export default App;

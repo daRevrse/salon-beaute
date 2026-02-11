@@ -58,6 +58,15 @@ router.post("/create-checkout-session", async (req, res) => {
       });
     }
 
+    // Bloquer les plans sur mesure
+    if (PLANS[plan].isCustom) {
+      return res.status(400).json({
+        success: false,
+        error: "Plan sur mesure",
+        message: "Contactez-nous pour un devis personnalisé à info@flowkraftagency.com",
+      });
+    }
+
     // Vérifier que le tenant n'a pas déjà un abonnement actif
     const [tenant] = await query(
       "SELECT subscription_status, stripe_subscription_id FROM tenants WHERE id = ?",

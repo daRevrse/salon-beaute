@@ -400,7 +400,7 @@ router.put(
       const { plan, reason } = req.body;
 
       // Validate plan
-      const validPlans = ["essential", "professional", "enterprise", "trial"];
+      const validPlans = ["essential", "pro", "custom", "trial"];
       if (!plan || !validPlans.includes(plan)) {
         return res.status(400).json({
           success: false,
@@ -928,6 +928,947 @@ router.delete(
       });
     } catch (error) {
       console.error("Erreur DELETE /password-resets/cleanup:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+// ==========================================
+// MODIFICATION TENANT (CRUD complet)
+// ==========================================
+
+/**
+ * PUT /api/admin/tenants/:id
+ * Modifier les informations d'un tenant
+ */
+router.put(
+  "/tenants/:id",
+  superAdminAuth,
+  requirePermission("tenants", "edit"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, email, phone, address, city, postal_code } = req.body;
+
+      // Vérifier que le tenant existe
+      const [tenants] = await pool.query(
+        `SELECT * FROM tenants WHERE id = ?`,
+        [id]
+      );
+
+      if (tenants.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant non trouvé",
+        });
+      }
+
+      const tenant = tenants[0];
+
+      // Construire la requête dynamique
+      const updates = [];
+      const params = [];
+
+      if (name !== undefined) { updates.push("name = ?"); params.push(name); }
+      if (email !== undefined) { updates.push("email = ?"); params.push(email); }
+      if (phone !== undefined) { updates.push("phone = ?"); params.push(phone); }
+      if (address !== undefined) { updates.push("address = ?"); params.push(address); }
+      if (city !== undefined) { updates.push("city = ?"); params.push(city); }
+      if (postal_code !== undefined) { updates.push("postal_code = ?"); params.push(postal_code); }
+
+      if (updates.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Aucun champ à modifier",
+        });
+      }
+
+      params.push(id);
+      await pool.query(
+        `UPDATE tenants SET ${updates.join(", ")} WHERE id = ?`,
+        params
+      );
+
+      await logAdminActivity(req.superAdmin.id, "tenant_updated", {
+        resource_type: "tenant",
+        resource_id: id,
+        description: `Modification du tenant: ${tenant.name}`,
+        metadata: { fields_updated: updates.map(u => u.split(" = ")[0]) },
+        req,
+      });
+
+      res.json({
+        success: true,
+        message: "Tenant modifié avec succès",
+      });
+    } catch (error) {
+      console.error("Erreur PUT /tenants/:id:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+// ==========================================
+// GESTION DES UTILISATEURS (Actions)
+// ==========================================
+
+/**
+ * PUT /api/admin/users/:id/toggle-active
+ * Activer/Désactiver un utilisateur
+ */
+router.put(
+  "/users/:id/toggle-active",
+  superAdminAuth,
+  requirePermission("users", "edit"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const [users] = await pool.query(
+        `SELECT u.*, t.name as tenant_name FROM users u
+         LEFT JOIN tenants t ON u.tenant_id = t.id
+         WHERE u.id = ?`,
+        [id]
+      );
+
+      if (users.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Utilisateur non trouvé",
+        });
+      }
+
+      const user = users[0];
+      const newStatus = !user.is_active;
+
+      await pool.query(
+        `UPDATE users SET is_active = ? WHERE id = ?`,
+        [newStatus, id]
+      );
+
+      await logAdminActivity(req.superAdmin.id, newStatus ? "user_activated" : "user_deactivated", {
+        resource_type: "user",
+        resource_id: id,
+        description: `${newStatus ? "Activation" : "Désactivation"} de ${user.first_name} ${user.last_name} (${user.tenant_name})`,
+        req,
+      });
+
+      res.json({
+        success: true,
+        message: `Utilisateur ${newStatus ? "activé" : "désactivé"} avec succès`,
+        is_active: newStatus,
+      });
+    } catch (error) {
+      console.error("Erreur PUT /users/:id/toggle-active:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+/**
+ * PUT /api/admin/users/:id/reset-password
+ * Réinitialiser le mot de passe d'un utilisateur
+ */
+router.put(
+  "/users/:id/reset-password",
+  superAdminAuth,
+  requirePermission("users", "edit"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const [users] = await pool.query(
+        `SELECT u.*, t.name as tenant_name FROM users u
+         LEFT JOIN tenants t ON u.tenant_id = t.id
+         WHERE u.id = ?`,
+        [id]
+      );
+
+      if (users.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Utilisateur non trouvé",
+        });
+      }
+
+      const user = users[0];
+
+      // Générer un mot de passe aléatoire
+      const crypto = require("crypto");
+      const newPassword = crypto.randomBytes(6).toString("hex"); // 12 caractères
+      const password_hash = await bcrypt.hash(newPassword, 10);
+
+      await pool.query(
+        `UPDATE users SET password_hash = ? WHERE id = ?`,
+        [password_hash, id]
+      );
+
+      await logAdminActivity(req.superAdmin.id, "user_password_reset", {
+        resource_type: "user",
+        resource_id: id,
+        description: `Reset mot de passe de ${user.first_name} ${user.last_name} (${user.tenant_name})`,
+        req,
+      });
+
+      res.json({
+        success: true,
+        message: "Mot de passe réinitialisé avec succès",
+        temporary_password: newPassword,
+      });
+    } catch (error) {
+      console.error("Erreur PUT /users/:id/reset-password:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+/**
+ * PUT /api/admin/users/:id/change-role
+ * Changer le rôle d'un utilisateur
+ */
+router.put(
+  "/users/:id/change-role",
+  superAdminAuth,
+  requirePermission("users", "edit"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { role } = req.body;
+
+      const validRoles = ["owner", "admin", "staff"];
+      if (!role || !validRoles.includes(role)) {
+        return res.status(400).json({
+          success: false,
+          error: `Rôle invalide. Valeurs acceptées: ${validRoles.join(", ")}`,
+        });
+      }
+
+      const [users] = await pool.query(
+        `SELECT u.*, t.name as tenant_name FROM users u
+         LEFT JOIN tenants t ON u.tenant_id = t.id
+         WHERE u.id = ?`,
+        [id]
+      );
+
+      if (users.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Utilisateur non trouvé",
+        });
+      }
+
+      const user = users[0];
+      const previousRole = user.role;
+
+      await pool.query(
+        `UPDATE users SET role = ? WHERE id = ?`,
+        [role, id]
+      );
+
+      await logAdminActivity(req.superAdmin.id, "user_role_changed", {
+        resource_type: "user",
+        resource_id: id,
+        description: `Changement de rôle de ${user.first_name} ${user.last_name}: ${previousRole} → ${role}`,
+        metadata: { previous_role: previousRole, new_role: role },
+        req,
+      });
+
+      res.json({
+        success: true,
+        message: `Rôle mis à jour: ${role}`,
+        previous_role: previousRole,
+        new_role: role,
+      });
+    } catch (error) {
+      console.error("Erreur PUT /users/:id/change-role:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+// ==========================================
+// BILLING AVANCÉ
+// ==========================================
+
+/**
+ * PUT /api/admin/tenants/:id/subscription
+ * Ajuster manuellement l'abonnement d'un tenant
+ */
+router.put(
+  "/tenants/:id/subscription",
+  superAdminAuth,
+  requirePermission("tenants", "edit"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { plan, status, trial_ends_at, reason, discount_percent } = req.body;
+
+      const [tenants] = await pool.query(
+        `SELECT * FROM tenants WHERE id = ?`,
+        [id]
+      );
+
+      if (tenants.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant non trouvé",
+        });
+      }
+
+      const tenant = tenants[0];
+      const updates = [];
+      const params = [];
+      const changes = {};
+
+      if (plan) {
+        const validPlans = ["essential", "pro", "custom", "trial"];
+        if (!validPlans.includes(plan)) {
+          return res.status(400).json({
+            success: false,
+            error: `Plan invalide. Valeurs: ${validPlans.join(", ")}`,
+          });
+        }
+        updates.push("subscription_plan = ?");
+        params.push(plan);
+        changes.plan = { from: tenant.subscription_plan, to: plan };
+      }
+
+      if (status) {
+        const validStatuses = ["active", "trial", "suspended", "cancelled", "expired"];
+        if (!validStatuses.includes(status)) {
+          return res.status(400).json({
+            success: false,
+            error: `Statut invalide. Valeurs: ${validStatuses.join(", ")}`,
+          });
+        }
+        updates.push("subscription_status = ?");
+        params.push(status);
+        changes.status = { from: tenant.subscription_status, to: status };
+      }
+
+      if (trial_ends_at) {
+        updates.push("trial_ends_at = ?");
+        params.push(trial_ends_at);
+        changes.trial_ends_at = trial_ends_at;
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Aucune modification fournie",
+        });
+      }
+
+      params.push(id);
+      await pool.query(
+        `UPDATE tenants SET ${updates.join(", ")} WHERE id = ?`,
+        params
+      );
+
+      await logAdminActivity(req.superAdmin.id, "subscription_adjusted", {
+        resource_type: "tenant",
+        resource_id: id,
+        description: `Ajustement abonnement de ${tenant.name}`,
+        metadata: { changes, reason: reason || "Ajustement manuel SuperAdmin" },
+        req,
+      });
+
+      res.json({
+        success: true,
+        message: "Abonnement ajusté avec succès",
+        changes,
+      });
+    } catch (error) {
+      console.error("Erreur PUT /tenants/:id/subscription:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/tenants/:id/retry-payment
+ * Relancer un paiement échoué via Stripe
+ */
+router.post(
+  "/tenants/:id/retry-payment",
+  superAdminAuth,
+  requirePermission("tenants", "edit"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const [tenants] = await pool.query(
+        `SELECT * FROM tenants WHERE id = ?`,
+        [id]
+      );
+
+      if (tenants.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant non trouvé",
+        });
+      }
+
+      const tenant = tenants[0];
+
+      if (!tenant.stripe_customer_id) {
+        return res.status(400).json({
+          success: false,
+          error: "Ce tenant n'a pas de compte Stripe",
+        });
+      }
+
+      // Récupérer la dernière facture impayée
+      const { stripe } = require("../config/stripe");
+      const invoices = await stripe.invoices.list({
+        customer: tenant.stripe_customer_id,
+        status: "open",
+        limit: 1,
+      });
+
+      if (invoices.data.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Aucune facture impayée trouvée",
+        });
+      }
+
+      const invoice = invoices.data[0];
+      const result = await stripe.invoices.pay(invoice.id);
+
+      await logAdminActivity(req.superAdmin.id, "payment_retry", {
+        resource_type: "tenant",
+        resource_id: id,
+        description: `Relance paiement pour ${tenant.name} - Facture ${invoice.id}`,
+        metadata: { invoice_id: invoice.id, status: result.status },
+        req,
+      });
+
+      res.json({
+        success: true,
+        message: "Paiement relancé avec succès",
+        invoice_status: result.status,
+      });
+    } catch (error) {
+      console.error("Erreur POST /tenants/:id/retry-payment:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Erreur serveur",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/tenants/:id/invoices
+ * Historique des factures d'un tenant via Stripe
+ */
+router.get(
+  "/tenants/:id/invoices",
+  superAdminAuth,
+  requirePermission("tenants", "view"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { limit = 20 } = req.query;
+
+      const [tenants] = await pool.query(
+        `SELECT stripe_customer_id, name FROM tenants WHERE id = ?`,
+        [id]
+      );
+
+      if (tenants.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant non trouvé",
+        });
+      }
+
+      const tenant = tenants[0];
+
+      if (!tenant.stripe_customer_id) {
+        return res.json({
+          success: true,
+          invoices: [],
+          message: "Ce tenant n'a pas de compte Stripe",
+        });
+      }
+
+      const { stripe } = require("../config/stripe");
+      const invoices = await stripe.invoices.list({
+        customer: tenant.stripe_customer_id,
+        limit: parseInt(limit),
+      });
+
+      const formattedInvoices = invoices.data.map((inv) => ({
+        id: inv.id,
+        number: inv.number,
+        amount: inv.amount_due / 100,
+        currency: inv.currency,
+        status: inv.status,
+        created: new Date(inv.created * 1000),
+        due_date: inv.due_date ? new Date(inv.due_date * 1000) : null,
+        paid_at: inv.status_transitions?.paid_at
+          ? new Date(inv.status_transitions.paid_at * 1000)
+          : null,
+        invoice_pdf: inv.invoice_pdf,
+        hosted_invoice_url: inv.hosted_invoice_url,
+      }));
+
+      res.json({
+        success: true,
+        invoices: formattedInvoices,
+      });
+    } catch (error) {
+      console.error("Erreur GET /tenants/:id/invoices:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+// ==========================================
+// COMMUNICATION (Annonces & Messages)
+// ==========================================
+
+/**
+ * GET /api/admin/announcements
+ * Lister toutes les annonces
+ */
+router.get(
+  "/announcements",
+  superAdminAuth,
+  requirePermission("system", "view_logs"),
+  async (req, res) => {
+    try {
+      const { limit = 50, offset = 0 } = req.query;
+
+      const [announcements] = await pool.query(
+        `SELECT a.*, sa.first_name as admin_first_name, sa.last_name as admin_last_name
+         FROM admin_announcements a
+         JOIN super_admins sa ON a.super_admin_id = sa.id
+         ORDER BY a.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [parseInt(limit), parseInt(offset)]
+      );
+
+      res.json({
+        success: true,
+        announcements,
+      });
+    } catch (error) {
+      console.error("Erreur GET /announcements:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/announcements
+ * Créer et envoyer une annonce
+ */
+router.post(
+  "/announcements",
+  superAdminAuth,
+  requirePermission("system", "manage"),
+  async (req, res) => {
+    try {
+      const { title, content, target_type, target_plans, target_tenant_ids, sent_via } = req.body;
+
+      if (!title || !content) {
+        return res.status(400).json({
+          success: false,
+          error: "Titre et contenu requis",
+        });
+      }
+
+      const [result] = await pool.query(
+        `INSERT INTO admin_announcements
+         (super_admin_id, title, content, target_type, target_plans, target_tenant_ids, sent_via, sent_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          req.superAdmin.id,
+          title,
+          content,
+          target_type || "all",
+          target_plans ? JSON.stringify(target_plans) : null,
+          target_tenant_ids ? JSON.stringify(target_tenant_ids) : null,
+          sent_via || "email",
+        ]
+      );
+
+      // Récupérer les destinataires selon le ciblage
+      let recipientQuery = `
+        SELECT DISTINCT u.email, u.first_name, t.name as tenant_name, t.id as tenant_id
+        FROM users u
+        JOIN tenants t ON u.tenant_id = t.id
+        WHERE u.role = 'owner' AND u.is_active = TRUE AND t.is_active = TRUE
+      `;
+      const recipientParams = [];
+
+      if (target_type === "plan" && target_plans && target_plans.length > 0) {
+        recipientQuery += ` AND t.subscription_plan IN (${target_plans.map(() => "?").join(",")})`;
+        recipientParams.push(...target_plans);
+      } else if (target_type === "specific" && target_tenant_ids && target_tenant_ids.length > 0) {
+        recipientQuery += ` AND t.id IN (${target_tenant_ids.map(() => "?").join(",")})`;
+        recipientParams.push(...target_tenant_ids);
+      }
+
+      const [recipients] = await pool.query(recipientQuery, recipientParams);
+
+      // Envoyer les emails en arrière-plan (ne pas bloquer la réponse)
+      if (sent_via !== "in_app") {
+        const emailService = require("../services/emailService");
+        for (const recipient of recipients) {
+          emailService.sendEmail({
+            to: recipient.email,
+            subject: `[SalonHub] ${title}`,
+            html: `
+              <h2>${title}</h2>
+              <p>Bonjour ${recipient.first_name},</p>
+              <div>${content}</div>
+              <br/>
+              <p>L'équipe SalonHub</p>
+            `,
+          }).catch(err => console.error(`Erreur envoi annonce à ${recipient.email}:`, err));
+        }
+      }
+
+      // Émettre via Socket.io pour les notifications in-app
+      if (sent_via !== "email" && req.io) {
+        const tenantIds = [...new Set(recipients.map(r => r.tenant_id))];
+        for (const tid of tenantIds) {
+          req.io.to(`tenant_${tid}`).emit("admin_notification", {
+            type: "announcement",
+            id: result.insertId,
+            title,
+            content,
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      await logAdminActivity(req.superAdmin.id, "announcement_sent", {
+        resource_type: "announcement",
+        resource_id: result.insertId,
+        description: `Annonce envoyée: "${title}" à ${recipients.length} destinataires`,
+        metadata: { target_type, recipients_count: recipients.length },
+        req,
+      });
+
+      res.status(201).json({
+        success: true,
+        message: `Annonce envoyée à ${recipients.length} destinataire(s)`,
+        announcement_id: result.insertId,
+        recipients_count: recipients.length,
+      });
+    } catch (error) {
+      console.error("Erreur POST /announcements:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/messages
+ * Lister tous les messages
+ */
+router.get(
+  "/messages",
+  superAdminAuth,
+  requirePermission("system", "view_logs"),
+  async (req, res) => {
+    try {
+      const { tenant_id, limit = 50, offset = 0 } = req.query;
+
+      let query = `
+        SELECT m.*,
+          sa.first_name as admin_first_name, sa.last_name as admin_last_name,
+          t.name as tenant_name,
+          u.first_name as user_first_name, u.last_name as user_last_name, u.email as user_email
+        FROM admin_messages m
+        JOIN super_admins sa ON m.super_admin_id = sa.id
+        JOIN tenants t ON m.tenant_id = t.id
+        LEFT JOIN users u ON m.user_id = u.id
+        WHERE 1=1
+      `;
+      const params = [];
+
+      if (tenant_id) {
+        query += ` AND m.tenant_id = ?`;
+        params.push(tenant_id);
+      }
+
+      query += ` ORDER BY m.created_at DESC LIMIT ? OFFSET ?`;
+      params.push(parseInt(limit), parseInt(offset));
+
+      const [messages] = await pool.query(query, params);
+
+      res.json({
+        success: true,
+        messages,
+      });
+    } catch (error) {
+      console.error("Erreur GET /messages:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/messages
+ * Envoyer un message à un tenant spécifique
+ */
+router.post(
+  "/messages",
+  superAdminAuth,
+  requirePermission("system", "manage"),
+  async (req, res) => {
+    try {
+      const { tenant_id, subject, content, send_email } = req.body;
+
+      if (!tenant_id || !subject || !content) {
+        return res.status(400).json({
+          success: false,
+          error: "tenant_id, subject et content requis",
+        });
+      }
+
+      // Récupérer le tenant et son owner
+      const [tenants] = await pool.query(
+        `SELECT t.*, u.id as owner_id, u.email as owner_email, u.first_name as owner_first_name
+         FROM tenants t
+         JOIN users u ON u.tenant_id = t.id AND u.role = 'owner'
+         WHERE t.id = ?
+         LIMIT 1`,
+        [tenant_id]
+      );
+
+      if (tenants.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant non trouvé",
+        });
+      }
+
+      const tenant = tenants[0];
+
+      const [result] = await pool.query(
+        `INSERT INTO admin_messages
+         (super_admin_id, tenant_id, user_id, subject, content)
+         VALUES (?, ?, ?, ?, ?)`,
+        [req.superAdmin.id, tenant_id, tenant.owner_id, subject, content]
+      );
+
+      // Envoyer par email si demandé
+      if (send_email !== false && tenant.owner_email) {
+        const emailService = require("../services/emailService");
+        emailService.sendEmail({
+          to: tenant.owner_email,
+          subject: `[SalonHub] ${subject}`,
+          html: `
+            <h2>${subject}</h2>
+            <p>Bonjour ${tenant.owner_first_name},</p>
+            <div>${content}</div>
+            <br/>
+            <p>L'équipe SalonHub</p>
+          `,
+        }).catch(err => console.error(`Erreur envoi message à ${tenant.owner_email}:`, err));
+      }
+
+      // Émettre via Socket.io pour notification in-app
+      if (req.io) {
+        req.io.to(`tenant_${tenant_id}`).emit("admin_notification", {
+          type: "message",
+          id: result.insertId,
+          title: subject,
+          content,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      await logAdminActivity(req.superAdmin.id, "message_sent", {
+        resource_type: "message",
+        resource_id: result.insertId,
+        description: `Message envoyé à ${tenant.name}: "${subject}"`,
+        req,
+      });
+
+      res.status(201).json({
+        success: true,
+        message: "Message envoyé avec succès",
+        message_id: result.insertId,
+      });
+    } catch (error) {
+      console.error("Erreur POST /messages:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+// ==========================================
+// FEATURE FLAGS PAR TENANT
+// ==========================================
+
+/**
+ * GET /api/admin/feature-overrides
+ * Lister les overrides de features
+ */
+router.get(
+  "/feature-overrides",
+  superAdminAuth,
+  requirePermission("system", "view_logs"),
+  async (req, res) => {
+    try {
+      const { tenant_id } = req.query;
+
+      let query = `
+        SELECT fo.*, t.name as tenant_name
+        FROM tenant_feature_overrides fo
+        JOIN tenants t ON fo.tenant_id = t.id
+        WHERE 1=1
+      `;
+      const params = [];
+
+      if (tenant_id) {
+        query += ` AND fo.tenant_id = ?`;
+        params.push(tenant_id);
+      }
+
+      query += ` ORDER BY fo.created_at DESC`;
+
+      const [overrides] = await pool.query(query, params);
+
+      res.json({
+        success: true,
+        overrides,
+      });
+    } catch (error) {
+      console.error("Erreur GET /feature-overrides:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/feature-overrides
+ * Créer/Modifier un override de feature pour un tenant
+ */
+router.post(
+  "/feature-overrides",
+  superAdminAuth,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const { tenant_id, feature_key, enabled, metadata } = req.body;
+
+      if (!tenant_id || !feature_key) {
+        return res.status(400).json({
+          success: false,
+          error: "tenant_id et feature_key requis",
+        });
+      }
+
+      // Upsert (INSERT ... ON DUPLICATE KEY UPDATE)
+      await pool.query(
+        `INSERT INTO tenant_feature_overrides (tenant_id, feature_key, enabled, metadata, created_by)
+         VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), metadata = VALUES(metadata), updated_at = NOW()`,
+        [tenant_id, feature_key, enabled !== false ? 1 : 0, metadata ? JSON.stringify(metadata) : null, req.superAdmin.id]
+      );
+
+      await logAdminActivity(req.superAdmin.id, "feature_override_set", {
+        resource_type: "feature_override",
+        description: `Feature "${feature_key}" ${enabled !== false ? "activée" : "désactivée"} pour tenant ${tenant_id}`,
+        metadata: { tenant_id, feature_key, enabled },
+        req,
+      });
+
+      res.json({
+        success: true,
+        message: `Feature "${feature_key}" ${enabled !== false ? "activée" : "désactivée"}`,
+      });
+    } catch (error) {
+      console.error("Erreur POST /feature-overrides:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  }
+);
+
+/**
+ * DELETE /api/admin/feature-overrides/:tenantId/:featureKey
+ * Supprimer un override de feature
+ */
+router.delete(
+  "/feature-overrides/:tenantId/:featureKey",
+  superAdminAuth,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const { tenantId, featureKey } = req.params;
+
+      const [result] = await pool.query(
+        `DELETE FROM tenant_feature_overrides WHERE tenant_id = ? AND feature_key = ?`,
+        [tenantId, featureKey]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Override non trouvé",
+        });
+      }
+
+      await logAdminActivity(req.superAdmin.id, "feature_override_removed", {
+        resource_type: "feature_override",
+        description: `Override supprimé: "${featureKey}" pour tenant ${tenantId}`,
+        req,
+      });
+
+      res.json({
+        success: true,
+        message: "Override supprimé",
+      });
+    } catch (error) {
+      console.error("Erreur DELETE /feature-overrides:", error);
       res.status(500).json({
         success: false,
         error: "Erreur serveur",

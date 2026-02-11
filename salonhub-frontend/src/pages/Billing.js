@@ -337,12 +337,14 @@ const Billing = () => {
                 <div
                   key={key}
                   className={`bg-white rounded-xl shadow-lg overflow-hidden border-2 transition-all hover:shadow-xl ${
-                    key === 'professional'
+                    key === 'pro'
                       ? 'border-indigo-600 scale-105'
-                      : 'border-gray-200 hover:border-indigo-300'
+                      : plan.isCustom
+                        ? 'border-dashed border-gray-300'
+                        : 'border-gray-200 hover:border-indigo-300'
                   }`}
                 >
-                  {key === 'professional' && (
+                  {key === 'pro' && (
                     <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center py-2 text-sm font-semibold flex items-center justify-center">
                       <StarIcon className="h-5 w-5 mr-1" />
                       Recommandé
@@ -355,12 +357,18 @@ const Billing = () => {
                       <CurrencyDollarIcon className="h-8 w-8 text-indigo-600" />
                     </div>
 
-                    <div className="flex items-baseline mb-6">
-                      <span className="text-5xl font-extrabold text-gray-900">
-                        {formatPrice(plan.price)}
-                      </span>
-                      <span className="ml-2 text-gray-500 text-lg">/mois</span>
-                    </div>
+                    {plan.isCustom ? (
+                      <div className="flex items-baseline mb-6">
+                        <span className="text-3xl font-bold text-indigo-600">Sur devis</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-baseline mb-6">
+                        <span className="text-5xl font-extrabold text-gray-900">
+                          {formatPrice(plan.price)}
+                        </span>
+                        <span className="ml-2 text-gray-500 text-lg">/mois</span>
+                      </div>
+                    )}
 
                     <ul className="space-y-3 mb-8">
                       {plan.features.map((feature, index) => (
@@ -371,23 +379,32 @@ const Billing = () => {
                       ))}
                     </ul>
 
-                    <button
-                      onClick={() => handleSubscribe(key)}
-                      disabled={loading || subscription?.plan === key}
-                      className={`w-full py-3 px-6 rounded-lg font-semibold transition-all shadow-md ${
-                        key === 'professional'
-                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700'
-                          : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-                      } disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center`}
-                    >
-                      {loading ? (
-                        <ArrowPathIcon className="h-5 w-5 animate-spin" />
-                      ) : subscription?.plan === key ? (
-                        'Plan actuel'
-                      ) : (
-                        'Choisir ce plan'
-                      )}
-                    </button>
+                    {plan.isCustom ? (
+                      <a
+                        href="mailto:info@flowkraftagency.com"
+                        className="w-full py-3 px-6 rounded-lg font-semibold transition-all border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white inline-flex items-center justify-center"
+                      >
+                        Contactez-nous
+                      </a>
+                    ) : (
+                      <button
+                        onClick={() => handleSubscribe(key)}
+                        disabled={loading || subscription?.plan === key}
+                        className={`w-full py-3 px-6 rounded-lg font-semibold transition-all shadow-md ${
+                          key === 'pro'
+                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700'
+                            : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                        } disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center`}
+                      >
+                        {loading ? (
+                          <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                        ) : subscription?.plan === key ? (
+                          'Plan actuel'
+                        ) : (
+                          'Choisir ce plan'
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

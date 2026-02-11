@@ -5,19 +5,20 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../services/api";
 
 const PasswordResetSuccessScreen = ({ navigation, route }) => {
-  const { email } = route.params || {};
+  const { email, tenantSlug } = route.params || {};
   const [loading, setLoading] = useState(false);
 
   const handleResendEmail = async () => {
     setLoading(true);
 
     try {
-      await api.post("/auth/forgot-password", { email });
+      await api.post("/password/forgot", { email, tenant_slug: tenantSlug });
       setLoading(false);
       Alert.alert("Succès", "L'email a été renvoyé avec succès");
     } catch (error) {

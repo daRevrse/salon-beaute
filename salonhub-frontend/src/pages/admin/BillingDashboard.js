@@ -140,6 +140,23 @@ function BillingDashboard() {
     }
   };
 
+  const handleRetryPayment = async (tenantId) => {
+    if (!window.confirm("Relancer le paiement pour ce tenant ?")) return;
+    try {
+      const token = getToken();
+      await axios.post(
+        `${API_URL}/admin/tenants/${tenantId}/retry-payment`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      success("Paiement relancé avec succès");
+      loadData();
+    } catch (error) {
+      console.error("Erreur retry payment:", error);
+      showError(error.response?.data?.message || "Erreur lors de la relance du paiement");
+    }
+  };
+
   const handleRefund = async (transactionId) => {
     if (!window.confirm("Confirmer le remboursement de cette transaction ?")) {
       return;
@@ -405,12 +422,17 @@ function BillingDashboard() {
                       {new Date(transaction.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {transaction.tenant_name}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {transaction.tenant_email}
-                      </div>
+                      <button
+                        onClick={() => navigate(`/superadmin/tenants/${transaction.tenant_id}`)}
+                        className="text-left hover:underline"
+                      >
+                        <div className="text-sm font-medium text-purple-600">
+                          {transaction.tenant_name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {transaction.tenant_email}
+                        </div>
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       {parseFloat(transaction.amount).toFixed(2)}€
@@ -468,6 +490,9 @@ function BillingDashboard() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Raison
                   </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -477,12 +502,17 @@ function BillingDashboard() {
                       {new Date(payment.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {payment.tenant_name}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {payment.tenant_email}
-                      </div>
+                      <button
+                        onClick={() => navigate(`/superadmin/tenants/${payment.tenant_id}`)}
+                        className="text-left hover:underline"
+                      >
+                        <div className="text-sm font-medium text-purple-600">
+                          {payment.tenant_name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {payment.tenant_email}
+                        </div>
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
                       {parseFloat(payment.amount).toFixed(2)}€
@@ -494,6 +524,14 @@ function BillingDashboard() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {payment.failed_reason || "N/A"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <button
+                        onClick={() => handleRetryPayment(payment.tenant_id)}
+                        className="text-purple-600 hover:text-purple-900 font-medium"
+                      >
+                        Retry
+                      </button>
                     </td>
                   </tr>
                 ))}

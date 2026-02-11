@@ -23,7 +23,7 @@ const StaffScreen = ({ navigation }) => {
 
   const loadStaff = async () => {
     try {
-      const response = await api.get('/staff');
+      const response = await api.get('/auth/staff');
       if (response.data.success) {
         setStaff(response.data.data || []);
       }
@@ -47,7 +47,7 @@ const StaffScreen = ({ navigation }) => {
 
   const handleToggleActive = async (staffMember) => {
     try {
-      await api.put(`/staff/${staffMember.id}`, {
+      await api.put(`/auth/staff/${staffMember.id}`, {
         is_active: !staffMember.is_active,
       });
       loadStaff();
@@ -68,7 +68,7 @@ const StaffScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.delete(`/staff/${staffMember.id}`);
+              await api.delete(`/auth/staff/${staffMember.id}`);
               Alert.alert('Succès', 'Employé supprimé');
               loadStaff();
             } catch (error) {
@@ -98,7 +98,7 @@ const StaffScreen = ({ navigation }) => {
       case 'owner':
         return '#6366F1';
       case 'manager':
-        return '#8B5CF6';
+        return '#6366F1';
       case 'employee':
         return '#3B82F6';
       default:
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#4F46E5',
+    color: '#6366F1',
     lineHeight: 18,
   },
   statsContainer: {

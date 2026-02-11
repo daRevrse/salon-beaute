@@ -118,6 +118,82 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Connexion avec Google
+  const loginWithGoogle = async (idToken) => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const response = await api.post('/auth/google/login', {
+        id_token: idToken,
+        platform: 'web',
+      });
+
+      const { token, user: loggedUser, tenant: userTenant } = response.data.data;
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(loggedUser));
+      localStorage.setItem('tenant', JSON.stringify(userTenant));
+
+      if (userTenant?.currency) {
+        localStorage.setItem('tenant_currency', userTenant.currency);
+      }
+
+      setUser(loggedUser);
+      setTenant(userTenant);
+
+      return { success: true };
+    } catch (err) {
+      if (err.response?.status === 404 && err.response?.data?.error === 'no_account') {
+        return {
+          success: false,
+          needsRegistration: true,
+          googleUser: err.response.data.google_user,
+        };
+      }
+      const errorMessage = err.response?.data?.message || 'Erreur de connexion Google';
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Inscription avec Google
+  const registerWithGoogle = async (idToken, formData) => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const response = await api.post('/auth/google/register', {
+        id_token: idToken,
+        platform: 'web',
+        ...formData,
+      });
+
+      const { token, user: newUser, tenant: newTenant } = response.data.data;
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      localStorage.setItem('tenant', JSON.stringify(newTenant));
+
+      if (newTenant?.currency) {
+        localStorage.setItem('tenant_currency', newTenant.currency);
+      }
+
+      setUser(newUser);
+      setTenant(newTenant);
+
+      return { success: true };
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || "Erreur lors de l'inscription Google";
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Déconnexion
   const logout = () => {
     localStorage.removeItem('token');
@@ -299,6 +375,8 @@ export const AuthProvider = ({ children }) => {
     trialDaysRemaining: getTrialDaysRemaining(),
     register,
     login,
+    loginWithGoogle,
+    registerWithGoogle,
     logout,
     updateProfile,
     updateUser,

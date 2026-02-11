@@ -241,7 +241,7 @@ const ServicesScreen = ({ navigation }) => {
               active={selectedCategory === category}
               count={categoryCounts[category]}
               onPress={() => setSelectedCategory(category)}
-              color="#8B5CF6"
+              color="#6366F1"
             />
           ))}
         </ScrollView>
@@ -292,6 +292,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 16,
+    paddingTop: 48,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
@@ -421,7 +422,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 15,
     fontWeight: "bold",
-    color: "#8B5CF6",
+    color: "#6366F1",
   },
   divider: {
     width: 1,

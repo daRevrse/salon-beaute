@@ -7,6 +7,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { formatDuration } from "../../contexts/PublicThemeContext";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
 import PromoCodeInput from "../../components/common/PromoCodeInput";
 import api from "../../services/api";
@@ -21,6 +22,7 @@ import {
   UserCircleIcon,
   CurrencyDollarIcon,
   ChatBubbleOvalLeftEllipsisIcon,
+  MapPinIcon,
 } from "@heroicons/react/24/outline";
 
 const BookingClientInfo = () => {
@@ -30,13 +32,34 @@ const BookingClientInfo = () => {
   const { service, date, slot } = location.state || {};
   const { formatPrice } = useCurrency();
 
-  const { salon, loading, error, fetchSalon, createAppointment, clearError } =
+  const { salon, settings, loading, error, fetchSalon, fetchSettings, createAppointment, clearError } =
     usePublicBooking(slug);
 
   // Business type configuration
   const businessType = salon?.business_type || "beauty";
   const config = getBusinessTypeConfig(businessType);
   const term = config.terminology;
+
+  // Thème personnalisé
+  const themeSettings = settings?.theme_settings || {};
+  const customStyles = {
+    gradientBg: {
+      background: `linear-gradient(135deg, ${themeSettings.primaryColor || "#8B5CF6"}, ${themeSettings.secondaryColor || "#6366F1"})`
+    },
+    primaryText: {
+      color: themeSettings.primaryColor || "#8B5CF6"
+    },
+    fontFamily: {
+      fontFamily: themeSettings.fontFamily || "Inter"
+    },
+    footer: {
+      backgroundColor: themeSettings.footerBgColor || "#1E293B",
+      color: themeSettings.footerTextColor || "#FFFFFF"
+    },
+    footerMuted: {
+      color: `${themeSettings.footerTextColor || "#FFFFFF"}99`
+    }
+  };
 
   const [formData, setFormData] = useState({
     first_name: "",
@@ -58,7 +81,8 @@ const BookingClientInfo = () => {
       return;
     }
     fetchSalon();
-  }, [service, date, slot, slug, navigate, fetchSalon]);
+    fetchSettings();
+  }, [service, date, slot, slug, navigate, fetchSalon, fetchSettings]);
 
   useEffect(() => {
     if (service) {
@@ -193,7 +217,7 @@ const BookingClientInfo = () => {
   };
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative flex flex-col" style={customStyles.fontFamily}>
       {/* Background Image with Overlay */}
       {service?.image_url && (
         <div className="fixed inset-0 z-0">
@@ -284,7 +308,7 @@ const BookingClientInfo = () => {
                   <p className="text-sm text-slate-500">{term.serviceDuration}</p>
                   <p className="font-medium text-slate-900 flex items-center">
                     <ClockIcon className="w-4 h-4 mr-1 inline-block" />
-                    {service.duration} minutes
+                    {formatDuration(service.duration)}
                   </p>
                 </div>
               </div>

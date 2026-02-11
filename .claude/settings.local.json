@@ -26,7 +26,11 @@
       "Bash(node -e:*)",
       "Bash(tasklist:*)",
       "Bash(python3:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(find:*)",
+      "Bash(npx expo install socket.io-client)",
+      "Bash(npx expo install:*)",
+      "Bash(npx expo export:*)"
     ]
   }
 }

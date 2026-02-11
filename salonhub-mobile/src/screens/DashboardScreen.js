@@ -13,11 +13,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import api from '../services/api';
+import api, { FRONTEND_URL } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useSocket } from '../contexts/SocketContext';
+import useNotifications from '../hooks/useNotifications';
 
 const DashboardScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const socket = useSocket();
+  const { unreadCount, refresh: refreshNotifications } = useNotifications();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,6 +39,23 @@ const DashboardScreen = ({ navigation }) => {
       loadDashboardData();
     }, [])
   );
+
+  // Écouter les événements socket en temps réel
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRefresh = () => {
+      loadDashboardData();
+    };
+
+    socket.on('new_appointment', handleRefresh);
+    socket.on('appointment_updated', handleRefresh);
+
+    return () => {
+      socket.off('new_appointment', handleRefresh);
+      socket.off('appointment_updated', handleRefresh);
+    };
+  }, [socket]);
 
   const loadDashboardData = async () => {
     try {
@@ -141,6 +162,7 @@ const DashboardScreen = ({ navigation }) => {
   const onRefresh = () => {
     setRefreshing(true);
     loadDashboardData();
+    refreshNotifications();
   };
 
   const handleHelp = () => {
@@ -159,48 +181,37 @@ const DashboardScreen = ({ navigation }) => {
 
   const handlePublicPage = async () => {
     try {
-      // Récupérer les paramètres du salon pour obtenir l'URL publique
       const response = await api.get('/settings/salon');
       const salonData = response.data?.data;
 
-      if (salonData?.public_url) {
-        Linking.openURL(salonData.public_url);
+      if (salonData?.slug) {
+        const publicUrl = `${FRONTEND_URL}/book/${salonData.slug}`;
+        Linking.openURL(publicUrl);
       } else {
         Alert.alert(
           'Page publique',
-          'Votre page publique n\'est pas encore configurée. Voulez-vous la configurer maintenant?',
-          [
-            {
-              text: 'Configurer',
-              onPress: () => navigation.navigate('BusinessSettings'),
-            },
-            { text: 'Plus tard', style: 'cancel' },
-          ]
+          'Votre page publique n\'est pas encore configurée. Veuillez configurer votre salon dans les paramètres.',
+          [{ text: 'OK' }]
         );
       }
     } catch (error) {
       console.error('Erreur page publique:', error);
-      Alert.alert(
-        'Page publique',
-        'Fonctionnalité en cours de développement. Vous pourrez bientôt créer et partager votre page publique pour permettre à vos clients de prendre rendez-vous en ligne.'
-      );
+      Alert.alert('Erreur', 'Impossible d\'ouvrir la page publique.');
     }
   };
 
   const handleShare = async () => {
     try {
-      const result = await Share.share({
-        message: `Découvrez ${user?.business_name || 'notre salon'} et prenez rendez-vous facilement!\n\nTéléchargez SalonHub: https://salonhub.app`,
+      const response = await api.get('/settings/salon');
+      const salonData = response.data?.data;
+      const bookingUrl = salonData?.slug
+        ? `${FRONTEND_URL}/book/${salonData.slug}`
+        : null;
+
+      await Share.share({
+        message: `Découvrez ${salonData?.name || user?.business_name || 'notre salon'} et prenez rendez-vous facilement !${bookingUrl ? `\n\nRéservez en ligne : ${bookingUrl}` : ''}`,
         title: 'Partager mon salon',
       });
-
-      if (result.action === Share.sharedAction) {
-        if (result.activityType) {
-          console.log('Partagé via:', result.activityType);
-        } else {
-          console.log('Partagé avec succès');
-        }
-      }
     } catch (error) {
       console.error('Erreur partage:', error);
       Alert.alert('Erreur', 'Impossible de partager pour le moment');
@@ -231,9 +242,24 @@ const DashboardScreen = ({ navigation }) => {
     >
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>Bienvenue, {user?.first_name} !</Text>
-          <Text style={styles.subtitle}>Voici un aperçu de votre activité.</Text>
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>Bienvenue, {user?.first_name} !</Text>
+            <Text style={styles.subtitle}>Voici un aperçu de votre activité.</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.bellButton}
+            onPress={() => navigation.navigate('NotificationList')}
+          >
+            <Ionicons name="notifications-outline" size={24} color="#1F2937" />
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.actionButton} onPress={handleHelp}>
@@ -280,7 +306,7 @@ const DashboardScreen = ({ navigation }) => {
           iconColor="#fff"
           title="Services actifs"
           value={stats?.activeServices || 0}
-          color="#8B5CF6"
+          color="#6366F1"
           linkText="Gérer les services →"
           onPress={() => navigation.navigate('Services')}
         />
@@ -519,8 +545,40 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  headerLeft: {
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 16,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  bellButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  bellBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
   },
   greeting: {
     fontSize: 20,

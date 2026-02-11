@@ -20,10 +20,22 @@ const app = express();
 const server = http.createServer(app);
 
 // Initialiser Socket.io
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:3000",
+  "http://localhost:8081",
+  "http://192.168.1.77:8081",
+];
+
 const io = new Server(server, {
-  // <--- AJOUT 4
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // Allow mobile apps (no origin) and listed origins
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow all origins for socket (mobile needs it)
+      }
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -65,10 +77,24 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS - Autoriser frontend
+// CORS - Autoriser frontend + landing page
+const corsAllowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:3000",
+  process.env.LANDING_URL || "http://localhost:8080",
+  "http://localhost:8081",
+  "http://192.168.1.77:8081",
+];
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin || corsAllowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
@@ -133,6 +159,7 @@ app.get("/", (req, res) => {
 // ==========================================
 
 // Routes auth (PUBLIQUES pour register/login)
+app.use("/api/auth/google", require("./routes/google-auth"));
 app.use("/api/auth", require("./routes/auth"));
 
 // Routes Stripe (partiellement publiques - webhook)

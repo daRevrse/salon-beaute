@@ -22,6 +22,11 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ArrowDownTrayIcon,
+  PencilSquareIcon,
+  ArrowPathIcon,
+  KeyIcon,
+  ShieldCheckIcon,
+  NoSymbolIcon,
 } from "@heroicons/react/24/outline";
 import Toast from "../../components/common/Toast";
 import ConfirmModal from "../../components/common/ConfirmModal";
@@ -59,6 +64,9 @@ function TenantDetailsImproved() {
   const [planChangeReason, setPlanChangeReason] = useState("");
   const [suspendReason, setSuspendReason] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [userActionLoading, setUserActionLoading] = useState(null);
   const { toast, hideToast, success, error: showError } = useToast();
 
   const getToken = () => localStorage.getItem("superadmin_token");
@@ -238,6 +246,100 @@ function TenantDetailsImproved() {
     success("Données exportées avec succès");
   };
 
+  // --- Edit tenant handlers ---
+  const startEdit = () => {
+    setEditForm({
+      name: tenant.name || "",
+      email: tenant.email || "",
+      phone: tenant.phone || "",
+      address: tenant.address || "",
+      city: tenant.city || "",
+      postal_code: tenant.postal_code || "",
+    });
+    setEditMode(true);
+  };
+
+  const cancelEdit = () => {
+    setEditMode(false);
+    setEditForm({});
+  };
+
+  const saveEdit = async () => {
+    try {
+      setActionLoading(true);
+      const token = getToken();
+      await axios.put(
+        `${API_URL}/admin/tenants/${id}`,
+        editForm,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      success("Informations mises à jour");
+      setEditMode(false);
+      loadTenantData();
+    } catch (error) {
+      console.error("Erreur mise à jour:", error);
+      showError(error.response?.data?.message || "Erreur lors de la mise à jour");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // --- User management handlers ---
+  const handleToggleUser = async (userId, currentActive) => {
+    try {
+      setUserActionLoading(userId);
+      const token = getToken();
+      await axios.put(
+        `${API_URL}/admin/users/${userId}/toggle-active`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      success(`Utilisateur ${currentActive ? "désactivé" : "activé"}`);
+      loadUsers();
+    } catch (error) {
+      showError("Erreur lors du changement de statut");
+    } finally {
+      setUserActionLoading(null);
+    }
+  };
+
+  const handleResetPassword = async (userId) => {
+    if (!window.confirm("Réinitialiser le mot de passe de cet utilisateur ?")) return;
+    try {
+      setUserActionLoading(userId);
+      const token = getToken();
+      const res = await axios.put(
+        `${API_URL}/admin/users/${userId}/reset-password`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const tempPass = res.data.temporary_password;
+      success(`Nouveau mot de passe : ${tempPass}`);
+    } catch (error) {
+      showError("Erreur lors de la réinitialisation");
+    } finally {
+      setUserActionLoading(null);
+    }
+  };
+
+  const handleChangeRole = async (userId, newRole) => {
+    try {
+      setUserActionLoading(userId);
+      const token = getToken();
+      await axios.put(
+        `${API_URL}/admin/users/${userId}/change-role`,
+        { role: newRole },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      success(`Rôle changé en ${newRole}`);
+      loadUsers();
+    } catch (error) {
+      showError("Erreur lors du changement de rôle");
+    } finally {
+      setUserActionLoading(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -354,38 +456,124 @@ function TenantDetailsImproved() {
                 <CogIcon className="w-5 h-5 mr-2" />
                 Changer le plan
               </button>
+              {!editMode && (
+                <button
+                  onClick={startEdit}
+                  className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition"
+                >
+                  <PencilSquareIcon className="w-5 h-5 mr-2" />
+                  Modifier
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Info Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <InfoItem icon={EnvelopeIcon} label="Email" value={tenant.email} />
-            <InfoItem
-              icon={PhoneIcon}
-              label="Téléphone"
-              value={tenant.phone || "Non renseigné"}
-            />
-            <InfoItem
-              icon={MapPinIcon}
-              label="Adresse"
-              value={tenant.address || "Non renseigné"}
-            />
-            <InfoItem
-              icon={CalendarIcon}
-              label="Date de création"
-              value={new Date(tenant.created_at).toLocaleDateString("fr-FR")}
-            />
-            <InfoItem
-              icon={GlobeAltIcon}
-              label="Timezone"
-              value={tenant.timezone || "UTC"}
-            />
-            <InfoItem
-              icon={CurrencyDollarIcon}
-              label="Devise"
-              value={tenant.currency || "EUR"}
-            />
-          </div>
+          {/* Edit Form or Info Grid */}
+          {editMode ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                  <input
+                    type="text"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                  <input
+                    type="text"
+                    value={editForm.address}
+                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
+                  <input
+                    type="text"
+                    value={editForm.city}
+                    onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Code postal</label>
+                  <input
+                    type="text"
+                    value={editForm.postal_code}
+                    onChange={(e) => setEditForm({ ...editForm, postal_code: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={cancelEdit}
+                  disabled={actionLoading}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={saveEdit}
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition disabled:opacity-50 font-semibold"
+                >
+                  {actionLoading ? "Enregistrement..." : "Enregistrer"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <InfoItem icon={EnvelopeIcon} label="Email" value={tenant.email} />
+              <InfoItem
+                icon={PhoneIcon}
+                label="Téléphone"
+                value={tenant.phone || "Non renseigné"}
+              />
+              <InfoItem
+                icon={MapPinIcon}
+                label="Adresse"
+                value={tenant.address || "Non renseigné"}
+              />
+              <InfoItem
+                icon={CalendarIcon}
+                label="Date de création"
+                value={new Date(tenant.created_at).toLocaleDateString("fr-FR")}
+              />
+              <InfoItem
+                icon={GlobeAltIcon}
+                label="Timezone"
+                value={tenant.timezone || "UTC"}
+              />
+              <InfoItem
+                icon={CurrencyDollarIcon}
+                label="Devise"
+                value={tenant.currency || "EUR"}
+              />
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
@@ -528,13 +716,16 @@ function TenantDetailsImproved() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Dernière connexion
                     </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {users.length === 0 ? (
                     <tr>
                       <td
-                        colSpan="5"
+                        colSpan="6"
                         className="px-6 py-8 text-center text-gray-500"
                       >
                         Aucun utilisateur trouvé
@@ -565,7 +756,16 @@ function TenantDetailsImproved() {
                           {user.email}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <RoleBadge role={user.role} />
+                          <select
+                            value={user.role}
+                            onChange={(e) => handleChangeRole(user.id, e.target.value)}
+                            disabled={userActionLoading === user.id}
+                            className="text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-indigo-500"
+                          >
+                            <option value="owner">Owner</option>
+                            <option value="admin">Admin</option>
+                            <option value="staff">Staff</option>
+                          </select>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {user.is_active ? (
@@ -586,6 +786,34 @@ function TenantDetailsImproved() {
                                 "fr-FR"
                               )
                             : "Jamais"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                          <div className="flex items-center justify-end space-x-2">
+                            <button
+                              onClick={() => handleToggleUser(user.id, user.is_active)}
+                              disabled={userActionLoading === user.id}
+                              title={user.is_active ? "Désactiver" : "Activer"}
+                              className={`p-1.5 rounded-lg transition ${
+                                user.is_active
+                                  ? "text-red-600 hover:bg-red-50"
+                                  : "text-green-600 hover:bg-green-50"
+                              } disabled:opacity-50`}
+                            >
+                              {user.is_active ? (
+                                <NoSymbolIcon className="w-4 h-4" />
+                              ) : (
+                                <CheckCircleIcon className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleResetPassword(user.id)}
+                              disabled={userActionLoading === user.id}
+                              title="Réinitialiser mot de passe"
+                              className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 transition disabled:opacity-50"
+                            >
+                              <KeyIcon className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -674,6 +902,74 @@ function TenantDetailsImproved() {
                   className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition disabled:opacity-50 font-semibold"
                 >
                   {actionLoading ? "Suspension..." : "Suspendre"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plan Change Modal */}
+      {showPlanChangeModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+            onClick={() => setShowPlanChangeModal(false)}
+          ></div>
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-scale-in">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">
+                Changer le plan d'abonnement
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Plan actuel : <span className="font-semibold">{tenant.subscription_plan}</span>
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nouveau plan
+                </label>
+                <select
+                  value={selectedPlan}
+                  onChange={(e) => setSelectedPlan(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">-- Sélectionner --</option>
+                  <option value="essential">Essential (3,99€/mois)</option>
+                  <option value="pro">Pro (9,99€/mois)</option>
+                  <option value="custom">Sur mesure</option>
+                  <option value="trial">Trial</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Raison (optionnel)
+                </label>
+                <textarea
+                  value={planChangeReason}
+                  onChange={(e) => setPlanChangeReason(e.target.value)}
+                  placeholder="Raison du changement..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowPlanChangeModal(false);
+                    setSelectedPlan("");
+                    setPlanChangeReason("");
+                  }}
+                  disabled={actionLoading}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handlePlanChange}
+                  disabled={actionLoading || !selectedPlan}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 font-semibold"
+                >
+                  {actionLoading ? "Changement..." : "Confirmer"}
                 </button>
               </div>
             </div>
@@ -770,15 +1066,38 @@ function StatusBadge({ status }) {
 }
 
 function PlanBadge({ plan }) {
+  const planNames = {
+    essential: "Essential",
+    pro: "Pro",
+    custom: "Sur mesure",
+    trial: "Trial",
+    starter: "Essential",
+    professional: "Pro",
+    business: "Sur mesure",
+    enterprise: "Sur mesure",
+  };
+
+  const planColors = {
+    essential: "bg-green-100 text-green-800",
+    pro: "bg-purple-100 text-purple-800",
+    custom: "bg-indigo-100 text-indigo-800",
+    trial: "bg-blue-100 text-blue-800",
+  };
+
+  const normalizedPlan = ["starter"].includes(plan) ? "essential"
+    : ["professional", "business", "enterprise"].includes(plan) ? "pro"
+    : plan;
+
   return (
-    <span className="px-3 py-1 text-sm font-semibold rounded-full bg-purple-100 text-purple-800">
-      {plan}
+    <span className={`px-3 py-1 text-sm font-semibold rounded-full ${planColors[normalizedPlan] || "bg-gray-100 text-gray-800"}`}>
+      {planNames[plan] || plan}
     </span>
   );
 }
 
 function RoleBadge({ role }) {
   const badges = {
+    owner: { color: "bg-indigo-100 text-indigo-800", label: "Owner" },
     admin: { color: "bg-purple-100 text-purple-800", label: "Admin" },
     manager: { color: "bg-blue-100 text-blue-800", label: "Manager" },
     staff: { color: "bg-green-100 text-green-800", label: "Staff" },

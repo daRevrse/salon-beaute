@@ -148,7 +148,7 @@ router.post("/register", async (req, res) => {
           salon_address || null,
           salon_city || null,
           salon_postal_code || null,
-          subscription_plan || "starter",
+          subscription_plan || "essential",
           finalBusinessType,
         ]
       );
@@ -220,7 +220,7 @@ router.post("/register", async (req, res) => {
           slug: finalSlug,
           business_type: finalBusinessType,
           subscription_status: "trial",
-          subscription_plan: subscription_plan || "starter",
+          subscription_plan: subscription_plan || "essential",
           trial_ends_at: trialEndsAt.toISOString(),
         },
       },
@@ -280,6 +280,15 @@ router.post("/login", async (req, res) => {
         success: false,
         error: "Compte désactivé",
         message: "Votre compte a été désactivé. Contactez l'administrateur.",
+      });
+    }
+
+    // Vérifier si c'est un compte Google-only (sans mot de passe)
+    if (!user.password_hash) {
+      return res.status(400).json({
+        success: false,
+        error: "google_only",
+        message: "Ce compte utilise la connexion Google. Veuillez vous connecter avec Google.",
       });
     }
 

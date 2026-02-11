@@ -10,6 +10,78 @@ const db = require("../config/database");
 const emailService = require("../services/emailService");
 const { checkPublicSubscription } = require("../middleware/tenant");
 
+// ===== RECHERCHE PUBLIQUE =====
+
+/**
+ * GET /api/public/search?q=...&type=...&limit=...&offset=...
+ * Recherche publique de salons/établissements
+ * Pas de vérification d'abonnement côté chercheur
+ */
+router.get("/search", async (req, res) => {
+  try {
+    const { q, type, limit = 20, offset = 0 } = req.query;
+
+    if (!q || q.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: "Le terme de recherche doit contenir au moins 2 caractères",
+      });
+    }
+
+    const searchTerm = `%${q.trim()}%`;
+    const params = [searchTerm, searchTerm, searchTerm];
+
+    let query = `
+      SELECT t.name, t.slug, t.city, t.business_type, t.logo_url, t.slogan
+      FROM tenants t
+      WHERE t.is_active = TRUE
+        AND t.subscription_status IN ('active', 'trial')
+        AND (t.name LIKE ? OR t.city LIKE ? OR t.business_type LIKE ?)
+    `;
+
+    if (type) {
+      query += ` AND t.business_type = ?`;
+      params.push(type);
+    }
+
+    query += ` ORDER BY t.name ASC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), parseInt(offset));
+
+    const results = await db.query(query, params);
+
+    // Compter le total
+    let countQuery = `
+      SELECT COUNT(*) as total FROM tenants t
+      WHERE t.is_active = TRUE
+        AND t.subscription_status IN ('active', 'trial')
+        AND (t.name LIKE ? OR t.city LIKE ? OR t.business_type LIKE ?)
+    `;
+    const countParams = [searchTerm, searchTerm, searchTerm];
+    if (type) {
+      countQuery += ` AND t.business_type = ?`;
+      countParams.push(type);
+    }
+
+    const countResult = await db.query(countQuery, countParams);
+    const total = countResult[0]?.total || 0;
+
+    res.json({
+      success: true,
+      data: results,
+      query: q,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        has_more: parseInt(offset) + results.length < total,
+      },
+    });
+  } catch (error) {
+    console.error("Erreur recherche publique:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
 // ===== ROUTES PUBLIQUES (BOOKING CLIENT) =====
 
 /**
@@ -252,13 +324,17 @@ router.get("/salon/:slug/settings", checkPublicSubscription('slug'), async (req,
     }
 
     // Valeurs par défaut pour le thème
-    if (!formattedSettings.theme_settings) {
-      formattedSettings.theme_settings = {
-        primaryColor: "#8B5CF6",
-        secondaryColor: "#6366F1",
-        fontFamily: "Inter"
-      };
-    }
+    const defaultTheme = {
+      primaryColor: "#8B5CF6",
+      secondaryColor: "#6366F1",
+      fontFamily: "Inter",
+      footerBgColor: "#1E293B",
+      footerTextColor: "#FFFFFF"
+    };
+    formattedSettings.theme_settings = {
+      ...defaultTheme,
+      ...(formattedSettings.theme_settings || {})
+    };
 
     res.json(formattedSettings);
   } catch (error) {

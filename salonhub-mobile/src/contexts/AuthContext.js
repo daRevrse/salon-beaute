@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import api from '../services/api';
+import { unregisterPushNotifications } from '../services/pushNotificationService';
 
 const AuthContext = createContext({});
 
@@ -53,8 +54,84 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = async (userData) => {
+    setUser(userData);
+    await SecureStore.setItemAsync('userData', JSON.stringify(userData));
+  };
+
+  const signInWithGoogle = async (idToken, platform = 'web') => {
+    try {
+      const response = await api.post('/auth/google/login', {
+        id_token: idToken,
+        platform,
+      });
+
+      if (response.data.success) {
+        const { token, user: userData } = response.data.data;
+
+        await SecureStore.setItemAsync('userToken', token);
+        await SecureStore.setItemAsync('userData', JSON.stringify(userData));
+
+        setUser(userData);
+        return { success: true };
+      } else {
+        return { success: false, error: response.data.error };
+      }
+    } catch (error) {
+      // Si pas de compte, retourner les infos Google pour l'inscription
+      if (error.response?.status === 404 && error.response?.data?.error === 'no_account') {
+        return {
+          success: false,
+          needsRegistration: true,
+          googleUser: error.response.data.google_user,
+        };
+      }
+      // Si compte Google-only qui essaie de se connecter en email/mdp
+      if (error.response?.data?.error === 'google_only') {
+        return {
+          success: false,
+          error: error.response.data.message,
+        };
+      }
+      console.error('Erreur connexion Google:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Erreur de connexion Google',
+      };
+    }
+  };
+
+  const registerWithGoogle = async (idToken, salonData, platform = 'web') => {
+    try {
+      const response = await api.post('/auth/google/register', {
+        id_token: idToken,
+        platform,
+        ...salonData,
+      });
+
+      if (response.data.success) {
+        const { token, user: userData } = response.data.data;
+
+        await SecureStore.setItemAsync('userToken', token);
+        await SecureStore.setItemAsync('userData', JSON.stringify(userData));
+
+        setUser(userData);
+        return { success: true };
+      } else {
+        return { success: false, error: response.data.error };
+      }
+    } catch (error) {
+      console.error('Erreur inscription Google:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || "Erreur lors de l'inscription Google",
+      };
+    }
+  };
+
   const signOut = async () => {
     try {
+      await unregisterPushNotifications();
       await SecureStore.deleteItemAsync('userToken');
       await SecureStore.deleteItemAsync('userData');
       setUser(null);
@@ -69,7 +146,10 @@ export const AuthProvider = ({ children }) => {
         user,
         loading,
         signIn,
+        signInWithGoogle,
+        registerWithGoogle,
         signOut,
+        updateUser,
       }}
     >
       {children}

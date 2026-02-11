@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,14 +14,64 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
+import { useGoogleAuth, getPlatform } from "../services/googleAuthService";
 
 const LoginScreen = ({ navigation }) => {
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const { request, response, promptAsync } = useGoogleAuth();
+
+  // Gérer la réponse Google OAuth
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { id_token } = response.params;
+      if (id_token) {
+        handleGoogleResponse(id_token);
+      }
+    } else if (response?.type === "error") {
+      setGoogleLoading(false);
+      Alert.alert("Erreur", "La connexion Google a échoué");
+    } else if (response?.type === "dismiss") {
+      setGoogleLoading(false);
+    }
+  }, [response]);
+
+  const handleGoogleResponse = async (idToken) => {
+    setGoogleLoading(true);
+    const result = await signInWithGoogle(idToken, getPlatform());
+    setGoogleLoading(false);
+
+    if (result.success) {
+      // Connecté avec succès - la navigation se fait automatiquement via AuthContext
+      return;
+    }
+
+    if (result.needsRegistration) {
+      // Pas de compte → aller à l'inscription avec les données Google
+      navigation.navigate("Register", {
+        googleUser: result.googleUser,
+        idToken: idToken,
+      });
+      return;
+    }
+
+    Alert.alert("Erreur", result.error || "Erreur de connexion Google");
+  };
+
+  const handleGoogleLogin = async () => {
+    if (!request) {
+      Alert.alert("Erreur", "Google Sign-In n'est pas disponible");
+      return;
+    }
+    setGoogleLoading(true);
+    await promptAsync();
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -161,7 +211,7 @@ const LoginScreen = ({ navigation }) => {
           <TouchableOpacity
             style={[styles.loginButton, loading && styles.loginButtonDisabled]}
             onPress={handleLogin}
-            disabled={loading}
+            disabled={loading || googleLoading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -169,6 +219,32 @@ const LoginScreen = ({ navigation }) => {
               <>
                 <Text style={styles.loginButtonText}>Se connecter</Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>ou</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Google Sign-In Button */}
+          <TouchableOpacity
+            style={[styles.googleButton, googleLoading && styles.googleButtonDisabled]}
+            onPress={handleGoogleLogin}
+            disabled={loading || googleLoading || !request}
+          >
+            {googleLoading ? (
+              <ActivityIndicator color="#1F2937" />
+            ) : (
+              <>
+                <Image
+                  source={{ uri: "https://developers.google.com/identity/images/g-logo.png" }}
+                  style={styles.googleIcon}
+                />
+                <Text style={styles.googleButtonText}>Continuer avec Google</Text>
               </>
             )}
           </TouchableOpacity>
@@ -343,6 +419,46 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginRight: 8,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E5E7EB",
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 13,
+    color: "#9CA3AF",
+    fontWeight: "500",
+  },
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    height: 52,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    marginBottom: 20,
+  },
+  googleButtonDisabled: {
+    opacity: 0.6,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 12,
+  },
+  googleButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1F2937",
   },
   registerContainer: {
     flexDirection: "row",

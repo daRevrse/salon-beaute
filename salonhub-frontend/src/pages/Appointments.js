@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import DashboardLayout from "../components/common/DashboardLayout";
 import AppointmentDetails from "../components/appointments/AppointmentDetails";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -27,6 +28,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 const Appointments = () => {
+  const [searchParams] = useSearchParams();
   const { tenant } = useAuth();
   const { formatPrice } = useCurrency();
   const businessType = tenant?.business_type || "beauty";
@@ -49,7 +51,7 @@ const Appointments = () => {
   const [view, setView] = useState("list");
   const [showModal, setShowModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-  const [filterDate, setFilterDate] = useState("");
+  const [filterDate, setFilterDate] = useState(searchParams.get("date") || "");
   const [filterStatus, setFilterStatus] = useState("");
   const [staff, setStaff] = useState([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -78,6 +80,15 @@ const Appointments = () => {
     };
     loadStaff();
   }, []);
+
+  // Si on arrive avec ?date= depuis une notification, filtrer sur cette date
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      setFilterDate(dateParam);
+      fetchAppointments({ date: dateParam });
+    }
+  }, [searchParams]);
 
   const handleOpenModal = () => {
     setFormData({

@@ -22,7 +22,7 @@ const fadeInObserver = new IntersectionObserver((entries) => {
 // Apply observer to all animated elements
 document.addEventListener("DOMContentLoaded", () => {
   const animatedElements = document.querySelectorAll(
-    ".feature-card, .how-it-works-card, .image-showcase, .pricing"
+    ".feature-card, .how-it-works-card, .image-showcase, .pricing, .sector-card"
   );
   animatedElements.forEach((element) => fadeInObserver.observe(element));
 });
@@ -260,26 +260,6 @@ const scrollToFormAndFocus = (e) => {
     }, 500);
   }
 };
-
-// Apply to pricing buttons
-document.querySelectorAll(".btn-pricing").forEach((button) => {
-  button.addEventListener("click", (e) => {
-    const planName = button
-      .closest(".pricing-card")
-      .querySelector("h3").textContent;
-
-    // Stocker le plan sélectionné dans la variable globale
-    selectedPlan = planName;
-
-    showNotification(
-      `Plan ${planName} sélectionné ! Inscrivez votre email ci-dessous.`,
-      "success"
-    );
-
-    // Scroll to form and focus
-    scrollToFormAndFocus(e);
-  });
-});
 
 // Apply to CTA button
 document.querySelectorAll(".scroll-to-form").forEach((button) => {

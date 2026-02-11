@@ -347,6 +347,27 @@ router.post("/", async (req, res) => {
       ]
     );
 
+    // Récupérer le RDV complet pour la notification socket
+    const [newAppointment] = await query(
+      `SELECT a.*, c.first_name as client_first_name, c.last_name as client_last_name,
+              s.name as service_name
+       FROM appointments a
+       LEFT JOIN clients c ON a.client_id = c.id
+       LEFT JOIN services s ON a.service_id = s.id
+       WHERE a.id = ?`,
+      [result.insertId]
+    );
+
+    // Notification temps réel
+    try {
+      req.io.to(`tenant_${req.tenantId}`).emit("new_appointment", {
+        appointment: newAppointment,
+        message: `Nouveau RDV : ${newAppointment.client_first_name} ${newAppointment.client_last_name}`,
+      });
+    } catch (socketError) {
+      console.error("Erreur socket:", socketError);
+    }
+
     res.status(201).json({
       success: true,
       message: "Rendez-vous créé avec succès",
@@ -449,6 +470,17 @@ router.put("/:id", async (req, res) => {
         req.tenantId,
       ]
     );
+
+    // Notification temps réel
+    try {
+      req.io.to(`tenant_${req.tenantId}`).emit("appointment_updated", {
+        appointmentId: parseInt(id),
+        action: "updated",
+        message: "Un rendez-vous a été modifié",
+      });
+    } catch (socketError) {
+      console.error("Erreur socket:", socketError);
+    }
 
     res.json({
       success: true,
@@ -605,6 +637,26 @@ router.patch("/:id/status", async (req, res) => {
       }
     }
 
+    // Notification temps réel
+    try {
+      req.io.to(`tenant_${req.tenantId}`).emit("appointment_updated", {
+        appointmentId: parseInt(id),
+        action: "status_changed",
+        status,
+        message: `Rendez-vous ${
+          status === "confirmed"
+            ? "confirmé"
+            : status === "cancelled"
+            ? "annulé"
+            : status === "completed"
+            ? "terminé"
+            : "mis à jour"
+        }`,
+      });
+    } catch (socketError) {
+      console.error("Erreur socket:", socketError);
+    }
+
     res.json({
       success: true,
       message: `Rendez-vous ${
@@ -641,6 +693,17 @@ router.delete("/:id", async (req, res) => {
         success: false,
         error: "Rendez-vous introuvable",
       });
+    }
+
+    // Notification temps réel
+    try {
+      req.io.to(`tenant_${req.tenantId}`).emit("appointment_updated", {
+        appointmentId: parseInt(id),
+        action: "deleted",
+        message: "Un rendez-vous a été supprimé",
+      });
+    } catch (socketError) {
+      console.error("Erreur socket:", socketError);
     }
 
     res.json({

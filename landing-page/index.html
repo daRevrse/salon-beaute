@@ -12,7 +12,7 @@
     <title>SalonHub by FlowKraft — Simplifiez la gestion de votre salon</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="logo_fk_black.png">
+    <link rel="icon" type="image/png" href="logo.png">
 
     <!-- Font Awesome pour les icônes -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -28,8 +28,8 @@
          =================================== -->
     <header>
         <nav class="nav-container">
-            <a href="https://flowkraftagency.com" class="logo">
-                <img src="logo_fk_black.png" alt="FlowKraft Logo">
+            <a href="https://salonhub.flowkraftagency.com" class="logo">
+                <img src="logo.png" alt="SalonHub Logo">
                 SalonHub
             </a>
             <div class="nav-menu">
@@ -37,6 +37,7 @@
                     <a href="#features">Fonctionnalités</a>
                     <a href="#how-it-works">Comment ça fonctionne</a>
                     <a href="#pricing">Tarifs</a>
+                    <a href="recherche.html" class="nav-search-link"><i class="fas fa-search"></i> Rechercher</a>
                     <a href="#contact">Contact</a>
                 </div>
             </div>
@@ -166,33 +167,72 @@
     <section class="use-cases" id="use-cases">
         <h2 class="section-title">Adapté à tous les secteurs d'activité</h2>
         <p class="section-subtitle">Découvrez comment SalonHub peut transformer la gestion de votre établissement.</p>
-        <div class="features-grid">
-            <div class="feature-card use-case-beaute featured">
-                <div class="popular-badge">Populaire</div>
-                <h3>Salon de Beauté</h3>
-                <div class="feature-icon"><i class="fa-solid fa-scissors"></i></div>
-                <p>Outils complets pour la gestion des rendez-vous, des clients et des services esthétiques.</p>
-                <a href="salon-de-beaute.html" class="btn-secondary">Découvrir</a>
-            </div>
-            <div class="feature-card use-case-formation">
-                <h3>Centres de Formation</h3>
-                <div class="feature-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-                <p>Planifiez vos sessions, gérez les inscriptions et communiquez facilement avec vos participants.</p>
-                <a href="centre-de-formation.html" class="btn-secondary">Découvrir</a>
-            </div>
-            <div class="feature-card use-case-restaurant">
-                <h3>Restaurants & Cafés</h3>
-                <div class="feature-icon"><i class="fas fa-utensils"></i></div>
-                <p>Gérez les réservations de tables, organisez des événements et optimisez le service en salle.</p>
-                <a href="restaurant.html" class="btn-secondary">Découvrir</a>
-            </div>
-            <div class="feature-card use-case-medical">
-                <h3>Cabinets Médicaux</h3>
-                <div class="feature-icon"><i class="fas fa-heartbeat"></i></div>
-                <p>Simplifiez la prise de rendez-vous pour vos patients et réduisez les absences grâce aux rappels
-                    automatiques.</p>
-                <a href="cabinet-medical.html" class="btn-secondary">Découvrir</a>
-            </div>
+        <div class="sectors-grid">
+            <a href="salon-de-beaute.html" class="sector-card sector-beaute">
+                <div class="sector-icon-wrapper">
+                    <i class="fa-solid fa-scissors"></i>
+                </div>
+                <div class="sector-content">
+                    <h3>Salon de Beauté</h3>
+                    <p>Outils complets pour la gestion des rendez-vous, des clients et des services esthétiques.
+                        Fidélisez votre clientèle et augmentez votre chiffre d'affaires.</p>
+                    <ul class="sector-highlights">
+                        <li><i class="fas fa-check-circle"></i> Réservation en ligne 24/7</li>
+                        <li><i class="fas fa-check-circle"></i> Gestion multi-praticiens</li>
+                        <li><i class="fas fa-check-circle"></i> Rappels automatiques</li>
+                    </ul>
+                    <span class="sector-cta">Découvrir <i class="fas fa-arrow-right"></i></span>
+                </div>
+                <span class="sector-badge">Populaire</span>
+            </a>
+            <a href="restaurant.html" class="sector-card sector-restaurant">
+                <div class="sector-icon-wrapper">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <div class="sector-content">
+                    <h3>Restaurants & Cafés</h3>
+                    <p>Gérez les réservations de tables, organisez des événements et optimisez le service en salle avec
+                        des outils pensés pour la restauration.</p>
+                    <ul class="sector-highlights">
+                        <li><i class="fas fa-check-circle"></i> Réservation de tables</li>
+                        <li><i class="fas fa-check-circle"></i> Gestion des menus</li>
+                        <li><i class="fas fa-check-circle"></i> QR Code commandes</li>
+                    </ul>
+                    <span class="sector-cta">Découvrir <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </a>
+            <a href="centre-de-formation.html" class="sector-card sector-formation">
+                <div class="sector-icon-wrapper">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <div class="sector-content">
+                    <h3>Centres de Formation</h3>
+                    <p>Planifiez vos sessions, gérez les inscriptions et communiquez facilement avec vos participants.
+                        Suivez la progression et délivrez des certificats.</p>
+                    <ul class="sector-highlights">
+                        <li><i class="fas fa-check-circle"></i> Gestion des sessions</li>
+                        <li><i class="fas fa-check-circle"></i> Suivi des inscriptions</li>
+                        <li><i class="fas fa-check-circle"></i> Certificats automatiques</li>
+                    </ul>
+                    <span class="sector-cta">Découvrir <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </a>
+            <a href="cabinet-medical.html" class="sector-card sector-medical">
+                <div class="sector-icon-wrapper">
+                    <i class="fas fa-heartbeat"></i>
+                </div>
+                <div class="sector-content">
+                    <h3>Cabinets Médicaux</h3>
+                    <p>Simplifiez la prise de rendez-vous pour vos patients et réduisez les absences grâce aux rappels
+                        automatiques. Gérez dossiers et prescriptions.</p>
+                    <ul class="sector-highlights">
+                        <li><i class="fas fa-check-circle"></i> Dossiers patients</li>
+                        <li><i class="fas fa-check-circle"></i> Prescriptions en ligne</li>
+                        <li><i class="fas fa-check-circle"></i> Rappels SMS/Email</li>
+                    </ul>
+                    <span class="sector-cta">Découvrir <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </a>
         </div>
     </section>
 
@@ -249,7 +289,7 @@
         <h2 class="section-title">Des offres flexibles pour votre croissance</h2>
 
         <!-- Toggle de facturation -->
-        <div class="billing-toggle-container">
+        <!-- <div class="billing-toggle-container">
             <span>Mensuel</span>
             <label class="billing-toggle">
                 <input type="checkbox" id="billing-cycle-checkbox">
@@ -259,17 +299,17 @@
                 Annuel
                 <span class="savings-badge">-15%</span>
             </span>
-        </div>
+        </div> -->
 
         <div class="pricing-grid">
-            <!-- Plan Starter -->
+            <!-- Plan Essential -->
             <div class="pricing-card">
                 <div class="plan-header">
-                    <h3>Starter</h3>
+                    <h3>Essential</h3>
                     <p class="plan-description">Idéal pour les indépendants et les petits salons.</p>
                 </div>
                 <div class="price-container">
-                    <span class="price" data-monthly="9.99" data-yearly="90.99">9.99€</span>
+                    <span class="price" data-monthly="3.99" data-yearly="40.69">3.99€</span>
                     <span class="billing-period">/ mois</span>
                 </div>
                 <ul class="plan-features">
@@ -280,7 +320,6 @@
                     <li class="disabled"><i class="fas fa-times"></i> Statistiques avancées</li>
                     <li class="disabled"><i class="fas fa-times"></i> Paiement en ligne</li>
                 </ul>
-                <button class="btn-pricing">Essayer gratuitement</button>
             </div>
 
             <!-- Plan Pro (Featured) -->
@@ -291,7 +330,7 @@
                     <p class="plan-description">Parfait pour les équipes et les salons en croissance.</p>
                 </div>
                 <div class="price-container">
-                    <span class="price" data-monthly="29.99" data-yearly="290.99">29.99€</span>
+                    <span class="price" data-monthly="9.99" data-yearly="101.90">9.99€</span>
                     <span class="billing-period">/ mois</span>
                 </div>
                 <ul class="plan-features">
@@ -303,18 +342,16 @@
                     <li><i class="fas fa-check"></i> Rappels automatiques SMS/Email</li>
                     <li><i class="fas fa-check"></i> Campagnes Marketing</li>
                 </ul>
-                <button class="btn-pricing">Essayer gratuitement</button>
             </div>
 
-            <!-- Plan Business -->
-            <div class="pricing-card">
+            <!-- Plan Sur mesure -->
+            <div class="pricing-card custom-plan">
                 <div class="plan-header">
-                    <h3>Business</h3>
+                    <h3>Sur mesure</h3>
                     <p class="plan-description">La solution complète pour les multi-salons et franchises.</p>
                 </div>
                 <div class="price-container">
-                    <span class="price" data-monthly="69.99" data-yearly="690.99">69.99€</span>
-                    <span class="billing-period">/ mois</span>
+                    <span class="price custom-price">Sur devis</span>
                 </div>
                 <ul class="plan-features">
                     <li><i class="fas fa-check"></i> Tout du plan Pro</li>
@@ -324,7 +361,9 @@
                     <li><i class="fas fa-check"></i> API & intégrations</li>
                     <li><i class="fas fa-check"></i> Gestionnaire dédié</li>
                 </ul>
-                <button class="btn-pricing">Contactez-nous</button>
+                <a href="mailto:info@flowkraftagency.com" class="btn-contact">
+                    <i class="fas fa-envelope"></i> Contactez-nous
+                </a>
             </div>
         </div>
 
@@ -335,9 +374,9 @@
                 <thead>
                     <tr>
                         <th>Fonctionnalité</th>
-                        <th>Starter</th>
+                        <th>Essential</th>
                         <th>Pro</th>
-                        <th>Business</th>
+                        <th>Sur mesure</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -466,6 +505,7 @@
                         <li><a href="#features"><i class="fas fa-chevron-right"></i>Fonctionnalités</a></li>
                         <li><a href="#how-it-works"><i class="fas fa-chevron-right"></i>Comment ça fonctionne</a></li>
                         <li><a href="#pricing"><i class="fas fa-chevron-right"></i>Tarifs</a></li>
+                        <li><a href="recherche.html"><i class="fas fa-chevron-right"></i>Rechercher un salon</a></li>
                         <li><a href="https://flowkraftagency.com"><i class="fas fa-chevron-right"></i>FK Agency</a></li>
                         <!-- <li><a href="#"><i class="fas fa-chevron-right"></i>Blog</a></li>
                         <li><a href="#"><i class="fas fa-chevron-right"></i>FAQ</a></li> -->

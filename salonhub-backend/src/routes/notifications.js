@@ -363,4 +363,190 @@ router.get("/client/:client_id", async (req, res) => {
   }
 });
 
+// ==========================================
+// ADMIN INBOX - Receive announcements & messages from SuperAdmin
+// ==========================================
+
+/**
+ * GET /api/notifications/admin-inbox/unread-count
+ * Returns unread count for announcements + messages
+ */
+router.get("/admin-inbox/unread-count", async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const userId = req.user.id;
+
+    // Récupérer le plan du tenant
+    const [tenant] = await query(
+      "SELECT subscription_plan FROM tenants WHERE id = ?",
+      [tenantId]
+    );
+    const tenantPlan = tenant?.subscription_plan || "starter";
+
+    let announcementsCount = 0;
+    try {
+      const unreadAnnouncements = await query(
+        `SELECT COUNT(*) as count FROM admin_announcements a
+         WHERE a.sent_via IN ('in_app', 'both')
+         AND a.sent_at IS NOT NULL
+         AND (
+           a.target_type = 'all'
+           OR (a.target_type = 'plan' AND a.target_plans IS NOT NULL AND JSON_CONTAINS(a.target_plans, ?))
+           OR (a.target_type = 'specific' AND a.target_tenant_ids IS NOT NULL AND JSON_CONTAINS(a.target_tenant_ids, CAST(? AS JSON)))
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM announcement_reads ar
+           WHERE ar.announcement_id = a.id AND ar.tenant_id = ? AND ar.user_id = ?
+         )`,
+        [JSON.stringify(tenantPlan), tenantId, tenantId, userId]
+      );
+      announcementsCount = unreadAnnouncements[0]?.count || 0;
+    } catch (err) {
+      // announcement_reads table may not exist yet
+      console.error("Erreur count announcements:", err.message);
+    }
+
+    let messagesCount = 0;
+    try {
+      const unreadMessages = await query(
+        `SELECT COUNT(*) as count FROM admin_messages
+         WHERE tenant_id = ? AND is_read = 0`,
+        [tenantId]
+      );
+      messagesCount = unreadMessages[0]?.count || 0;
+    } catch (err) {
+      console.error("Erreur count messages:", err.message);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        announcements: announcementsCount,
+        messages: messagesCount,
+        total: announcementsCount + messagesCount,
+      },
+    });
+  } catch (error) {
+    console.error("Erreur GET /admin-inbox/unread-count:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
+/**
+ * GET /api/notifications/admin-inbox
+ * Returns unified list of announcements + messages for this tenant
+ */
+router.get("/admin-inbox", async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const userId = req.user.id;
+    const { limit = 30, offset = 0 } = req.query;
+
+    // Récupérer le plan du tenant
+    const [tenant] = await query(
+      "SELECT subscription_plan FROM tenants WHERE id = ?",
+      [tenantId]
+    );
+    const tenantPlan = tenant?.subscription_plan || "starter";
+
+    // Fetch announcements targeted at this tenant
+    let announcements = [];
+    try {
+      announcements = await query(
+        `SELECT
+           a.id, 'announcement' as type, a.title, a.content, a.created_at,
+           IF(ar.id IS NOT NULL, TRUE, FALSE) as is_read,
+           sa.first_name as admin_first_name, sa.last_name as admin_last_name
+         FROM admin_announcements a
+         JOIN super_admins sa ON a.super_admin_id = sa.id
+         LEFT JOIN announcement_reads ar ON ar.announcement_id = a.id AND ar.tenant_id = ? AND ar.user_id = ?
+         WHERE a.sent_via IN ('in_app', 'both')
+         AND a.sent_at IS NOT NULL
+         AND (
+           a.target_type = 'all'
+           OR (a.target_type = 'plan' AND a.target_plans IS NOT NULL AND JSON_CONTAINS(a.target_plans, ?))
+           OR (a.target_type = 'specific' AND a.target_tenant_ids IS NOT NULL AND JSON_CONTAINS(a.target_tenant_ids, CAST(? AS JSON)))
+         )
+         ORDER BY a.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [tenantId, userId, JSON.stringify(tenantPlan), tenantId, parseInt(limit), parseInt(offset)]
+      );
+    } catch (err) {
+      // announcement_reads table may not exist yet
+      console.error("Erreur fetch announcements:", err.message);
+    }
+
+    // Fetch direct messages for this tenant
+    let messages = [];
+    try {
+      messages = await query(
+        `SELECT
+           m.id, 'message' as type, m.subject as title, m.content, m.created_at,
+           m.is_read,
+           sa.first_name as admin_first_name, sa.last_name as admin_last_name
+         FROM admin_messages m
+         JOIN super_admins sa ON m.super_admin_id = sa.id
+         WHERE m.tenant_id = ?
+         ORDER BY m.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [tenantId, parseInt(limit), parseInt(offset)]
+      );
+    } catch (err) {
+      console.error("Erreur fetch messages:", err.message);
+    }
+
+    // Merge and sort by date
+    const combined = [...announcements, ...messages]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, parseInt(limit));
+
+    res.json({
+      success: true,
+      data: combined,
+    });
+  } catch (error) {
+    console.error("Erreur GET /admin-inbox:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
+/**
+ * PUT /api/notifications/admin-inbox/announcements/:id/read
+ * Mark an announcement as read for the current user/tenant
+ */
+router.put("/admin-inbox/announcements/:id/read", async (req, res) => {
+  try {
+    await query(
+      `INSERT INTO announcement_reads (announcement_id, tenant_id, user_id)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE read_at = NOW()`,
+      [req.params.id, req.tenantId, req.user.id]
+    );
+
+    res.json({ success: true, message: "Marqué comme lu" });
+  } catch (error) {
+    console.error("Erreur PUT /announcements/:id/read:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
+/**
+ * PUT /api/notifications/admin-inbox/messages/:id/read
+ * Mark a message as read
+ */
+router.put("/admin-inbox/messages/:id/read", async (req, res) => {
+  try {
+    await query(
+      `UPDATE admin_messages SET is_read = 1, read_at = NOW()
+       WHERE id = ? AND tenant_id = ?`,
+      [req.params.id, req.tenantId]
+    );
+
+    res.json({ success: true, message: "Marqué comme lu" });
+  } catch (error) {
+    console.error("Erreur PUT /messages/:id/read:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
 module.exports = router;

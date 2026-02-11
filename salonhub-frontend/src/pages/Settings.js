@@ -136,6 +136,8 @@ const Settings = () => {
     primaryColor: "#8B5CF6",
     secondaryColor: "#6366F1",
     fontFamily: "Inter",
+    footerBgColor: "#1E293B",
+    footerTextColor: "#FFFFFF",
   });
 
   // Font options for theme
@@ -1326,11 +1328,57 @@ const Settings = () => {
                       <p className="mt-1 text-xs text-slate-500">Police utilisée sur votre page publique</p>
                     </div>
 
+                    {/* Footer Background Color */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Couleur de fond du pied de page
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={themeSettings.footerBgColor || "#1E293B"}
+                          onChange={(e) => setThemeSettings({ ...themeSettings, footerBgColor: e.target.value })}
+                          className="h-10 w-20 rounded-lg cursor-pointer border border-slate-200"
+                        />
+                        <input
+                          type="text"
+                          value={themeSettings.footerBgColor || "#1E293B"}
+                          onChange={(e) => setThemeSettings({ ...themeSettings, footerBgColor: e.target.value })}
+                          className={`flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                          placeholder="#1E293B"
+                        />
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">Couleur d'arrière-plan du footer</p>
+                    </div>
+
+                    {/* Footer Text Color */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Couleur du texte du pied de page
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={themeSettings.footerTextColor || "#FFFFFF"}
+                          onChange={(e) => setThemeSettings({ ...themeSettings, footerTextColor: e.target.value })}
+                          className="h-10 w-20 rounded-lg cursor-pointer border border-slate-200"
+                        />
+                        <input
+                          type="text"
+                          value={themeSettings.footerTextColor || "#FFFFFF"}
+                          onChange={(e) => setThemeSettings({ ...themeSettings, footerTextColor: e.target.value })}
+                          className={`flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                          placeholder="#FFFFFF"
+                        />
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">Couleur du texte dans le footer</p>
+                    </div>
+
                     {/* Preview Card */}
                     <div className="mt-8 p-6 rounded-2xl border-2 border-slate-200">
                       <h3 className="text-sm font-medium text-slate-700 mb-4">Aperçu</h3>
                       <div
-                        className="p-4 rounded-xl text-white text-center font-medium shadow-soft"
+                        className="p-4 rounded-xl text-white text-center font-medium shadow-soft mb-4"
                         style={{
                           background: `linear-gradient(135deg, ${themeSettings.primaryColor}, ${themeSettings.secondaryColor})`,
                           fontFamily: themeSettings.fontFamily
@@ -1338,13 +1386,16 @@ const Settings = () => {
                       >
                         Votre bouton de réservation
                       </div>
-                    </div>
-
-                    {/* Info Banner */}
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                      <p className="text-sm text-amber-800">
-                        <strong>Note :</strong> Les modifications de thème seront appliquées à votre page de réservation dans une prochaine mise à jour.
-                      </p>
+                      <div
+                        className="p-4 rounded-xl text-center text-sm"
+                        style={{
+                          backgroundColor: themeSettings.footerBgColor || "#1E293B",
+                          color: themeSettings.footerTextColor || "#FFFFFF",
+                          fontFamily: themeSettings.fontFamily
+                        }}
+                      >
+                        Aperçu du pied de page
+                      </div>
                     </div>
                   </div>
                 </div>

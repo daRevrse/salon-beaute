@@ -7,6 +7,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { usePublicTheme, formatDuration } from "../../contexts/PublicThemeContext";
 import { getImageUrl } from "../../utils/imageUtils";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
 import {
@@ -15,6 +16,8 @@ import {
   CalendarDaysIcon,
   CurrencyDollarIcon,
   InformationCircleIcon,
+  PhoneIcon,
+  MapPinIcon,
 } from "@heroicons/react/24/outline";
 
 const BookingDateTime = () => {
@@ -23,13 +26,16 @@ const BookingDateTime = () => {
   const location = useLocation();
   const service = location.state?.service;
   const { formatPrice } = useCurrency();
+  const { dynamicStyles } = usePublicTheme();
 
   const {
     salon,
+    settings,
     availableSlots,
     loading,
     error,
     fetchSalon,
+    fetchSettings,
     fetchAvailability,
   } = usePublicBooking(slug);
 
@@ -37,6 +43,30 @@ const BookingDateTime = () => {
   const businessType = salon?.business_type || "beauty";
   const config = getBusinessTypeConfig(businessType);
   const term = config.terminology;
+
+  // Thème personnalisé
+  const themeSettings = settings?.theme_settings || {};
+  const customStyles = {
+    gradientBg: {
+      background: `linear-gradient(135deg, ${themeSettings.primaryColor || "#8B5CF6"}, ${themeSettings.secondaryColor || "#6366F1"})`
+    },
+    primaryText: {
+      color: themeSettings.primaryColor || "#8B5CF6"
+    },
+    primaryBg: {
+      backgroundColor: `${themeSettings.primaryColor || "#8B5CF6"}15`
+    },
+    fontFamily: {
+      fontFamily: themeSettings.fontFamily || "Inter"
+    },
+    footer: {
+      backgroundColor: themeSettings.footerBgColor || "#1E293B",
+      color: themeSettings.footerTextColor || "#FFFFFF"
+    },
+    footerMuted: {
+      color: `${themeSettings.footerTextColor || "#FFFFFF"}99`
+    }
+  };
 
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -47,7 +77,8 @@ const BookingDateTime = () => {
       return;
     }
     fetchSalon();
-  }, [service, slug, navigate, fetchSalon]);
+    fetchSettings();
+  }, [service, slug, navigate, fetchSalon, fetchSettings]);
 
   useEffect(() => {
     if (selectedDate && service) {
@@ -122,7 +153,7 @@ const BookingDateTime = () => {
   const openDays = businessSchedule?.filter(d => d.isOpen) || [];
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative flex flex-col" style={customStyles.fontFamily}>
       {/* Background Image with Overlay */}
       {service?.image_url && (
         <div className="fixed inset-0 z-0">
@@ -180,7 +211,7 @@ const BookingDateTime = () => {
                   </p>
                   <p className="text-sm text-slate-600 mt-1 flex items-center">
                     <ClockIcon className="w-4 h-4 mr-1 inline-block" />
-                    {service.duration} min &bull;
+                    {formatDuration(service.duration)} &bull;
                     <CurrencyDollarIcon className="w-4 h-4 ml-2 mr-1 inline-block" />
                     {formatPrice(service.price)}
                   </p>
@@ -308,6 +339,29 @@ const BookingDateTime = () => {
             </div>
           )}
         </main>
+
+        {/* Footer */}
+        <footer className="mt-auto" style={customStyles.footer}>
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm">
+            {salon?.phone && (
+              <div className="flex justify-center items-center gap-2 mb-1">
+                <PhoneIcon className="w-4 h-4" />
+                <span>{salon.phone}</span>
+              </div>
+            )}
+            {salon?.address && (
+              <div className="flex justify-center items-center gap-2">
+                <MapPinIcon className="w-4 h-4" />
+                <span>
+                  {salon.address} {salon.city && `, ${salon.city}`}
+                </span>
+              </div>
+            )}
+            <p className="mt-4 text-xs" style={customStyles.footerMuted}>
+              © {new Date().getFullYear()} {salon?.name || "SalonHub"}. Tous droits réservés.
+            </p>
+          </div>
+        </footer>
       </div>
     </div>
   );

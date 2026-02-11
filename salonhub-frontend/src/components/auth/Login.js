@@ -6,6 +6,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import GoogleSignInButton from "./GoogleSignInButton";
 import {
   EnvelopeIcon,
   LockClosedIcon,
@@ -18,7 +19,7 @@ import {
 const Login = () => {
   const navigate = useNavigate();
   const { tenant } = useParams();
-  const { login, loading } = useAuth();
+  const { login, loginWithGoogle, loading } = useAuth();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -283,10 +284,34 @@ const Login = () => {
                 </button>
               </form>
 
-              {/* Divider */}
-              <div className="divider-premium">
-                <span className="text-xs text-slate-400 uppercase tracking-wider">ou</span>
-              </div>
+              {/* Google Sign-In (only if configured) */}
+              {process.env.REACT_APP_GOOGLE_CLIENT_ID && (
+                <>
+                  <div className="divider-premium">
+                    <span className="text-xs text-slate-400 uppercase tracking-wider">ou</span>
+                  </div>
+
+                  <GoogleSignInButton
+                    onSuccess={async (accessToken, userInfo) => {
+                      const result = await loginWithGoogle(accessToken);
+
+                      if (result.success) {
+                        navigate("/dashboard");
+                      } else if (result.needsRegistration) {
+                        sessionStorage.setItem("googleUser", JSON.stringify(result.googleUser));
+                        sessionStorage.setItem("googleToken", accessToken);
+                        navigate(tenant ? `/${tenant}/register?google=true` : "/register?google=true");
+                      } else {
+                        setError(result.error || "Erreur de connexion Google");
+                      }
+                    }}
+                    onError={() => setError("La connexion Google a échoué")}
+                    disabled={loading}
+                  />
+                </>
+              )}
+
+              <div className="mt-4" />
 
               {/* Register Link */}
               <div className="text-center">

@@ -175,7 +175,7 @@ const PromotionFormScreen = ({ route, navigation }) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color="#6366F1" />
       </View>
     );
   }
@@ -394,7 +394,7 @@ const PromotionFormScreen = ({ route, navigation }) => {
           <Switch
             value={formData.is_active}
             onValueChange={(value) => setFormData({ ...formData, is_active: value })}
-            trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
+            trackColor={{ false: '#D1D5DB', true: '#6366F1' }}
             thumbColor="#fff"
           />
         </View>
@@ -408,7 +408,7 @@ const PromotionFormScreen = ({ route, navigation }) => {
           <Switch
             value={formData.is_public}
             onValueChange={(value) => setFormData({ ...formData, is_public: value })}
-            trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
+            trackColor={{ false: '#D1D5DB', true: '#6366F1' }}
             thumbColor="#fff"
           />
         </View>
@@ -465,6 +465,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
+    paddingTop: 48,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
@@ -525,7 +526,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   segmentActive: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#6366F1',
   },
   segmentText: {
     fontSize: 14,
@@ -574,7 +575,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   buttonPrimary: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#6366F1',
   },
   buttonDanger: {
     backgroundColor: '#EF4444',
