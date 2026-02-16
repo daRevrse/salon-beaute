@@ -30,7 +30,13 @@
       "Bash(find:*)",
       "Bash(npx expo install socket.io-client)",
       "Bash(npx expo install:*)",
-      "Bash(npx expo export:*)"
+      "Bash(npx expo export:*)",
+      "Bash(del \"C:\\\\Users\\\\Administrateur\\\\salon-beaute\\\\salonhub-mobile\\\\DEBUG_FINDINGS.md\")",
+      "Bash(del:*)",
+      "Bash(del \"C:\\\\Users\\\\Administrateur\\\\salon-beaute\\\\salonhub-backend\\\\database\\\\PHASE3_TRAINING_SUMMARY.md\")",
+      "Bash(del \"C:\\\\Users\\\\Administrateur\\\\salon-beaute\\\\salonhub-backend\\\\database\\\\RESTAURANT_API_TESTS.md\")",
+      "Bash(del \"C:\\\\Users\\\\Administrateur\\\\salon-beaute\\\\salonhub-frontend\\\\GUIDE-SETUP-FRONTEND.md\")",
+      "Bash(del \"C:\\\\Users\\\\Administrateur\\\\salon-beaute\\\\landing-page\\\\README.md\")"
     ]
   }
 }
