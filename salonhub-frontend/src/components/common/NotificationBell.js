@@ -104,6 +104,7 @@ const NotificationBell = () => {
   const [adminNotifications, setAdminNotifications] = useState([]);
   const [unreadAdminCount, setUnreadAdminCount] = useState(0);
   const [adminLoading, setAdminLoading] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState(null);
 
   const socket = useSocket();
 
@@ -590,9 +591,10 @@ const NotificationBell = () => {
                         return (
                           <div
                             key={`${item.type}-${item.id}`}
-                            onClick={() =>
-                              !item.is_read && markAdminAsRead(item)
-                            }
+                            onClick={() => {
+                              if (!item.is_read) markAdminAsRead(item);
+                              setSelectedMessage(item);
+                            }}
                             className={`p-4 transition-colors cursor-pointer relative
                               ${!item.is_read ? (isAnnouncement ? "bg-rose-50" : "bg-indigo-50") : "hover:bg-gray-50"}
                             `}
@@ -660,6 +662,65 @@ const NotificationBell = () => {
                   )}
                 </>
               )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Message Detail Modal */}
+      {selectedMessage && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+            onClick={() => setSelectedMessage(null)}
+          />
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden animate-fade-in-down">
+              {/* Header */}
+              <div className={`px-6 py-4 border-b ${selectedMessage.type === "announcement" ? "bg-rose-50 border-rose-100" : "bg-indigo-50 border-indigo-100"}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${selectedMessage.type === "announcement" ? "bg-rose-100 text-rose-600" : "bg-indigo-100 text-indigo-600"}`}>
+                      {selectedMessage.type === "announcement" ? (
+                        <MegaphoneIcon className="h-5 w-5" />
+                      ) : (
+                        <ChatBubbleLeftRightIcon className="h-5 w-5" />
+                      )}
+                    </div>
+                    <div>
+                      <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${selectedMessage.type === "announcement" ? "bg-rose-100 text-rose-700" : "bg-indigo-100 text-indigo-700"}`}>
+                        {selectedMessage.type === "announcement" ? "Annonce" : "Message"}
+                      </span>
+                      <p className="text-xs text-gray-400 mt-1">{formatTimeAgo(selectedMessage.created_at)}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedMessage(null)}
+                    className="p-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                  >
+                    <XMarkIcon className="h-5 w-5 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-5 overflow-y-auto max-h-[60vh]">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">{selectedMessage.title}</h3>
+                <div
+                  className="prose prose-sm max-w-none text-gray-600 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: selectedMessage.content || "" }}
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-3 border-t border-gray-100 bg-gray-50">
+                <button
+                  onClick={() => setSelectedMessage(null)}
+                  className="w-full py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Fermer
+                </button>
+              </div>
             </div>
           </div>
         </>

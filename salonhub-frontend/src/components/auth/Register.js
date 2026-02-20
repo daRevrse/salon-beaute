@@ -272,9 +272,7 @@ const Register = () => {
           {/* Header */}
           <div className="text-center mb-10">
             <Link to="/login" className="inline-flex items-center gap-3 mb-8 group">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-soft group-hover:shadow-glow transition-shadow duration-300">
-                <SparklesIcon className="w-6 h-6 text-white" />
-              </div>
+              <img src="/logo.png" alt="SalonHub" className="w-12 h-12 rounded-xl shadow-soft group-hover:shadow-glow transition-shadow duration-300 object-cover" />
               <span className="font-display text-2xl text-slate-800 tracking-tight">SalonHub</span>
             </Link>
             <h1 className="font-display text-display-sm sm:text-display-md text-slate-800 mb-3">

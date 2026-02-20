@@ -3,8 +3,9 @@
  * Multi-Sector Adaptive Dashboard with Business Type Customization
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
+import QRCode from "react-qr-code";
 import Joyride, { STATUS } from "react-joyride";
 import { useAuth } from "../contexts/AuthContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -423,6 +424,44 @@ const Dashboard = () => {
     window.location.href = `sms:?body=${encodeURIComponent(text)}`;
   };
 
+  const qrRef = useRef(null);
+
+  const handleDownloadQR = useCallback(() => {
+    const svg = qrRef.current?.querySelector("svg");
+    if (!svg) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const padding = 40;
+    const qrSize = 256;
+    const textHeight = 40;
+    canvas.width = qrSize + padding * 2;
+    canvas.height = qrSize + padding * 2 + textHeight;
+
+    // White background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, padding, padding, qrSize, qrSize);
+
+      // Salon name below QR
+      ctx.fillStyle = "#1F2937";
+      ctx.font = "bold 18px Arial, sans-serif";
+      ctx.textAlign = "center";
+      const salonName = tenant?.business_name || tenant?.slug || "SalonHub";
+      ctx.fillText(salonName, canvas.width / 2, qrSize + padding + 30);
+
+      const link = document.createElement("a");
+      link.download = `qrcode-${tenant?.slug || "salon"}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    };
+    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
+  }, [tenant]);
+
   const getStatusBadge = (status) => {
     const styles = {
       pending: "bg-amber-100 text-amber-800 border border-amber-200",
@@ -547,6 +586,28 @@ const Dashboard = () => {
                       <CheckCircleIcon className="h-4 w-4" /> Lien copié !
                     </p>
                   )}
+
+                  {/* QR Code Section */}
+                  <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <p className="text-sm font-medium text-slate-700 mb-3">QR Code de réservation</p>
+                    <div ref={qrRef} className="flex justify-center py-3 bg-white rounded-lg">
+                      <QRCode
+                        value={getBookingUrl()}
+                        size={180}
+                        level="H"
+                        fgColor="#1F2937"
+                      />
+                    </div>
+                    <button
+                      onClick={handleDownloadQR}
+                      className="mt-3 w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-xl text-violet-700 bg-violet-100 hover:bg-violet-200 transition-colors duration-300"
+                    >
+                      <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Télécharger le QR Code
+                    </button>
+                  </div>
 
                   <div className="mt-6">
                     <p className="text-sm font-medium text-slate-700 mb-3">Partager via :</p>

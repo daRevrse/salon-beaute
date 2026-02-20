@@ -1,439 +1,375 @@
 /**
- * SalonHub Landing Page - Main JavaScript
- * Handles animations, scroll effects, and form interactions
+ * SalonHub Landing Page — V2
+ * GSAP ScrollTrigger + Lenis Smooth Scroll
  */
 
-// ===================================
-// Intersection Observer for Fade-in Animations
-// ===================================
-const observerOptions = {
-  threshold: 0.15,
-  rootMargin: "0px 0px -50px 0px",
-};
+document.addEventListener('DOMContentLoaded', () => {
 
-const fadeInObserver = new IntersectionObserver((entries) => {
-  entries.forEach((entry) => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add("visible");
-    }
+  // ================================
+  // GSAP PLUGIN REGISTRATION
+  // ================================
+  gsap.registerPlugin(ScrollTrigger);
+
+  // ================================
+  // LENIS SMOOTH SCROLL
+  // ================================
+  const lenis = new Lenis({
+    duration: 1.2,
+    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    smoothWheel: true,
+    touchMultiplier: 2,
   });
-}, observerOptions);
 
-// Apply observer to all animated elements
-document.addEventListener("DOMContentLoaded", () => {
-  const animatedElements = document.querySelectorAll(
-    ".feature-card, .how-it-works-card, .image-showcase, .pricing, .sector-card"
-  );
-  animatedElements.forEach((element) => fadeInObserver.observe(element));
-});
+  // Connect Lenis to GSAP ticker (preferred method)
+  gsap.ticker.add((time) => lenis.raf(time * 1000));
+  gsap.ticker.lagSmoothing(0);
 
-// ===================================
-// Header Scroll Effect
-// ===================================
-let lastScrollY = window.scrollY;
+  // Also keep ScrollTrigger in sync
+  lenis.on('scroll', ScrollTrigger.update);
 
-window.addEventListener("scroll", () => {
-  const header = document.querySelector("header");
-  const currentScrollY = window.scrollY;
+  // ================================
+  // HEADER SCROLL EFFECT
+  // ================================
+  const header = document.getElementById('header');
 
-  if (currentScrollY > 50) {
-    header.classList.add("scrolled");
-  } else {
-    header.classList.remove("scrolled");
-  }
-
-  lastScrollY = currentScrollY;
-});
-
-// ===================================
-// Smooth Scroll for Navigation Links
-// ===================================
-document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-  anchor.addEventListener("click", function (e) {
-    e.preventDefault();
-    const targetId = this.getAttribute("href");
-
-    if (targetId === "#") return;
-
-    const targetElement = document.querySelector(targetId);
-    if (targetElement) {
-      const headerOffset = 80;
-      const elementPosition = targetElement.getBoundingClientRect().top;
-      const offsetPosition =
-        elementPosition + window.pageYOffset - headerOffset;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth",
-      });
-    }
-  });
-});
-
-// ===================================
-// EmailJS Configuration
-// ===================================
-const EMAILJS_CONFIG = {
-  serviceID: "service_hvu0uee", // Remplacer par votre Service ID
-  templateID: "template_fudehow", // Remplacer par votre Template ID
-  publicKey: "bWDKhC9so5aLgrYO5", // Doit correspondre à la clé dans index.html
-};
-
-// Variable globale pour stocker le plan sélectionné
-let selectedPlan = null;
-
-// ===================================
-// Form Validation and Submission with EmailJS
-// ===================================
-const handleFormSubmit = (form) => {
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const emailInput = form.querySelector('input[type="email"]');
-    const email = emailInput.value.trim();
-    const submitButton = form.querySelector('button[type="submit"]');
-    const originalButtonText = submitButton.innerHTML;
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailRegex.test(email)) {
-      showNotification("Veuillez entrer une adresse email valide.", "error");
-      return;
-    }
-
-    // Disable button and show loading state
-    submitButton.disabled = true;
-    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi...';
-
-    try {
-      // Déterminer le type de formulaire
-      const isNewsletterForm = form.classList.contains("newsletter-form");
-      const formType = isNewsletterForm ? "Newsletter" : "Lead CTA";
-
-      // Paramètres à envoyer via EmailJS
-      const templateParams = {
-        email: email,
-        form_type: formType,
-        plan: selectedPlan || "Non spécifié", // Inclure le plan sélectionné
-        date: new Date().toLocaleString("fr-FR"),
-      };
-
-      // Envoi via EmailJS
-      const response = await emailjs.send(
-        EMAILJS_CONFIG.serviceID,
-        EMAILJS_CONFIG.templateID,
-        templateParams
-      );
-
-      console.log("Email envoyé avec succès:", response);
-
-      // Success notification
-      if (isNewsletterForm) {
-        showNotification(
-          "Merci! Vous êtes maintenant inscrit à notre newsletter.",
-          "success"
-        );
+  ScrollTrigger.create({
+    start: 'top -60',
+    onUpdate: (self) => {
+      if (self.scroll() > 60) {
+        header?.classList.add('scrolled');
       } else {
-        showNotification(
-          "Merci! Nous vous contacterons très bientôt.",
-          "success"
-        );
+        header?.classList.remove('scrolled');
       }
-
-      // Reset form and selected plan
-      emailInput.value = "";
-      selectedPlan = null; // Réinitialiser le plan après l'envoi
-    } catch (error) {
-      console.error("Erreur lors de l'envoi:", error);
-      showNotification("Une erreur est survenue. Veuillez réessayer.", "error");
-    } finally {
-      // Restore button state
-      submitButton.disabled = false;
-      submitButton.innerHTML = originalButtonText;
     }
   });
-};
 
-// Apply to all forms
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".cta-form, .newsletter-form").forEach((form) => {
-    handleFormSubmit(form);
-  });
-});
+  // ================================
+  // MOBILE NAVIGATION
+  // ================================
+  const navToggle = document.getElementById('navToggle');
+  const navMenu = document.getElementById('navMenu');
+  const navActions = document.querySelector('.nav-actions');
 
-// ===================================
-// Notification System
-// ===================================
-const showNotification = (message, type = "info") => {
-  // Remove existing notification if any
-  const existingNotification = document.querySelector(".notification");
-  if (existingNotification) {
-    existingNotification.remove();
-  }
-
-  const notification = document.createElement("div");
-  notification.className = `notification notification-${type}`;
-  notification.textContent = message;
-
-  // Styles for notification
-  Object.assign(notification.style, {
-    position: "fixed",
-    top: "20px",
-    right: "20px",
-    padding: "15px 25px",
-    borderRadius: "8px",
-    backgroundColor: type === "success" ? "#4CAF50" : "#f44336",
-    color: "white",
-    fontWeight: "500",
-    boxShadow: "0 5px 15px rgba(0,0,0,0.2)",
-    zIndex: "1000",
-    animation: "slideIn 0.3s ease-out",
-  });
-
-  document.body.appendChild(notification);
-
-  // Auto remove after 4 seconds
-  setTimeout(() => {
-    notification.style.animation = "slideOut 0.3s ease-out";
-    setTimeout(() => notification.remove(), 300);
-  }, 4000);
-};
-
-// Add notification animations
-const style = document.createElement("style");
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-
-    @keyframes slideOut {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
-
-// ===================================
-// Pricing Card Interactions & CTA Scroll to Form
-// ===================================
-
-// Function to scroll to form and focus input
-const scrollToFormAndFocus = (e) => {
-  e.preventDefault();
-  const heroSection = document.getElementById("hero-form");
-  const emailInput = document.getElementById("hero-email-input");
-
-  if (heroSection && emailInput) {
-    // Smooth scroll to hero section
-    const headerOffset = 80;
-    const elementPosition = heroSection.getBoundingClientRect().top;
-    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-
-    window.scrollTo({
-      top: offsetPosition,
-      behavior: "smooth",
+  if (navToggle) {
+    navToggle.addEventListener('click', () => {
+      const isActive = navToggle.classList.toggle('active');
+      navMenu?.classList.toggle('open', isActive);
+      navActions?.classList.toggle('open', isActive);
+      document.body.style.overflow = isActive ? 'hidden' : '';
     });
 
-    // Focus on email input after scroll animation
-    setTimeout(() => {
-      emailInput.focus();
-      // Add a subtle animation to the input
-      emailInput.style.transition = "all 0.3s ease";
-      emailInput.style.transform = "scale(1.05)";
-      setTimeout(() => {
-        emailInput.style.transform = "scale(1)";
-      }, 300);
-    }, 500);
+    // Close on nav link click
+    navMenu?.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        navToggle.classList.remove('active');
+        navMenu.classList.remove('open');
+        navActions?.classList.remove('open');
+        document.body.style.overflow = '';
+      });
+    });
   }
-};
 
-// Apply to CTA button
-document.querySelectorAll(".scroll-to-form").forEach((button) => {
-  button.addEventListener("click", scrollToFormAndFocus);
-});
+  // ================================
+  // HERO ENTRANCE ANIMATIONS
+  // ================================
+  const heroContent = document.querySelector('[data-anim="hero"]');
+  const heroImg = document.querySelector('[data-anim="hero-img"]');
 
-// ===================================
-// Image Slider
-// ===================================
-document.addEventListener("DOMContentLoaded", () => {
-  const sliderTrack = document.querySelector(".slider-track");
-  const slides = document.querySelectorAll(".slider-slide");
-  const prevBtn = document.querySelector(".slider-btn-prev");
-  const nextBtn = document.querySelector(".slider-btn-next");
-  const dots = document.querySelectorAll(".slider-dot");
+  if (heroContent) {
+    gsap.fromTo(heroContent,
+      { opacity: 0, y: 40 },
+      {
+        opacity: 1,
+        y: 0,
+        duration: 1,
+        ease: 'power3.out',
+        delay: 0.15,
+      }
+    );
+  }
 
-  if (!sliderTrack || slides.length === 0) return;
+  if (heroImg) {
+    gsap.fromTo(heroImg,
+      { opacity: 0, y: 30, scale: 0.97 },
+      {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        duration: 1.2,
+        ease: 'power3.out',
+        delay: 0.4,
+      }
+    );
+  }
 
+  // ================================
+  // SCROLL-TRIGGERED FADE ANIMATIONS
+  // ================================
+  document.querySelectorAll('[data-anim="fade"]').forEach(el => {
+    const delay = parseFloat(el.dataset.delay || 0) * 0.13;
+
+    gsap.fromTo(el,
+      { opacity: 0, y: 32 },
+      {
+        scrollTrigger: {
+          trigger: el,
+          start: 'top 88%',
+          once: true,
+        },
+        opacity: 1,
+        y: 0,
+        duration: 0.75,
+        ease: 'power3.out',
+        delay,
+      }
+    );
+  });
+
+  // ================================
+  // INTERFACE SLIDER
+  // ================================
+  const slides = document.querySelectorAll('.interface-slide');
+  const dots = document.querySelectorAll('.idot');
   let currentSlide = 0;
-  const totalSlides = slides.length;
+  let slideTimer = null;
 
-  // Fonction pour aller à une slide spécifique
-  const goToSlide = (slideIndex) => {
-    // S'assurer que l'index est valide
-    if (slideIndex < 0) {
-      currentSlide = totalSlides - 1;
-    } else if (slideIndex >= totalSlides) {
-      currentSlide = 0;
-    } else {
-      currentSlide = slideIndex;
-    }
+  function goToSlide(index) {
+    if (slides.length === 0) return;
+    slides[currentSlide].classList.remove('active');
+    dots[currentSlide]?.classList.remove('active');
+    currentSlide = ((index % slides.length) + slides.length) % slides.length;
+    slides[currentSlide].classList.add('active');
+    dots[currentSlide]?.classList.add('active');
+  }
 
-    // Déplacer le slider
-    const offset = -currentSlide * 100;
-    sliderTrack.style.transform = `translateX(${offset}%)`;
+  function startSlider() {
+    slideTimer = setInterval(() => goToSlide(currentSlide + 1), 4000);
+  }
 
-    // Mettre à jour les classes active
-    slides.forEach((slide, index) => {
-      slide.classList.toggle("active", index === currentSlide);
+  function resetSlider() {
+    clearInterval(slideTimer);
+    startSlider();
+  }
+
+  if (slides.length > 0) {
+    dots.forEach(dot => {
+      dot.addEventListener('click', () => {
+        goToSlide(parseInt(dot.dataset.i, 10));
+        resetSlider();
+      });
     });
+    startSlider();
+  }
 
-    dots.forEach((dot, index) => {
-      dot.classList.toggle("active", index === currentSlide);
-    });
-  };
+  // ================================
+  // FAQ ACCORDION
+  // ================================
+  document.querySelectorAll('.faq-q').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.faq-item');
+      if (!item) return;
+      const isOpen = item.classList.contains('active');
 
-  // Bouton précédent
-  prevBtn.addEventListener("click", () => {
-    goToSlide(currentSlide - 1);
-  });
+      // Close all open items
+      document.querySelectorAll('.faq-item.active').forEach(i => {
+        i.classList.remove('active');
+        const ans = i.querySelector('.faq-a');
+        if (ans) gsap.to(ans, { height: 0, duration: 0.3, ease: 'power2.inOut', overwrite: true });
+      });
 
-  // Bouton suivant
-  nextBtn.addEventListener("click", () => {
-    goToSlide(currentSlide + 1);
-  });
-
-  // Dots navigation
-  dots.forEach((dot, index) => {
-    dot.addEventListener("click", () => {
-      goToSlide(index);
-    });
-  });
-
-  // Auto-play (optionnel)
-  let autoplayInterval = setInterval(() => {
-    goToSlide(currentSlide + 1);
-  }, 5000); // Change toutes les 5 secondes
-
-  // Pause auto-play au survol
-  const sliderContainer = document.querySelector(".slider-container");
-  sliderContainer.addEventListener("mouseenter", () => {
-    clearInterval(autoplayInterval);
-  });
-
-  sliderContainer.addEventListener("mouseleave", () => {
-    autoplayInterval = setInterval(() => {
-      goToSlide(currentSlide + 1);
-    }, 5000);
-  });
-
-  // Support clavier
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowLeft") {
-      goToSlide(currentSlide - 1);
-    } else if (e.key === "ArrowRight") {
-      goToSlide(currentSlide + 1);
-    }
-  });
-
-  // Support touch/swipe (mobile)
-  let touchStartX = 0;
-  let touchEndX = 0;
-
-  sliderContainer.addEventListener("touchstart", (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-  });
-
-  sliderContainer.addEventListener("touchend", (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-  });
-
-  const handleSwipe = () => {
-    if (touchEndX < touchStartX - 50) {
-      // Swipe left
-      goToSlide(currentSlide + 1);
-    }
-    if (touchEndX > touchStartX + 50) {
-      // Swipe right
-      goToSlide(currentSlide - 1);
-    }
-  };
-});
-
-// ===================================
-// Performance Optimization
-// ===================================
-// Lazy load images
-if ("IntersectionObserver" in window) {
-  const imageObserver = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        const img = entry.target;
-        if (img.dataset.src) {
-          img.src = img.dataset.src;
-          img.removeAttribute("data-src");
-          imageObserver.unobserve(img);
+      // Open clicked if it was closed
+      if (!isOpen) {
+        item.classList.add('active');
+        const ans = item.querySelector('.faq-a');
+        if (ans) {
+          // Measure natural height
+          gsap.set(ans, { height: 'auto' });
+          const fullH = ans.offsetHeight;
+          gsap.fromTo(ans,
+            { height: 0 },
+            { height: fullH, duration: 0.35, ease: 'power2.out', overwrite: true }
+          );
         }
       }
     });
   });
 
-  document.querySelectorAll("img[data-src]").forEach((img) => {
-    imageObserver.observe(img);
+  // ================================
+  // ANIMATED COUNTERS (stats bar)
+  // ================================
+  document.querySelectorAll('.testi-stat__num').forEach(el => {
+    const text = el.textContent.trim();
+    const numMatch = text.match(/[\d.]+/);
+    if (!numMatch) return;
+
+    const target = parseFloat(numMatch[0]);
+    const prefix = text.slice(0, text.indexOf(numMatch[0]));
+    const suffix = text.slice(text.indexOf(numMatch[0]) + numMatch[0].length);
+    const isDecimal = numMatch[0].includes('.');
+    const counter = { val: 0 };
+
+    ScrollTrigger.create({
+      trigger: el,
+      start: 'top 90%',
+      once: true,
+      onEnter: () => {
+        gsap.to(counter, {
+          val: target,
+          duration: 1.8,
+          ease: 'power2.out',
+          onUpdate: () => {
+            el.textContent = prefix + (isDecimal ? counter.val.toFixed(1) : Math.round(counter.val)) + suffix;
+          }
+        });
+      }
+    });
   });
-}
 
-// ===================================
-// Pricing Toggle
-// ===================================
-document.addEventListener("DOMContentLoaded", function () {
-  const billingToggle = document.getElementById("billing-cycle-checkbox");
-  const prices = document.querySelectorAll(".pricing-card .price");
-  const billingPeriods = document.querySelectorAll(
-    ".pricing-card .billing-period"
-  );
+  // ================================
+  // SMOOTH SCROLL FOR ANCHOR LINKS
+  // ================================
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const href = link.getAttribute('href');
+      if (!href || href === '#') return;
+      const target = document.querySelector(href);
+      if (target) {
+        e.preventDefault();
+        lenis.scrollTo(target, { offset: -80, duration: 1.2 });
+      }
+    });
+  });
 
-  if (billingToggle) {
-    billingToggle.addEventListener("change", function () {
-      const isYearly = this.checked;
+  // ================================
+  // NEWSLETTER FORM (EmailJS)
+  // ================================
+  const newsletterForm = document.getElementById('newsletterForm');
+  if (newsletterForm) {
+    newsletterForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const emailInput = newsletterForm.querySelector('input[type="email"]');
+      const email = emailInput?.value;
+      if (!email) return;
 
-      prices.forEach((priceEl) => {
-        const monthlyPrice = priceEl.getAttribute("data-monthly");
-        const yearlyPrice = priceEl.getAttribute("data-yearly");
-        priceEl.textContent = isYearly ? yearlyPrice + "€" : monthlyPrice + "€";
-      });
-
-      billingPeriods.forEach((periodEl) => {
-        periodEl.textContent = isYearly ? "/ an" : "/ mois";
-      });
+      if (typeof emailjs !== 'undefined') {
+        emailjs.send('default_service', 'template_newsletter', {
+          email,
+          message: `Nouvelle inscription newsletter: ${email}`,
+        }).then(() => {
+          if (emailInput) emailInput.value = '';
+          const btn = newsletterForm.querySelector('button');
+          if (btn) {
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => { btn.innerHTML = '<i class="fas fa-paper-plane"></i>'; }, 2500);
+          }
+        }).catch(() => { /* silently fail */ });
+      }
     });
   }
-});
 
-// ===================================
-// Responsive Navigation (Hamburger Menu)
-// ===================================
-document.addEventListener("DOMContentLoaded", function () {
-  const hamburger = document.querySelector(".hamburger");
-  const header = document.querySelector("header");
+  // ================================
+  // HERO ORBS — subtle mouse parallax
+  // ================================
+  const orb1 = document.querySelector('.hero-glow--1');
+  const orb2 = document.querySelector('.hero-glow--2');
 
-  if (hamburger) {
-    hamburger.addEventListener("click", function () {
-      header.classList.toggle("nav-open");
+  if ((orb1 || orb2) && window.innerWidth > 768) {
+    window.addEventListener('mousemove', (e) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 2;
+      const y = (e.clientY / window.innerHeight - 0.5) * 2;
+
+      if (orb1) gsap.to(orb1, { x: x * 20, y: y * 14, duration: 2, ease: 'power2.out' });
+      if (orb2) gsap.to(orb2, { x: x * -14, y: y * -10, duration: 2, ease: 'power2.out' });
     });
   }
+
+  // ================================
+  // SECTOR CARDS — stagger on scroll
+  // ================================
+  const sectorCards = document.querySelectorAll('.sector-card');
+  if (sectorCards.length > 0) {
+    gsap.fromTo(sectorCards,
+      { opacity: 0, y: 40, scale: 0.96 },
+      {
+        scrollTrigger: {
+          trigger: '.sectors-grid',
+          start: 'top 85%',
+          once: true,
+        },
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        duration: 0.65,
+        ease: 'power3.out',
+        stagger: 0.1,
+      }
+    );
+  }
+
+  // ================================
+  // PRICING CARDS — stagger on scroll
+  // ================================
+  const priceCards = document.querySelectorAll('.price-card');
+  if (priceCards.length > 0) {
+    gsap.fromTo(priceCards,
+      { opacity: 0, y: 36 },
+      {
+        scrollTrigger: {
+          trigger: '.pricing-grid',
+          start: 'top 85%',
+          once: true,
+        },
+        opacity: 1,
+        y: 0,
+        duration: 0.65,
+        ease: 'power3.out',
+        stagger: 0.12,
+      }
+    );
+  }
+
+  // ================================
+  // FEATURE CARDS — stagger on scroll
+  // ================================
+  const featureCards = document.querySelectorAll('.feature-card');
+  if (featureCards.length > 0) {
+    gsap.fromTo(featureCards,
+      { opacity: 0, y: 30 },
+      {
+        scrollTrigger: {
+          trigger: '.features-grid',
+          start: 'top 88%',
+          once: true,
+        },
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        ease: 'power3.out',
+        stagger: 0.12,
+      }
+    );
+  }
+
+  // ================================
+  // STEP CARDS — stagger on scroll
+  // ================================
+  const stepCards = document.querySelectorAll('.step-card');
+  if (stepCards.length > 0) {
+    gsap.fromTo(stepCards,
+      { opacity: 0, y: 30 },
+      {
+        scrollTrigger: {
+          trigger: '.steps-row',
+          start: 'top 88%',
+          once: true,
+        },
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        ease: 'power3.out',
+        stagger: 0.15,
+      }
+    );
+  }
+
 });

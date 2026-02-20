@@ -77,9 +77,7 @@ const Login = () => {
           {/* Logo */}
           <div className="relative z-10">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-400 to-indigo-600 flex items-center justify-center shadow-glow">
-                <SparklesIcon className="w-6 h-6 text-white" />
-              </div>
+              <img src="/logo.png" alt="SalonHub" className="w-12 h-12 rounded-xl shadow-glow object-cover" />
               <span className="font-display text-2xl text-white tracking-tight">SalonHub</span>
             </div>
           </div>
@@ -129,9 +127,7 @@ const Login = () => {
             {/* Mobile Logo */}
             <div className="lg:hidden text-center mb-10">
               <div className="inline-flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-soft">
-                  <SparklesIcon className="w-6 h-6 text-white" />
-                </div>
+                <img src="/logo.png" alt="SalonHub" className="w-12 h-12 rounded-xl shadow-soft object-cover" />
                 <span className="font-display text-2xl text-slate-800 tracking-tight">SalonHub</span>
               </div>
             </div>
