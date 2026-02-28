@@ -92,12 +92,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const heroTitle = document.querySelector('.hero-title');
     const heroDesc = document.querySelector('.hero-desc');
     const heroCtas = document.querySelector('.hero-ctas');
-    const heroTrust = document.querySelector('.hero-trust');
     const heroFloats = document.querySelectorAll('.hero-float');
     const heroContent = document.querySelector('[data-anim="hero"]');
     const heroImg = document.querySelector('[data-anim="hero-img"]');
     const heroCollage = document.querySelector('.hero-collage');
-    const heroMetrics = document.querySelector('.hero-metrics');
     const collageMain = document.querySelector('.hero-collage__main');
     const collageSecondary = document.querySelector('.hero-collage__secondary');
     const collageTertiary = document.querySelector('.hero-collage__tertiary');
@@ -111,8 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (heroTitle) heroTl.from(heroTitle, { opacity: 0, y: 36, duration: 0.9 }, '-=0.3');
     if (heroDesc) heroTl.from(heroDesc, { opacity: 0, y: 24, duration: 0.7 }, '-=0.5');
     if (heroCtas) heroTl.from(heroCtas, { opacity: 0, y: 20, duration: 0.6 }, '-=0.4');
-    if (heroTrust) heroTl.from(heroTrust, { opacity: 0, y: 16, duration: 0.5 }, '-=0.3');
-    if (heroMetrics) heroTl.from(heroMetrics.children, { opacity: 0, y: 16, stagger: 0.1, duration: 0.5 }, '-=0.2');
 
     // Collage images — staggered entrance
     if (collageMain) {
@@ -512,25 +508,6 @@ document.addEventListener('DOMContentLoaded', () => {
       );
     }
 
-    // Social Proof Items — stagger
-    const proofItems = document.querySelectorAll('.proof-item');
-    if (proofItems.length > 0) {
-      gsap.fromTo(proofItems,
-        { opacity: 0, y: 20, scale: 0.95 },
-        {
-          scrollTrigger: {
-            trigger: '.social-proof__row',
-            start: 'top 90%',
-            once: true,
-          },
-          opacity: 1, y: 0, scale: 1,
-          duration: 0.6,
-          ease: 'power3.out',
-          stagger: 0.1,
-        }
-      );
-    }
-
     // FAQ Items — stagger slide from right
     const faqItems = document.querySelectorAll('.faq-item');
     if (faqItems.length > 0) {
@@ -782,20 +759,84 @@ document.addEventListener('DOMContentLoaded', () => {
       hero_desc: 'Rendez-vous, clients, paiements et analyses — la plateforme tout-en-un qui libere votre temps et booste votre chiffre d\'affaires.',
       hero_cta1: 'Demarrer gratuitement',
       hero_cta2: 'Voir la demo',
-      hero_trust: 'Plus de <strong>500</strong> professionnels actifs',
+      // Floating cards
+      float_revenue: 'de revenus',
+      float_absence: 'd\'absences',
+      float_time: 'gagnees / semaine',
       // Features
       feat_tag: 'Fonctionnalites',
+      feat_title: 'Tout ce dont vous avez besoin, <span class="gradient-text">rien de superflu</span>',
+      feat_desc: 'Des outils puissants et intuitifs concus pour simplifier la gestion de votre activite au quotidien.',
+      // Bento cards
+      bento_1_stat: 'Disponible',
+      bento_1_title: 'Reservation en ligne',
+      bento_1_desc: 'Vos clients prennent rendez-vous 24h/24 depuis votre page personnalisee. Fini les appels manques.',
+      bento_2_title: 'Gestion client',
+      bento_2_desc: 'Historique complet, preferences et fidelisation de chaque client en un clic.',
+      bento_3_title: 'Statistiques',
+      bento_3_desc: 'Analysez vos performances et optimisez vos revenus en temps reel.',
+      bento_4_title: 'Rappels automatiques',
+      bento_4_desc: 'SMS et emails automatiques pour reduire les absences et no-shows.',
+      bento_5_title: 'Reseaux sociaux',
+      bento_5_desc: 'Integrez votre lien de reservation sur Facebook et Instagram.',
+      bento_6_title: 'Campagnes Marketing',
+      bento_6_desc: 'Envoyez des codes promo et offres speciales pour booster votre CA.',
       // Interface
       intf_tag: 'Interface',
       intf_title: 'Interface <span class="gradient-text">intuitive</span>',
       intf_desc: 'Un tableau de bord clair et efficace, concu pour vous faire gagner du temps au quotidien.',
+      intf_cap1: 'Rendez-vous',
+      intf_cap2: 'Calendrier',
+      intf_cap3: 'Clients',
+      intf_cap4: 'Dashboard',
       // Pricing
       price_tag: 'Tarifs',
       price_title: 'Tarifs simples et <span class="gradient-text">transparents</span>',
       price_desc: '14 jours d\'essai gratuit. Sans carte bancaire. Sans engagement.',
+      price_plan1: 'Essentiel',
+      price_plan1_desc: 'Ideal pour les independants',
+      price_period: '/mois',
+      price_plan2_desc: 'Pour les equipes en croissance',
+      price_plan3: 'Sur mesure',
+      price_plan3_desc: 'Multi-salons et franchises',
+      price_custom: 'Sur devis',
+      price_badge: 'Le plus populaire',
+      price_cta: 'Commencer',
+      price_contact: 'Nous contacter',
+      // Pricing features
+      price_f_rdv: 'Rendez-vous illimites',
+      price_f_1user: '1 utilisateur',
+      price_f_page: 'Page de reservation',
+      price_f_support: 'Support email',
+      price_f_stats: 'Statistiques avancees',
+      price_f_pay: 'Paiement en ligne',
+      price_f_3user: '3 utilisateurs',
+      price_f_sms: 'Rappels SMS/Email',
+      price_f_marketing: 'Campagnes marketing',
+      price_f_allpro: 'Tout du plan Pro',
+      price_f_unlimited: 'Utilisateurs illimites',
+      price_f_multi: 'Multi-salons',
+      price_f_priority: 'Support prioritaire',
+      price_f_api: 'API & integrations',
+      price_f_manager: 'Gestionnaire dedie',
+      // Trust badges
+      trust_secure: 'Paiement securise',
+      trust_trial: 'Essai 14 jours',
+      trust_nocommit: 'Sans engagement',
+      trust_support: 'Support reactif',
+      // Compare table
+      compare_title: 'Comparez les fonctionnalites',
+      compare_feature: 'Fonctionnalite',
+      compare_rdv: 'Rendez-vous',
+      compare_unlimited: 'Illimites',
+      compare_users: 'Utilisateurs',
       // Testimonials
       testi_tag: 'Temoignages',
       testi_title: 'Ils nous font <span class="gradient-text">confiance</span>',
+      testi_stat_label: 'd\'augmentation du chiffre d\'affaires en moyenne',
+      testi_text1: '"SalonHub a transforme la gestion de mon salon. Les clients adorent reserver en ligne et les rappels automatiques ont reduit les absences de 70%."',
+      testi_text2: '"Le QR Code pour les commandes est genial. Mes clients scannent, commandent et paient — tout est automatise. Le CA a augmente de 25%."',
+      testi_text3: '"Les rappels automatiques ont divise par deux les absences. Le tableau de bord est parfait pour suivre mes consultations."',
       testi_role1: 'Salon de beaute',
       testi_role2: 'Restaurant',
       testi_role3: 'Cabinet medical',
@@ -818,12 +859,39 @@ document.addEventListener('DOMContentLoaded', () => {
       // FAQ
       faq_tag: 'FAQ',
       faq_title: 'Une question ?<br><span class="gradient-text">On a la reponse</span>',
+      faq_q1: 'Puis-je essayer SalonHub gratuitement ?',
+      faq_a1: 'Oui ! 14 jours d\'essai gratuit sur tous les plans, sans carte bancaire. Explorez toutes les fonctionnalites et decidez ensuite.',
+      faq_q2: 'SalonHub fonctionne-t-il pour mon secteur ?',
+      faq_a2: 'SalonHub est multi-secteur : salons de beaute, restaurants, centres de formation et cabinets medicaux. Chaque module est adapte a votre activite.',
+      faq_q3: 'Mes clients doivent-ils creer un compte ?',
+      faq_a3: 'Non ! Vos clients reservent directement depuis votre page publique sans creer de compte. Nom, email et creneau — c\'est tout.',
+      faq_q4: 'Comment fonctionne le paiement en ligne ?',
+      faq_a4: 'Avec le plan Pro, vos clients paient lors de la reservation. Paiements securises, fonds verses automatiquement sur votre compte.',
+      faq_q5: 'Puis-je gerer plusieurs etablissements ?',
+      faq_a5: 'Oui, le plan Sur mesure permet de gerer plusieurs etablissements depuis un seul compte. Ideal pour les franchises et groupes.',
+      faq_q6: 'Y a-t-il un engagement de duree ?',
+      faq_a6: 'Aucun engagement. Resiliez a tout moment depuis vos parametres. Votre abonnement reste actif jusqu\'a la fin du mois en cours.',
+      faq_support: 'Vous ne trouvez pas la reponse ? <a href="mailto:support@flowkraftagency.com">Contactez notre support</a>',
       // CTA
       cta_title: 'Pret a transformer<br><span class="gradient-text-white">votre quotidien ?</span>',
       cta_desc: 'Rejoignez les professionnels qui gagnent 5h par semaine avec SalonHub.',
+      cta_sub: '14 jours gratuits &middot; Sans carte bancaire &middot; Sans engagement',
       // Footer
+      footer_desc: 'La plateforme de gestion tout-en-un pour professionnels.',
       footer_nav: 'Navigation',
+      footer_contact: 'Contact',
       footer_location: 'Europe',
+      footer_newsletter_title: 'Newsletter',
+      footer_newsletter_desc: 'Recevez nos conseils et actualites',
+      footer_copy: '&copy; 2025 <strong>FlowKraft Agency</strong>. Tous droits reserves.',
+      footer_privacy: 'Confidentialite',
+      footer_legal: 'Mentions legales',
+      footer_terms: 'CGU',
+      // Modal
+      modal_title: 'Contactez-nous',
+      modal_desc: 'Decrivez votre besoin et nous reviendrons vers vous rapidement.',
+      modal_submit: 'Envoyer',
+      modal_success: 'Message envoye ! Nous reviendrons vers vous sous 24h.',
     },
     en: {
       // Nav
@@ -839,20 +907,84 @@ document.addEventListener('DOMContentLoaded', () => {
       hero_desc: 'Appointments, clients, payments and analytics — the all-in-one platform that frees your time and boosts your revenue.',
       hero_cta1: 'Start for free',
       hero_cta2: 'Watch demo',
-      hero_trust: 'Over <strong>500</strong> active professionals',
+      // Floating cards
+      float_revenue: 'revenue',
+      float_absence: 'absences',
+      float_time: 'saved / week',
       // Features
       feat_tag: 'Features',
+      feat_title: 'Everything you need, <span class="gradient-text">nothing you don\'t</span>',
+      feat_desc: 'Powerful and intuitive tools designed to simplify your daily business management.',
+      // Bento cards
+      bento_1_stat: 'Available',
+      bento_1_title: 'Online Booking',
+      bento_1_desc: 'Your clients book 24/7 from your custom page. No more missed calls.',
+      bento_2_title: 'Client Management',
+      bento_2_desc: 'Full history, preferences and loyalty for each client in one click.',
+      bento_3_title: 'Analytics',
+      bento_3_desc: 'Analyze your performance and optimize your revenue in real time.',
+      bento_4_title: 'Auto Reminders',
+      bento_4_desc: 'Automated SMS and emails to reduce absences and no-shows.',
+      bento_5_title: 'Social Media',
+      bento_5_desc: 'Integrate your booking link on Facebook and Instagram.',
+      bento_6_title: 'Marketing Campaigns',
+      bento_6_desc: 'Send promo codes and special offers to boost your revenue.',
       // Interface
       intf_tag: 'Interface',
       intf_title: 'Intuitive <span class="gradient-text">interface</span>',
       intf_desc: 'A clean and efficient dashboard, designed to save you time every day.',
+      intf_cap1: 'Appointments',
+      intf_cap2: 'Calendar',
+      intf_cap3: 'Clients',
+      intf_cap4: 'Dashboard',
       // Pricing
       price_tag: 'Pricing',
       price_title: 'Simple and <span class="gradient-text">transparent</span> pricing',
       price_desc: '14-day free trial. No credit card. No commitment.',
+      price_plan1: 'Essential',
+      price_plan1_desc: 'Ideal for freelancers',
+      price_period: '/mo',
+      price_plan2_desc: 'For growing teams',
+      price_plan3: 'Custom',
+      price_plan3_desc: 'Multi-location & franchises',
+      price_custom: 'Custom quote',
+      price_badge: 'Most popular',
+      price_cta: 'Get started',
+      price_contact: 'Contact us',
+      // Pricing features
+      price_f_rdv: 'Unlimited bookings',
+      price_f_1user: '1 user',
+      price_f_page: 'Booking page',
+      price_f_support: 'Email support',
+      price_f_stats: 'Advanced analytics',
+      price_f_pay: 'Online payment',
+      price_f_3user: '3 users',
+      price_f_sms: 'SMS/Email reminders',
+      price_f_marketing: 'Marketing campaigns',
+      price_f_allpro: 'Everything in Pro',
+      price_f_unlimited: 'Unlimited users',
+      price_f_multi: 'Multi-location',
+      price_f_priority: 'Priority support',
+      price_f_api: 'API & integrations',
+      price_f_manager: 'Dedicated manager',
+      // Trust badges
+      trust_secure: 'Secure payment',
+      trust_trial: '14-day trial',
+      trust_nocommit: 'No commitment',
+      trust_support: 'Responsive support',
+      // Compare table
+      compare_title: 'Compare features',
+      compare_feature: 'Feature',
+      compare_rdv: 'Bookings',
+      compare_unlimited: 'Unlimited',
+      compare_users: 'Users',
       // Testimonials
       testi_tag: 'Testimonials',
       testi_title: 'They <span class="gradient-text">trust</span> us',
+      testi_stat_label: 'average revenue increase',
+      testi_text1: '"SalonHub transformed my salon management. Clients love booking online and auto reminders reduced no-shows by 70%."',
+      testi_text2: '"The QR Code for orders is amazing. My clients scan, order and pay — everything is automated. Revenue is up 25%."',
+      testi_text3: '"Auto reminders cut absences in half. The dashboard is perfect for tracking my consultations."',
       testi_role1: 'Beauty salon',
       testi_role2: 'Restaurant',
       testi_role3: 'Medical office',
@@ -875,19 +1007,60 @@ document.addEventListener('DOMContentLoaded', () => {
       // FAQ
       faq_tag: 'FAQ',
       faq_title: 'Got a question?<br><span class="gradient-text">We have the answer</span>',
+      faq_q1: 'Can I try SalonHub for free?',
+      faq_a1: 'Yes! 14-day free trial on all plans, no credit card required. Explore all features and decide after.',
+      faq_q2: 'Does SalonHub work for my industry?',
+      faq_a2: 'SalonHub is multi-industry: beauty salons, restaurants, training centers and medical offices. Each module is tailored to your business.',
+      faq_q3: 'Do my clients need to create an account?',
+      faq_a3: 'No! Your clients book directly from your public page without creating an account. Name, email and time slot — that\'s it.',
+      faq_q4: 'How does online payment work?',
+      faq_a4: 'With the Pro plan, your clients pay at booking. Secure payments, funds transferred automatically to your account.',
+      faq_q5: 'Can I manage multiple locations?',
+      faq_a5: 'Yes, the Custom plan lets you manage multiple locations from one account. Perfect for franchises and groups.',
+      faq_q6: 'Is there a long-term commitment?',
+      faq_a6: 'No commitment. Cancel anytime from your settings. Your subscription stays active until the end of the current month.',
+      faq_support: 'Can\'t find the answer? <a href="mailto:support@flowkraftagency.com">Contact our support</a>',
       // CTA
       cta_title: 'Ready to transform<br><span class="gradient-text-white">your daily routine?</span>',
       cta_desc: 'Join the professionals saving 5 hours per week with SalonHub.',
+      cta_sub: '14 days free &middot; No credit card &middot; No commitment',
       // Footer
+      footer_desc: 'The all-in-one management platform for professionals.',
       footer_nav: 'Navigation',
+      footer_contact: 'Contact',
       footer_location: 'Europe',
+      footer_newsletter_title: 'Newsletter',
+      footer_newsletter_desc: 'Get our tips and updates',
+      footer_copy: '&copy; 2025 <strong>FlowKraft Agency</strong>. All rights reserved.',
+      footer_privacy: 'Privacy',
+      footer_legal: 'Legal notice',
+      footer_terms: 'Terms',
+      // Modal
+      modal_title: 'Contact us',
+      modal_desc: 'Describe your needs and we\'ll get back to you shortly.',
+      modal_submit: 'Send',
+      modal_success: 'Message sent! We\'ll get back to you within 24 hours.',
     }
   };
 
   // Placeholder translations
   const placeholders = {
-    fr: { app_email_placeholder: 'Votre email pour etre notifie' },
-    en: { app_email_placeholder: 'Your email to get notified' }
+    fr: {
+      app_email_placeholder: 'Votre email pour etre notifie',
+      footer_email_ph: 'Votre email',
+      modal_name: 'Votre nom',
+      modal_email: 'Votre email',
+      modal_company: 'Nom de l\'etablissement',
+      modal_message: 'Votre message',
+    },
+    en: {
+      app_email_placeholder: 'Your email to get notified',
+      footer_email_ph: 'Your email',
+      modal_name: 'Your name',
+      modal_email: 'Your email',
+      modal_company: 'Business name',
+      modal_message: 'Your message',
+    }
   };
 
   function setLanguage(lang) {
@@ -947,6 +1120,118 @@ document.addEventListener('DOMContentLoaded', () => {
       const browserLang = (navigator.language || '').substring(0, 2).toLowerCase();
       if (browserLang === 'en') setLanguage('en');
     }
+  }
+
+  // ================================
+  // CONTACT MODAL
+  // ================================
+  const contactModal = document.getElementById('contactModal');
+  const closeContactBtn = document.getElementById('closeContactModal');
+  const contactForm = document.getElementById('contactForm');
+  const contactSuccess = document.getElementById('contactSuccess');
+
+  // Global open function
+  window.openContactModal = function () {
+    if (!contactModal) return;
+    contactModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    // Focus first input after transition
+    setTimeout(() => {
+      const firstInput = contactForm?.querySelector('input');
+      if (firstInput) firstInput.focus();
+    }, 350);
+  };
+
+  function closeContactModal() {
+    if (!contactModal) return;
+    contactModal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  // Close on button click
+  if (closeContactBtn) {
+    closeContactBtn.addEventListener('click', closeContactModal);
+  }
+
+  // Close on overlay click
+  if (contactModal) {
+    contactModal.addEventListener('click', (e) => {
+      if (e.target === contactModal) closeContactModal();
+    });
+  }
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && contactModal?.classList.contains('active')) {
+      closeContactModal();
+    }
+  });
+
+  // Contact form submission via EmailJS
+  if (contactForm) {
+    contactForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const formData = new FormData(contactForm);
+      const name = formData.get('name');
+      const email = formData.get('email');
+      const company = formData.get('company') || 'Non precis\u00e9';
+      const message = formData.get('message');
+
+      const submitBtn = contactForm.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '...';
+      }
+
+      if (typeof emailjs !== 'undefined') {
+        emailjs.send('default_service', 'template_contact', {
+          from_name: name,
+          from_email: email,
+          company: company,
+          message: message,
+        }).then(() => {
+          // Show success
+          contactForm.style.display = 'none';
+          if (contactSuccess) {
+            contactSuccess.style.display = 'block';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          }
+          // Reset after 3s
+          setTimeout(() => {
+            contactForm.reset();
+            contactForm.style.display = '';
+            if (contactSuccess) contactSuccess.style.display = 'none';
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = translations[document.documentElement.lang]?.modal_submit || 'Envoyer';
+            }
+            closeContactModal();
+          }, 3000);
+        }).catch(() => {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = translations[document.documentElement.lang]?.modal_submit || 'Envoyer';
+          }
+        });
+      } else {
+        // Fallback: just show success
+        contactForm.style.display = 'none';
+        if (contactSuccess) {
+          contactSuccess.style.display = 'block';
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        setTimeout(() => {
+          contactForm.reset();
+          contactForm.style.display = '';
+          if (contactSuccess) contactSuccess.style.display = 'none';
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = translations[document.documentElement.lang]?.modal_submit || 'Envoyer';
+          }
+          closeContactModal();
+        }, 3000);
+      }
+    });
   }
 
 });

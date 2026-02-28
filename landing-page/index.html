@@ -67,7 +67,6 @@
         <div class="container hero-split">
             <div class="hero-content" data-anim="hero">
                 <div class="hero-pill">
-                    <span class="hero-pill__dot"></span>
                     <span data-i18n="hero_pill">+500 professionnels nous font confiance</span>
                 </div>
                 <h1 class="hero-title" data-i18n="hero_title">
@@ -94,39 +93,6 @@
                         <span data-i18n="hero_cta2">Voir la demo</span>
                     </a>
                 </div>
-                <div class="hero-trust">
-                    <div class="hero-avatars">
-                        <span style="background:linear-gradient(135deg,#6366F1,#818CF8)">S</span>
-                        <span style="background:linear-gradient(135deg,#EC4899,#F472B6)">M</span>
-                        <span style="background:linear-gradient(135deg,#10B981,#34D399)">A</span>
-                        <span style="background:linear-gradient(135deg,#F59E0B,#FBBF24)">K</span>
-                    </div>
-                    <p data-i18n="hero_trust">Plus de <strong>500</strong> professionnels actifs</p>
-                </div>
-                <!-- Mini metric cards -->
-                <div class="hero-metrics">
-                    <div class="hero-metric glass-card">
-                        <i data-lucide="trending-up"></i>
-                        <div>
-                            <span class="hero-metric__num">+32%</span>
-                            <span class="hero-metric__label">revenus</span>
-                        </div>
-                    </div>
-                    <div class="hero-metric glass-card">
-                        <i data-lucide="calendar-check"></i>
-                        <div>
-                            <span class="hero-metric__num">-70%</span>
-                            <span class="hero-metric__label">absences</span>
-                        </div>
-                    </div>
-                    <div class="hero-metric glass-card">
-                        <i data-lucide="clock"></i>
-                        <div>
-                            <span class="hero-metric__num">5h</span>
-                            <span class="hero-metric__label">gagnees/sem</span>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <div class="hero-visual" data-anim="hero-img">
@@ -152,7 +118,7 @@
                     </div>
                     <div>
                         <span class="hero-float__num">+32%</span>
-                        <span class="hero-float__label">de revenus</span>
+                        <span class="hero-float__label" data-i18n="float_revenue">de revenus</span>
                     </div>
                 </div>
                 <div class="hero-float hero-float--2 glass-card">
@@ -161,7 +127,7 @@
                     </div>
                     <div>
                         <span class="hero-float__num">-70%</span>
-                        <span class="hero-float__label">d'absences</span>
+                        <span class="hero-float__label" data-i18n="float_absence">d'absences</span>
                     </div>
                 </div>
                 <div class="hero-float hero-float--3 glass-card">
@@ -170,7 +136,7 @@
                     </div>
                     <div>
                         <span class="hero-float__num">5h</span>
-                        <span class="hero-float__label">gagnees / semaine</span>
+                        <span class="hero-float__label" data-i18n="float_time">gagnees / semaine</span>
                     </div>
                 </div>
             </div>
@@ -181,11 +147,11 @@
     <section class="features" id="features">
         <div class="container">
             <div class="section-header section-header--left" data-anim="fade">
-                <p class="section-tag"><span class="section-tag__dot"></span> <span data-i18n="feat_tag">Fonctionnalites</span></p>
+                <p class="section-tag"><span data-i18n="feat_tag">Fonctionnalites</span></p>
                 <div class="section-header__row">
-                    <h2 class="section-title">Tout ce dont vous avez besoin, <span class="gradient-text">rien de
+                    <h2 class="section-title" data-i18n="feat_title">Tout ce dont vous avez besoin, <span class="gradient-text">rien de
                             superflu</span></h2>
-                    <p class="section-desc section-desc--right">Des outils puissants et intuitifs concus pour simplifier
+                    <p class="section-desc section-desc--right" data-i18n="feat_desc">Des outils puissants et intuitifs concus pour simplifier
                         la gestion quotidienne de votre salon.</p>
                 </div>
             </div>
@@ -196,12 +162,11 @@
                         <div class="bento-card__icon"><i data-lucide="calendar-check"></i></div>
                         <div class="bento-card__stat">
                             <span class="bento-stat">24/7</span>
-                            <span class="bento-stat-label">Disponible</span>
+                            <span class="bento-stat-label" data-i18n="bento_1_stat">Disponible</span>
                         </div>
                     </div>
-                    <h3>Reservation en ligne</h3>
-                    <p>Vos clients prennent rendez-vous 24h/24 depuis votre page personnalisee. Fini les appels manques.
-                    </p>
+                    <h3 data-i18n="bento_1_title">Reservation en ligne</h3>
+                    <p data-i18n="bento_1_desc">Vos clients prennent rendez-vous 24h/24 depuis votre page personnalisee. Fini les appels manques.</p>
                     <div class="bento-card__deco">
                         <svg width="180" height="120" viewBox="0 0 180 120" fill="none">
                             <rect x="10" y="10" width="60" height="80" rx="8" fill="rgba(99,102,241,.06)"
@@ -225,8 +190,8 @@
                             <span class="bento-stat">100%</span>
                         </div>
                     </div>
-                    <h3>Gestion client</h3>
-                    <p>Historique complet, preferences et fidelisation de chaque client en un clic.</p>
+                    <h3 data-i18n="bento_2_title">Gestion client</h3>
+                    <p data-i18n="bento_2_desc">Historique complet, preferences et fidelisation de chaque client en un clic.</p>
                 </div>
                 <!-- Statistiques -->
                 <div class="bento-card">
@@ -236,8 +201,8 @@
                             <span class="bento-stat">+35%</span>
                         </div>
                     </div>
-                    <h3>Statistiques</h3>
-                    <p>Analysez vos performances et optimisez vos revenus en temps reel.</p>
+                    <h3 data-i18n="bento_3_title">Statistiques</h3>
+                    <p data-i18n="bento_3_desc">Analysez vos performances et optimisez vos revenus en temps reel.</p>
                 </div>
                 <!-- Rappels -->
                 <div class="bento-card">
@@ -247,8 +212,8 @@
                             <span class="bento-stat">-60%</span>
                         </div>
                     </div>
-                    <h3>Rappels automatiques</h3>
-                    <p>SMS et emails automatiques pour reduire les absences et no-shows.</p>
+                    <h3 data-i18n="bento_4_title">Rappels automatiques</h3>
+                    <p data-i18n="bento_4_desc">SMS et emails automatiques pour reduire les absences et no-shows.</p>
                 </div>
                 <!-- Reseaux sociaux -->
                 <div class="bento-card">
@@ -258,8 +223,8 @@
                             <span class="bento-stat">+60%</span>
                         </div>
                     </div>
-                    <h3>Reseaux sociaux</h3>
-                    <p>Integrez votre lien de reservation sur Facebook et Instagram.</p>
+                    <h3 data-i18n="bento_5_title">Reseaux sociaux</h3>
+                    <p data-i18n="bento_5_desc">Integrez votre lien de reservation sur Facebook et Instagram.</p>
                 </div>
                 <!-- Campagnes Marketing — dark -->
                 <div class="bento-card bento-card--dark">
@@ -269,8 +234,8 @@
                             <span class="bento-stat">+45%</span>
                         </div>
                     </div>
-                    <h3>Campagnes Marketing</h3>
-                    <p>Envoyez des codes promo et offres speciales pour booster votre CA.</p>
+                    <h3 data-i18n="bento_6_title">Campagnes Marketing</h3>
+                    <p data-i18n="bento_6_desc">Envoyez des codes promo et offres speciales pour booster votre CA.</p>
                 </div>
             </div>
         </div>
@@ -308,100 +273,14 @@
                     <button class="idot" data-i="3" aria-label="Slide 4"></button>
                 </div>
                 <div class="interface-captions">
-                    <span class="interface-caption active" data-i="0">Rendez-vous</span>
-                    <span class="interface-caption" data-i="1">Calendrier</span>
-                    <span class="interface-caption" data-i="2">Clients</span>
-                    <span class="interface-caption" data-i="3">Dashboard</span>
+                    <span class="interface-caption active" data-i="0" data-i18n="intf_cap1">Rendez-vous</span>
+                    <span class="interface-caption" data-i="1" data-i18n="intf_cap2">Calendrier</span>
+                    <span class="interface-caption" data-i="2" data-i18n="intf_cap3">Clients</span>
+                    <span class="interface-caption" data-i="3" data-i18n="intf_cap4">Dashboard</span>
                 </div>
             </div>
         </div>
     </section>
-
-    <!-- ========== SOCIAL PROOF ========== -->
-    <section class="social-proof">
-        <div class="container">
-            <div class="social-proof__row" data-anim="fade">
-                <div class="proof-item glass-card">
-                    <i data-lucide="shield-check"></i>
-                    <div>
-                        <strong>SSL & RGPD</strong>
-                        <span>Donnees chiffrees</span>
-                    </div>
-                </div>
-                <div class="proof-item glass-card">
-                    <i data-lucide="server"></i>
-                    <div>
-                        <strong>99.9% Uptime</strong>
-                        <span>Serveurs EU</span>
-                    </div>
-                </div>
-                <div class="proof-item glass-card">
-                    <i data-lucide="star"></i>
-                    <div>
-                        <strong>4.8/5</strong>
-                        <span>500+ avis</span>
-                    </div>
-                </div>
-                <div class="proof-item glass-card">
-                    <i data-lucide="zap"></i>
-                    <div>
-                        <strong>&lt; 200ms</strong>
-                        <span>Temps de reponse</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ========== SECTORS ========== -->
-    <!-- <section class="sectors" id="sectors">
-        <div class="container">
-            <div class="section-header" data-anim="fade">
-                <p class="section-tag">Multi-secteur</p>
-                <h2 class="section-title">Pour tous les <span class="gradient-text">secteurs</span></h2>
-                <p class="section-desc">Une plateforme unique qui s'adapte à votre métier.</p>
-            </div>
-            <div class="sectors-grid">
-                <a href="salon-de-beaute.html" class="sector-card" style="--accent:#EC4899">
-                    <div class="sector-card__img" style="background-image:url('salon.jpeg')"></div>
-                    <div class="sector-card__overlay"></div>
-                    <div class="sector-card__body">
-                        <div class="sector-card__icon"><i data-lucide="scissors"></i></div>
-                        <h3>Beauté & Bien-être</h3>
-                        <p>Salons, spas, barbershops</p>
-                    </div>
-                    <span class="sector-badge">Populaire</span>
-                </a>
-                <a href="restaurant.html" class="sector-card" style="--accent:#F59E0B">
-                    <div class="sector-card__img" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A)"></div>
-                    <div class="sector-card__overlay"></div>
-                    <div class="sector-card__body">
-                        <div class="sector-card__icon"><i data-lucide="utensils"></i></div>
-                        <h3>Restauration</h3>
-                        <p>Restaurants, cafés, traiteurs</p>
-                    </div>
-                </a>
-                <a href="centre-de-formation.html" class="sector-card" style="--accent:#0EA5E9">
-                    <div class="sector-card__img" style="background:linear-gradient(135deg,#E0F2FE,#BAE6FD)"></div>
-                    <div class="sector-card__overlay"></div>
-                    <div class="sector-card__body">
-                        <div class="sector-card__icon"><i data-lucide="graduation-cap"></i></div>
-                        <h3>Formation</h3>
-                        <p>Centres, coaching, ateliers</p>
-                    </div>
-                </a>
-                <a href="cabinet-medical.html" class="sector-card" style="--accent:#10B981">
-                    <div class="sector-card__img" style="background:linear-gradient(135deg,#D1FAE5,#A7F3D0)"></div>
-                    <div class="sector-card__overlay"></div>
-                    <div class="sector-card__body">
-                        <div class="sector-card__icon"><i data-lucide="heart-pulse"></i></div>
-                        <h3>Santé</h3>
-                        <p>Cabinets, cliniques, praticiens</p>
-                    </div>
-                </a>
-            </div>
-        </div>
-    </section> -->
 
     <!-- ========== PRICING ========== -->
     <section class="pricing" id="pricing">
@@ -412,72 +291,70 @@
                 <p class="section-desc" data-i18n="price_desc">14 jours d'essai gratuit. Sans carte bancaire. Sans engagement.</p>
             </div>
 
-            <!-- Pricing toggle removed per user request -->
-
             <div class="pricing-grid">
                 <div class="price-card">
                     <div class="price-card__head">
-                        <h3>Essentiel</h3>
-                        <p>Ideal pour les independants</p>
+                        <h3 data-i18n="price_plan1">Essentiel</h3>
+                        <p data-i18n="price_plan1_desc">Ideal pour les independants</p>
                     </div>
                     <div class="price-card__price">
                         <span class="price-amount" data-price-monthly="3.99" data-price-annual="3.29" data-price="3.99"
                             data-currency="EUR">3,99&euro;</span>
-                        <span class="price-period">/mois</span>
+                        <span class="price-period" data-i18n="price_period">/mois</span>
                     </div>
                     <ul class="price-card__list">
-                        <li class="yes"><i data-lucide="check"></i> Rendez-vous illimites</li>
-                        <li class="yes"><i data-lucide="check"></i> 1 utilisateur</li>
-                        <li class="yes"><i data-lucide="check"></i> Page de reservation</li>
-                        <li class="yes"><i data-lucide="check"></i> Support email</li>
-                        <li class="no"><i class="fas fa-minus"></i> Statistiques avancees</li>
-                        <li class="no"><i class="fas fa-minus"></i> Paiement en ligne</li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_rdv">Rendez-vous illimites</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_1user">1 utilisateur</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_page">Page de reservation</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_support">Support email</span></li>
+                        <li class="no"><i class="fas fa-minus"></i> <span data-i18n="price_f_stats">Statistiques avancees</span></li>
+                        <li class="no"><i class="fas fa-minus"></i> <span data-i18n="price_f_pay">Paiement en ligne</span></li>
                     </ul>
                     <a href="https://app.salonhub.flowkraftagency.com/register"
-                        class="btn btn-primary btn-full">Commencer</a>
+                        class="btn btn-primary btn-full" data-i18n="price_cta">Commencer</a>
                 </div>
 
                 <div class="price-card price-card--pop">
-                    <div class="price-card__badge">Le plus populaire</div>
+                    <div class="price-card__badge" data-i18n="price_badge">Le plus populaire</div>
                     <div class="price-card__head">
                         <h3>Pro</h3>
-                        <p>Pour les equipes en croissance</p>
+                        <p data-i18n="price_plan2_desc">Pour les equipes en croissance</p>
                     </div>
                     <div class="price-card__price">
                         <span class="price-amount" data-price-monthly="9.99" data-price-annual="8.29" data-price="9.99"
                             data-currency="EUR">9,99&euro;</span>
-                        <span class="price-period">/mois</span>
+                        <span class="price-period" data-i18n="price_period">/mois</span>
                     </div>
                     <ul class="price-card__list">
-                        <li class="yes"><i data-lucide="check"></i> Rendez-vous illimites</li>
-                        <li class="yes"><i data-lucide="check"></i> 3 utilisateurs</li>
-                        <li class="yes"><i data-lucide="check"></i> Page de reservation</li>
-                        <li class="yes"><i data-lucide="check"></i> Statistiques avancees</li>
-                        <li class="yes"><i data-lucide="check"></i> Paiement en ligne</li>
-                        <li class="yes"><i data-lucide="check"></i> Rappels SMS/Email</li>
-                        <li class="yes"><i data-lucide="check"></i> Campagnes marketing</li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_rdv">Rendez-vous illimites</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_3user">3 utilisateurs</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_page">Page de reservation</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_stats">Statistiques avancees</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_pay">Paiement en ligne</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_sms">Rappels SMS/Email</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_marketing">Campagnes marketing</span></li>
                     </ul>
                     <a href="https://app.salonhub.flowkraftagency.com/register"
-                        class="btn btn-white-fill btn-full">Commencer</a>
+                        class="btn btn-white-fill btn-full" data-i18n="price_cta">Commencer</a>
                 </div>
 
                 <div class="price-card">
                     <div class="price-card__head">
-                        <h3>Sur mesure</h3>
-                        <p>Multi-salons et franchises</p>
+                        <h3 data-i18n="price_plan3">Sur mesure</h3>
+                        <p data-i18n="price_plan3_desc">Multi-salons et franchises</p>
                     </div>
                     <div class="price-card__price">
-                        <span class="price-amount price-amount--custom">Sur devis</span>
+                        <span class="price-amount price-amount--custom" data-i18n="price_custom">Sur devis</span>
                     </div>
                     <ul class="price-card__list">
-                        <li class="yes"><i data-lucide="check"></i> Tout du plan Pro</li>
-                        <li class="yes"><i data-lucide="check"></i> Utilisateurs illimites</li>
-                        <li class="yes"><i data-lucide="check"></i> Multi-salons</li>
-                        <li class="yes"><i data-lucide="check"></i> Support prioritaire</li>
-                        <li class="yes"><i data-lucide="check"></i> API & integrations</li>
-                        <li class="yes"><i data-lucide="check"></i> Gestionnaire dedie</li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_allpro">Tout du plan Pro</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_unlimited">Utilisateurs illimites</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_multi">Multi-salons</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_priority">Support prioritaire</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_api">API & integrations</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_manager">Gestionnaire dedie</span></li>
                     </ul>
-                    <a href="mailto:info@flowkraftagency.com" class="btn btn-outline btn-full">Nous contacter</a>
+                    <button onclick="openContactModal()" class="btn btn-outline btn-full" data-i18n="price_contact">Nous contacter</button>
                 </div>
             </div>
 
@@ -485,92 +362,92 @@
             <div class="pricing-trust" data-anim="fade">
                 <div class="trust-badge glass-card">
                     <i data-lucide="shield-check"></i>
-                    <span>Paiement securise</span>
+                    <span data-i18n="trust_secure">Paiement securise</span>
                 </div>
                 <div class="trust-badge glass-card">
                     <i data-lucide="clock"></i>
-                    <span>Essai 14 jours</span>
+                    <span data-i18n="trust_trial">Essai 14 jours</span>
                 </div>
                 <div class="trust-badge glass-card">
                     <i data-lucide="x-circle"></i>
-                    <span>Sans engagement</span>
+                    <span data-i18n="trust_nocommit">Sans engagement</span>
                 </div>
                 <div class="trust-badge glass-card">
                     <i data-lucide="headphones"></i>
-                    <span>Support reactif</span>
+                    <span data-i18n="trust_support">Support reactif</span>
                 </div>
             </div>
 
             <!-- Comparison table -->
             <div class="compare" data-anim="fade">
-                <h3 class="compare__title"><i data-lucide="table"></i> Comparez les fonctionnalites</h3>
+                <h3 class="compare__title"><i data-lucide="table"></i> <span data-i18n="compare_title">Comparez les fonctionnalites</span></h3>
                 <div class="compare__wrap">
                     <table class="compare__table">
                         <thead>
                             <tr>
-                                <th>Fonctionnalite</th>
-                                <th>Essentiel</th>
+                                <th data-i18n="compare_feature">Fonctionnalite</th>
+                                <th data-i18n="price_plan1">Essentiel</th>
                                 <th>Pro</th>
-                                <th>Sur mesure</th>
+                                <th data-i18n="price_plan3">Sur mesure</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td>Rendez-vous</td>
-                                <td>Illimites</td>
-                                <td>Illimites</td>
-                                <td>Illimites</td>
+                                <td data-i18n="compare_rdv">Rendez-vous</td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
                             </tr>
                             <tr>
-                                <td>Utilisateurs</td>
+                                <td data-i18n="compare_users">Utilisateurs</td>
                                 <td>1</td>
                                 <td>3</td>
-                                <td>Illimites</td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
                             </tr>
                             <tr>
-                                <td>Page de reservation</td>
+                                <td data-i18n="price_f_page">Page de reservation</td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                             </tr>
                             <tr>
-                                <td>Statistiques avancees</td>
+                                <td data-i18n="price_f_stats">Statistiques avancees</td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                             </tr>
                             <tr>
-                                <td>Paiement en ligne</td>
+                                <td data-i18n="price_f_pay">Paiement en ligne</td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                             </tr>
                             <tr>
-                                <td>Rappels SMS/Email</td>
+                                <td data-i18n="price_f_sms">Rappels SMS/Email</td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                             </tr>
                             <tr>
-                                <td>Campagnes Marketing</td>
+                                <td data-i18n="price_f_marketing">Campagnes Marketing</td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                             </tr>
                             <tr>
-                                <td>Multi-salons</td>
+                                <td data-i18n="price_f_multi">Multi-salons</td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                             </tr>
                             <tr>
-                                <td>Support prioritaire</td>
+                                <td data-i18n="price_f_priority">Support prioritaire</td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                             </tr>
                             <tr>
-                                <td>API & integrations</td>
+                                <td data-i18n="price_f_api">API & integrations</td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
@@ -598,7 +475,7 @@
                         <div class="testi-stat-card__stars"><i data-lucide="star"></i><i data-lucide="star"></i><i
                                 data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star-half"></i></div>
                         <span class="testi-stat-card__big" id="testiStat">+45%</span>
-                        <p class="testi-stat-card__label">d'augmentation du chiffre d'affaires en moyenne</p>
+                        <p class="testi-stat-card__label" data-i18n="testi_stat_label">d'augmentation du chiffre d'affaires en moyenne</p>
                     </div>
                     <span class="testi-stat-card__quote">&ldquo;</span>
                 </div>
@@ -608,7 +485,7 @@
                     <div class="testi-slide active" data-stat="+45%">
                         <div class="testi-slide__stars"><i data-lucide="star"></i><i data-lucide="star"></i><i
                                 data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i></div>
-                        <p class="testi-slide__text">"SalonHub a transforme la gestion de mon salon. Les clients adorent
+                        <p class="testi-slide__text" data-i18n="testi_text1">"SalonHub a transforme la gestion de mon salon. Les clients adorent
                             reserver en ligne, et moi je ne perds plus de temps au telephone. Mon CA a augmente de 45%
                             en 6 mois."</p>
                         <div class="testi-slide__author">
@@ -620,7 +497,7 @@
                     <div class="testi-slide" data-stat="+32%">
                         <div class="testi-slide__stars"><i data-lucide="star"></i><i data-lucide="star"></i><i
                                 data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i></div>
-                        <p class="testi-slide__text">"Le QR Code pour les commandes est genial. Mes clients scannent,
+                        <p class="testi-slide__text" data-i18n="testi_text2">"Le QR Code pour les commandes est genial. Mes clients scannent,
                             commandent et le service est deux fois plus fluide. Un gain de temps incroyable pour toute
                             l'equipe."</p>
                         <div class="testi-slide__author">
@@ -632,7 +509,7 @@
                     <div class="testi-slide" data-stat="-50%">
                         <div class="testi-slide__stars"><i data-lucide="star"></i><i data-lucide="star"></i><i
                                 data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star-half"></i></div>
-                        <p class="testi-slide__text">"Les rappels automatiques ont divise par deux les absences. Le
+                        <p class="testi-slide__text" data-i18n="testi_text3">"Les rappels automatiques ont divise par deux les absences. Le
                             tableau de bord me permet de tout suivre d'un coup d'oeil. Je recommande sans hesitation."
                         </p>
                         <div class="testi-slide__author">
@@ -655,26 +532,6 @@
                 </div>
                 <button class="testi-arrow" id="testiNext" aria-label="Temoignage suivant"><i
                         data-lucide="arrow-right"></i></button>
-            </div>
-
-            <!-- Stats bar -->
-            <div class="testi-stats" data-anim="fade">
-                <div class="testi-stat">
-                    <span class="testi-stat__num">4.8</span>
-                    <div class="testi-stat__stars"><i data-lucide="star"></i><i data-lucide="star"></i><i
-                            data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star-half"></i></div>
-                    <span class="testi-stat__label">Note moyenne</span>
-                </div>
-                <div class="testi-stat-sep"></div>
-                <div class="testi-stat">
-                    <span class="testi-stat__num">500+</span>
-                    <span class="testi-stat__label">Professionnels actifs</span>
-                </div>
-                <div class="testi-stat-sep"></div>
-                <div class="testi-stat">
-                    <span class="testi-stat__num">98%</span>
-                    <span class="testi-stat__label">Taux de satisfaction</span>
-                </div>
             </div>
         </div>
     </section>
@@ -712,11 +569,7 @@
                     <div class="phone-mockup">
                         <div class="phone-mockup__frame">
                             <div class="phone-mockup__notch"></div>
-                            <img src="app-mockup.png" alt="SalonHub Mobile App" class="phone-mockup__img" onerror="this.parentElement.classList.add('phone-mockup__placeholder');this.style.display='none';">
-                            <div class="phone-mockup__fallback">
-                                <i data-lucide="smartphone"></i>
-                                <span data-i18n="app_coming">Bientot disponible</span>
-                            </div>
+                            <img src="dash.jpeg" alt="SalonHub Mobile App" class="phone-mockup__img">
                         </div>
                     </div>
                 </div>
@@ -784,55 +637,54 @@
             </div>
             <div class="faq-list" data-anim="fade">
                 <div class="faq-item">
-                    <button class="faq-q" aria-expanded="false"><span>Puis-je essayer SalonHub gratuitement ?</span><i
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q1">Puis-je essayer SalonHub gratuitement ?</span><i
                             data-lucide="chevron-down"></i></button>
                     <div class="faq-a">
-                        <p>Oui ! 14 jours d'essai gratuit sur tous les plans, sans carte bancaire. Explorez toutes les
+                        <p data-i18n="faq_a1">Oui ! 14 jours d'essai gratuit sur tous les plans, sans carte bancaire. Explorez toutes les
                             fonctionnalites avant de vous engager.</p>
                     </div>
                 </div>
                 <div class="faq-item">
-                    <button class="faq-q" aria-expanded="false"><span>SalonHub fonctionne-t-il pour mon secteur
-                            ?</span><i data-lucide="chevron-down"></i></button>
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q2">SalonHub fonctionne-t-il pour mon secteur ?</span><i data-lucide="chevron-down"></i></button>
                     <div class="faq-a">
-                        <p>SalonHub est multi-secteur : salons de beaute, restaurants, centres de formation et cabinets
+                        <p data-i18n="faq_a2">SalonHub est multi-secteur : salons de beaute, restaurants, centres de formation et cabinets
                             medicaux. Chaque secteur dispose d'outils adaptes.</p>
                     </div>
                 </div>
                 <div class="faq-item">
-                    <button class="faq-q" aria-expanded="false"><span>Mes clients doivent-ils creer un compte ?</span><i
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q3">Mes clients doivent-ils creer un compte ?</span><i
                             data-lucide="chevron-down"></i></button>
                     <div class="faq-a">
-                        <p>Non ! Vos clients reservent directement depuis votre page publique sans creer de compte. Nom,
+                        <p data-i18n="faq_a3">Non ! Vos clients reservent directement depuis votre page publique sans creer de compte. Nom,
                             email, telephone suffisent.</p>
                     </div>
                 </div>
                 <div class="faq-item">
-                    <button class="faq-q" aria-expanded="false"><span>Comment fonctionne le paiement en ligne ?</span><i
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q4">Comment fonctionne le paiement en ligne ?</span><i
                             data-lucide="chevron-down"></i></button>
                     <div class="faq-a">
-                        <p>Avec le plan Pro, vos clients paient lors de la reservation. Paiements securises, fonds
+                        <p data-i18n="faq_a4">Avec le plan Pro, vos clients paient lors de la reservation. Paiements securises, fonds
                             verses automatiquement sur votre compte.</p>
                     </div>
                 </div>
                 <div class="faq-item">
-                    <button class="faq-q" aria-expanded="false"><span>Puis-je gerer plusieurs etablissements ?</span><i
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q5">Puis-je gerer plusieurs etablissements ?</span><i
                             data-lucide="chevron-down"></i></button>
                     <div class="faq-a">
-                        <p>Oui, le plan Sur mesure permet de gerer plusieurs etablissements depuis un seul compte. Ideal
+                        <p data-i18n="faq_a5">Oui, le plan Sur mesure permet de gerer plusieurs etablissements depuis un seul compte. Ideal
                             pour les franchises.</p>
                     </div>
                 </div>
                 <div class="faq-item">
-                    <button class="faq-q" aria-expanded="false"><span>Y a-t-il un engagement de duree ?</span><i
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q6">Y a-t-il un engagement de duree ?</span><i
                             data-lucide="chevron-down"></i></button>
                     <div class="faq-a">
-                        <p>Aucun engagement. Resiliez a tout moment depuis vos parametres. Votre abonnement reste actif
+                        <p data-i18n="faq_a6">Aucun engagement. Resiliez a tout moment depuis vos parametres. Votre abonnement reste actif
                             jusqu'a la fin de la periode payee.</p>
                     </div>
                 </div>
             </div>
-            <div class="faq-support">
+            <div class="faq-support" data-i18n="faq_support">
                 Vous ne trouvez pas votre reponse ? <a href="mailto:info@flowkraftagency.com">Contactez le support</a>
             </div>
         </div>
@@ -863,11 +715,10 @@
                             stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                             <polygon points="5 3 19 12 5 21 5 3" />
                         </svg>
-                        Voir la demo
+                        <span data-i18n="hero_cta2">Voir la demo</span>
                     </a>
                 </div>
-                <span class="cta-final__sub">14 jours gratuits &middot; Sans carte bancaire &middot; Sans
-                    engagement</span>
+                <span class="cta-final__sub" data-i18n="cta_sub">14 jours gratuits &middot; Sans carte bancaire &middot; Sans engagement</span>
             </div>
         </div>
     </section>
@@ -879,7 +730,7 @@
                 <div class="footer-brand">
                     <a href="#" class="footer-logo"><img src="logo.png" alt="SalonHub" width="36"
                             height="36"><span>SalonHub</span></a>
-                    <p>La plateforme de gestion tout-en-un pour professionnels.</p>
+                    <p data-i18n="footer_desc">La plateforme de gestion tout-en-un pour professionnels.</p>
                     <div class="footer-social">
                         <a href="#" aria-label="LinkedIn"><i data-lucide="linkedin"></i></a>
                         <a href="#" aria-label="Facebook"><i data-lucide="facebook"></i></a>
@@ -895,17 +746,8 @@
                         <li><a href="#faq" data-i18n="nav_faq">FAQ</a></li>
                     </ul>
                 </div>
-                <!-- <div class="footer-col">
-                    <h4>Solutions</h4>
-                    <ul>
-                        <li><a href="salon-de-beaute.html">Salons de beauté</a></li>
-                        <li><a href="restaurant.html">Restaurants</a></li>
-                        <li><a href="centre-de-formation.html">Centres de formation</a></li>
-                        <li><a href="cabinet-medical.html">Cabinets médicaux</a></li>
-                    </ul>
-                </div> -->
                 <div class="footer-col">
-                    <h4>Contact</h4>
+                    <h4 data-i18n="footer_contact">Contact</h4>
                     <div class="footer-contact">
                         <p><i data-lucide="mail"></i> <a
                                 href="mailto:info@flowkraftagency.com">info@flowkraftagency.com</a></p>
@@ -914,25 +756,45 @@
                     </div>
                 </div>
                 <div class="footer-col">
-                    <h4>Newsletter</h4>
-                    <p>Recevez nos conseils et actualités</p>
+                    <h4 data-i18n="footer_newsletter_title">Newsletter</h4>
+                    <p data-i18n="footer_newsletter_desc">Recevez nos conseils et actualites</p>
                     <form class="footer-newsletter" id="newsletterForm">
-                        <input type="email" placeholder="Votre email" required>
+                        <input type="email" placeholder="Votre email" required data-i18n-placeholder="footer_email_ph">
                         <button type="submit"><i data-lucide="send"></i></button>
                     </form>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2025 <strong>FlowKraft Agency</strong>. Tous droits réservés.</p>
+                <p data-i18n="footer_copy">&copy; 2025 <strong>FlowKraft Agency</strong>. Tous droits reserves.</p>
                 <div class="footer-legal">
-                    <a href="confidentialite.html">Confidentialite</a>
-                    <a href="mentions-legales.html">Mentions legales</a>
+                    <a href="confidentialite.html" data-i18n="footer_privacy">Confidentialite</a>
+                    <a href="mentions-legales.html" data-i18n="footer_legal">Mentions legales</a>
                     <a href="cookies.html">Cookies</a>
-                    <a href="cgu.html">CGU</a>
+                    <a href="cgu.html" data-i18n="footer_terms">CGU</a>
                 </div>
             </div>
         </div>
     </footer>
+
+    <!-- ========== CONTACT MODAL ========== -->
+    <div class="modal-overlay" id="contactModal">
+        <div class="modal glass-card">
+            <button class="modal__close" id="closeContactModal">&times;</button>
+            <h3 data-i18n="modal_title">Contactez-nous</h3>
+            <p class="modal__desc" data-i18n="modal_desc">Decrivez votre besoin et nous reviendrons vers vous rapidement.</p>
+            <form class="contact-form" id="contactForm">
+                <input type="text" name="name" placeholder="Votre nom" required data-i18n-placeholder="modal_name">
+                <input type="email" name="email" placeholder="Votre email" required data-i18n-placeholder="modal_email">
+                <input type="text" name="company" placeholder="Nom de l'etablissement" data-i18n-placeholder="modal_company">
+                <textarea name="message" placeholder="Votre message" rows="4" required data-i18n-placeholder="modal_message"></textarea>
+                <button type="submit" class="btn btn-primary btn-full" data-i18n="modal_submit">Envoyer</button>
+            </form>
+            <div class="contact-form__success" id="contactSuccess" style="display:none">
+                <i data-lucide="check-circle"></i>
+                <p data-i18n="modal_success">Message envoye ! Nous reviendrons vers vous sous 24h.</p>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
