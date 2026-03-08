@@ -22,20 +22,25 @@ router.get('/', async (req, res) => {
   try {
     const { search, is_active } = req.query;
 
-    let sql = 'SELECT * FROM medical_patients WHERE tenant_id = ?';
+    let sql = `
+      SELECT mp.*, c.first_name, c.last_name, c.email, c.phone, c.date_of_birth, c.gender
+      FROM medical_patients mp
+      JOIN clients c ON mp.client_id = c.id
+      WHERE mp.tenant_id = ?
+    `;
     const params = [req.tenantId];
 
     if (search) {
-      sql += ' AND (first_name LIKE ? OR last_name LIKE ? OR patient_number LIKE ?)';
+      sql += ' AND (c.first_name LIKE ? OR c.last_name LIKE ? OR mp.patient_number LIKE ?)';
       const searchPattern = `%${search}%`;
       params.push(searchPattern, searchPattern, searchPattern);
     }
     if (is_active !== undefined) {
-      sql += ' AND is_active = ?';
+      sql += ' AND mp.is_active = ?';
       params.push(is_active === 'true' ? 1 : 0);
     }
 
-    sql += ' ORDER BY last_name ASC, first_name ASC';
+    sql += ' ORDER BY c.last_name ASC, c.first_name ASC';
 
     const patients = await query(sql, params);
 
@@ -50,7 +55,10 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const patients = await query(
-      'SELECT * FROM medical_patients WHERE id = ? AND tenant_id = ?',
+      `SELECT mp.*, c.first_name, c.last_name, c.email, c.phone, c.date_of_birth, c.gender, c.address
+       FROM medical_patients mp
+       JOIN clients c ON mp.client_id = c.id
+       WHERE mp.id = ? AND mp.tenant_id = ?`,
       [req.params.id, req.tenantId]
     );
 
@@ -102,7 +110,7 @@ router.post('/', async (req, res) => {
       first_name, last_name, date_of_birth, gender, blood_type,
       email, phone, address,
       emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
-      insurance_provider, insurance_number, notes
+      insurance_provider, insurance_number, social_security_number, notes
     } = req.body;
 
     if (!first_name || !last_name || !date_of_birth || !gender) {
@@ -113,25 +121,62 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const patient_number = generatePatientNumber();
+    // 1. Gérer le client (source de vérité contact)
+    let clientId;
+    const existingClients = await query(
+      'SELECT id FROM clients WHERE tenant_id = ? AND email = ?',
+      [req.tenantId, email]
+    );
 
+    if (existingClients.length > 0 && email) {
+      clientId = existingClients[0].id;
+      // Optionnel: Mettre à jour les infos du client existant
+      await query(
+        `UPDATE clients SET first_name = ?, last_name = ?, phone = ?, date_of_birth = ?, gender = ?, address = ? WHERE id = ?`,
+        [first_name, last_name, phone, date_of_birth, gender, address, clientId]
+      );
+    } else {
+      const clientResult = await query(
+        `INSERT INTO clients (tenant_id, first_name, last_name, email, phone, date_of_birth, gender, address)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [req.tenantId, first_name, last_name, email, phone, date_of_birth, gender, address]
+      );
+      clientId = clientResult.insertId;
+    }
+
+    // 2. Vérifier si le profil médical existe déjà pour ce client
+    const existingPatient = await query(
+      'SELECT id FROM medical_patients WHERE tenant_id = ? AND client_id = ?',
+      [req.tenantId, clientId]
+    );
+
+    if (existingPatient.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'A medical profile already exists for this client'
+      });
+    }
+
+    // 3. Créer le profil médical
+    const patient_number = generatePatientNumber();
     const result = await query(
       `INSERT INTO medical_patients (
-        tenant_id, patient_number, first_name, last_name, date_of_birth, gender,
-        blood_type, email, phone, address,
+        tenant_id, client_id, patient_number, blood_type,
         emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
-        insurance_provider, insurance_number, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        insurance_provider, insurance_number, social_security_number, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        req.tenantId, patient_number, first_name, last_name, date_of_birth, gender,
-        blood_type, email, phone, address,
+        req.tenantId, clientId, patient_number, blood_type,
         emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
-        insurance_provider, insurance_number, notes
+        insurance_provider, insurance_number, social_security_number, notes
       ]
     );
 
     const newPatient = await query(
-      'SELECT * FROM medical_patients WHERE id = ?',
+      `SELECT mp.*, c.first_name, c.last_name, c.email, c.phone, c.date_of_birth, c.gender, c.address
+       FROM medical_patients mp
+       JOIN clients c ON mp.client_id = c.id
+       WHERE mp.id = ?`,
       [result.insertId]
     );
 
@@ -153,41 +198,59 @@ router.put('/:id', async (req, res) => {
       first_name, last_name, date_of_birth, gender, blood_type,
       email, phone, address,
       emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
-      insurance_provider, insurance_number, notes
+      insurance_provider, insurance_number, social_security_number, notes
     } = req.body;
 
-    const result = await query(
-      `UPDATE medical_patients SET
+    // 1. Récupérer le client_id
+    const patientRecord = await query(
+      'SELECT client_id FROM medical_patients WHERE id = ? AND tenant_id = ?',
+      [req.params.id, req.tenantId]
+    );
+
+    if (patientRecord.length === 0) {
+      return res.status(404).json({ success: false, error: 'Patient not found' });
+    }
+
+    const clientId = patientRecord[0].client_id;
+
+    // 2. Mettre à jour le client
+    await query(
+      `UPDATE clients SET
         first_name = COALESCE(?, first_name),
         last_name = COALESCE(?, last_name),
-        date_of_birth = COALESCE(?, date_of_birth),
-        gender = COALESCE(?, gender),
-        blood_type = COALESCE(?, blood_type),
         email = COALESCE(?, email),
         phone = COALESCE(?, phone),
-        address = COALESCE(?, address),
+        date_of_birth = COALESCE(?, date_of_birth),
+        gender = COALESCE(?, gender),
+        address = COALESCE(?, address)
+      WHERE id = ?`,
+      [first_name, last_name, email, phone, date_of_birth, gender, address, clientId]
+    );
+
+    // 3. Mettre à jour le profil médical
+    const result = await query(
+      `UPDATE medical_patients SET
+        blood_type = COALESCE(?, blood_type),
         emergency_contact_name = COALESCE(?, emergency_contact_name),
         emergency_contact_phone = COALESCE(?, emergency_contact_phone),
         emergency_contact_relation = COALESCE(?, emergency_contact_relation),
         insurance_provider = COALESCE(?, insurance_provider),
         insurance_number = COALESCE(?, insurance_number),
+        social_security_number = COALESCE(?, social_security_number),
         notes = COALESCE(?, notes)
       WHERE id = ? AND tenant_id = ?`,
       [
-        first_name, last_name, date_of_birth, gender, blood_type,
-        email, phone, address,
-        emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
-        insurance_provider, insurance_number, notes,
+        blood_type, emergency_contact_name, emergency_contact_phone, emergency_contact_relation,
+        insurance_provider, insurance_number, social_security_number, notes,
         req.params.id, req.tenantId
       ]
     );
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, error: 'Patient not found' });
-    }
-
     const updated = await query(
-      'SELECT * FROM medical_patients WHERE id = ?',
+      `SELECT mp.*, c.first_name, c.last_name, c.email, c.phone, c.date_of_birth, c.gender, c.address
+       FROM medical_patients mp
+       JOIN clients c ON mp.client_id = c.id
+       WHERE mp.id = ?`,
       [req.params.id]
     );
 

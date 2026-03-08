@@ -24,12 +24,13 @@ router.get('/', async (req, res) => {
 
     let sql = `
       SELECT r.*,
-        p.first_name as patient_first_name,
-        p.last_name as patient_last_name,
-        p.patient_number,
+        c.first_name as patient_first_name,
+        c.last_name as patient_last_name,
+        mp.patient_number,
         CONCAT(u.first_name, ' ', u.last_name) as doctor_name
       FROM medical_records r
-      LEFT JOIN medical_patients p ON r.patient_id = p.id
+      LEFT JOIN medical_patients mp ON r.patient_id = mp.id
+      LEFT JOIN clients c ON mp.client_id = c.id
       LEFT JOIN users u ON r.doctor_id = u.id
       WHERE r.tenant_id = ?
     `;
@@ -71,14 +72,15 @@ router.get('/:id', async (req, res) => {
   try {
     const records = await query(
       `SELECT r.*,
-        p.first_name as patient_first_name,
-        p.last_name as patient_last_name,
-        p.patient_number,
-        p.date_of_birth,
-        p.blood_type,
+        c.first_name as patient_first_name,
+        c.last_name as patient_last_name,
+        mp.patient_number,
+        c.date_of_birth,
+        mp.blood_type,
         CONCAT(u.first_name, ' ', u.last_name) as doctor_name
       FROM medical_records r
-      LEFT JOIN medical_patients p ON r.patient_id = p.id
+      LEFT JOIN medical_patients mp ON r.patient_id = mp.id
+      LEFT JOIN clients c ON mp.client_id = c.id
       LEFT JOIN users u ON r.doctor_id = u.id
       WHERE r.id = ? AND r.tenant_id = ?`,
       [req.params.id, req.tenantId]

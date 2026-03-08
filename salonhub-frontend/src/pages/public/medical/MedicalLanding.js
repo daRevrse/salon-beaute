@@ -83,21 +83,28 @@ const MedicalLanding = () => {
   }, [slug]);
 
   useEffect(() => {
-    // Fetch available slots when date and practitioner selected
+    // Fetch available slots when date is selected
     const fetchSlots = async () => {
-      if (!selectedDate || !selectedPractitioner) return;
+      if (!selectedDate) return;
 
       try {
         setLoadingSlots(true);
+        const params = {
+          date: selectedDate,
+        };
+        if (selectedPractitioner) {
+          params.practitioner_id = selectedPractitioner.id;
+        }
+        if (selectedService) {
+          params.service_id = selectedService.id;
+        }
         const res = await api.get(`/public/medical/${slug}/availability`, {
-          params: {
-            date: selectedDate,
-            practitioner_id: selectedPractitioner.id,
-            service_id: selectedService?.id,
-          },
+          params,
         });
         if (res.data.success) {
           setAvailableSlots(res.data.data || []);
+        } else {
+          setAvailableSlots([]);
         }
       } catch (error) {
         console.error("Error fetching slots:", error);

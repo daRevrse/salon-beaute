@@ -21,6 +21,11 @@ import {
   ClockIcon,
   ExclamationTriangleIcon,
   TrashIcon,
+  ChartBarIcon,
+  SparklesIcon,
+  ArrowTrendingUpIcon,
+  CurrencyDollarIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 
 const Profile = () => {
@@ -58,8 +63,10 @@ const Profile = () => {
     totalAppointments: 0,
     completedAppointments: 0,
     upcomingAppointments: 0,
-    totalServices: 0,
   });
+
+  const [detailedStats, setDetailedStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -79,37 +86,46 @@ const Profile = () => {
           avatar_url: user.avatar_url || "",
         });
 
-        // Charger les statistiques (si staff ou owner)
-        if (
-          user.role === "staff" ||
-          user.role === "owner" ||
-          user.role === "admin"
-        ) {
-          const appointmentsRes = await api.get("/appointments");
-          const allAppointments = appointmentsRes.data.data || [];
+        // Charger les statistiques détaillées (si staff ou owner)
+        if (["staff", "owner", "admin"].includes(user.role)) {
+          setLoadingStats(true);
+          try {
+            // Stats de base (existantes)
+            const appointmentsRes = await api.get("/appointments");
+            const allAppointments = appointmentsRes.data.data || [];
 
-          // Pour owner/admin : tous les RDV du salon
-          // Pour staff : uniquement ses RDV assignés
-          const userAppointments =
-            user.role === "staff"
-              ? allAppointments.filter((apt) => apt.staff_id === user.id)
-              : allAppointments;
+            const userAppointments =
+              user.role === "staff"
+                ? allAppointments.filter((apt) => apt.staff_id === user.id)
+                : allAppointments;
 
-          const completed = userAppointments.filter(
-            (a) => a.status === "completed"
-          ).length;
-          const upcoming = userAppointments.filter(
-            (a) =>
-              (a.status === "pending" || a.status === "confirmed") &&
-              new Date(a.appointment_date) >= new Date()
-          ).length;
+            const completed = userAppointments.filter(
+              (a) => a.status === "completed"
+            ).length;
+            const upcoming = userAppointments.filter(
+              (a) =>
+                (a.status === "pending" || a.status === "confirmed") &&
+                new Date(a.appointment_date) >= new Date()
+            ).length;
 
-          setStats({
-            totalAppointments: userAppointments.length,
-            completedAppointments: completed,
-            upcomingAppointments: upcoming,
-            totalServices: 0, // À implémenter si besoin
-          });
+            setStats({
+              totalAppointments: userAppointments.length,
+              completedAppointments: completed,
+              upcomingAppointments: upcoming,
+            });
+
+            // Stats détaillées (NOUVEAU - pour owner/admin)
+            if (["owner", "admin"].includes(user.role)) {
+              const statsRes = await api.get("/auth/profile/stats");
+              if (statsRes.data.success) {
+                setDetailedStats(statsRes.data.data);
+              }
+            }
+          } catch (err) {
+            console.error("Erreur stats:", err);
+          } finally {
+            setLoadingStats(false);
+          }
         }
       }
     } catch (err) {
@@ -626,12 +642,122 @@ const Profile = () => {
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                  <p className="text-sm text-gray-600">
-                    Vos performances et statistiques détaillées seront
-                    disponibles prochainement.
-                  </p>
-                </div>
+                {/* Statistiques détaillées (owner/admin only) */}
+                {user?.role === "owner" || user?.role === "admin" ? (
+                  <div className="space-y-8 animate-fade-in">
+                    {loadingStats ? (
+                      <div className="py-12 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                        <p className="text-gray-500">Calcul des performances...</p>
+                      </div>
+                    ) : detailedStats ? (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex items-center gap-4 mb-4">
+                              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                <CurrencyDollarIcon className="h-6 w-6" />
+                              </div>
+                              <span className="text-sm font-medium text-gray-500">Revenus 30j</span>
+                            </div>
+                            <p className="text-2xl font-bold text-gray-900">{detailedStats.revenue_30d.toLocaleString('fr-FR')} €</p>
+                            <div className="mt-2 flex items-center text-xs text-emerald-600 font-medium">
+                              <ArrowTrendingUpIcon className="h-3 w-3 mr-1" />
+                              Calculé en temps réel
+                            </div>
+                          </div>
+
+                          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex items-center gap-4 mb-4">
+                              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                                <CalendarDaysIcon className="h-6 w-6" />
+                              </div>
+                              <span className="text-sm font-medium text-gray-500">Taux remplissage</span>
+                            </div>
+                            <p className="text-2xl font-bold text-gray-900">{detailedStats.fill_rate}%</p>
+                            <div className="mt-2 w-full bg-gray-100 rounded-full h-1.5">
+                              <div 
+                                className="bg-blue-500 h-1.5 rounded-full transition-all duration-1000" 
+                                style={{ width: `${detailedStats.fill_rate}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex items-center gap-4 mb-4">
+                              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+                                <UsersIcon className="h-6 w-6" />
+                              </div>
+                              <span className="text-sm font-medium text-gray-500">Clients fidèles</span>
+                            </div>
+                            <p className="text-2xl font-bold text-gray-900">{detailedStats.loyal_clients_count}</p>
+                            <p className="mt-2 text-xs text-gray-400">Clients avec plus de 3 RDV</p>
+                          </div>
+
+                          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex items-center gap-4 mb-4">
+                              <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+                                <ChartBarIcon className="h-6 w-6" />
+                              </div>
+                              <span className="text-sm font-medium text-gray-500">Total Chiffre d'Affaires</span>
+                            </div>
+                            <p className="text-2xl font-bold text-gray-900">{detailedStats.total_revenue.toLocaleString('fr-FR')} €</p>
+                            <p className="mt-2 text-xs text-gray-400">Depuis la création</p>
+                          </div>
+                        </div>
+
+                        {/* Trends Chart (CSS based) */}
+                        <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm">
+                          <h4 className="font-bold text-gray-900 mb-8 flex items-center gap-2">
+                            <SparklesIcon className="h-5 w-5 text-indigo-500" />
+                            Tendances mensuelles
+                          </h4>
+                          
+                          <div className="h-48 flex items-end justify-between gap-4">
+                            {detailedStats.trends && detailedStats.trends.length > 0 ? (
+                              detailedStats.trends.map((t, i) => {
+                                const maxRevenue = Math.max(...detailedStats.trends.map(x => x.revenue)) || 1;
+                                const height = (t.revenue / maxRevenue) * 100;
+                                return (
+                                  <div key={i} className="flex-1 flex flex-col items-center group">
+                                    <div className="relative w-full flex items-end justify-center mb-4 h-full">
+                                      {/* Tooltip */}
+                                      <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-gray-900 text-white text-xs py-1 px-2 rounded -translate-y-2 pointer-events-none z-10">
+                                        {t.revenue.toLocaleString('fr-FR')} €
+                                      </div>
+                                      {/* Bar */}
+                                      <div 
+                                        className="w-full max-w-[40px] bg-gradient-to-t from-indigo-500 to-purple-500 rounded-t-lg transition-all duration-700 ease-out group-hover:from-indigo-600 group-hover:to-purple-700 shadow-sm"
+                                        style={{ height: `${Math.max(height, 5)}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] font-medium text-gray-400 rotate-45 md:rotate-0 origin-center">
+                                      {t.month}
+                                    </span>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="w-full flex items-center justify-center text-gray-400 h-full italic">
+                                Pas assez de données pour afficher les tendances
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="bg-red-50 border border-red-100 p-6 rounded-2xl text-center text-red-600">
+                        Impossible de charger les statistiques détaillées.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 p-8 rounded-2xl text-center">
+                    <p className="text-gray-500 italic">
+                      Les statistiques avancées sont réservées aux propriétaires et administrateurs.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

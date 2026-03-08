@@ -42,13 +42,15 @@ const BookingLanding = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState([]);
 
-  // Thème personnalisé du salon
-  const themeSettings = settings?.theme_settings || {
-    primaryColor: "#8B5CF6",
-    secondaryColor: "#6366F1",
-    fontFamily: "Inter",
-    footerBgColor: "#1E293B",
-    footerTextColor: "#FFFFFF"
+  // Thème personnalisé du salon avec support d'overrides via query params (pour l'aperçu)
+  const queryParams = new URLSearchParams(window.location.search);
+  
+  const themeSettings = {
+    primaryColor: queryParams.get("primaryColor") || settings?.theme_settings?.primaryColor || "#8B5CF6",
+    secondaryColor: queryParams.get("secondaryColor") || settings?.theme_settings?.secondaryColor || "#6366F1",
+    fontFamily: queryParams.get("fontFamily") || settings?.theme_settings?.fontFamily || "Inter",
+    footerBgColor: queryParams.get("footerBgColor") || settings?.theme_settings?.footerBgColor || "#1E293B",
+    footerTextColor: queryParams.get("footerTextColor") || settings?.theme_settings?.footerTextColor || "#FFFFFF"
   };
 
   // Open gallery lightbox for a service

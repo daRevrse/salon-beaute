@@ -819,6 +819,13 @@ document.addEventListener('DOMContentLoaded', () => {
       price_f_priority: 'Support prioritaire',
       price_f_api: 'API & integrations',
       price_f_manager: 'Gestionnaire dedie',
+      // Developer plan
+      price_plan_dev_desc: 'Pour les integrateurs & devs',
+      price_f_apikeys: 'Cles API (sk_live_)',
+      price_f_webhooks: 'API & webhooks',
+      price_f_integrations: 'Integrations tierces',
+      price_f_ratelimit: '5 000 requetes/jour',
+      price_f_techsupport: 'Support technique prioritaire',
       // Trust badges
       trust_secure: 'Paiement securise',
       trust_trial: 'Essai 14 jours',
@@ -967,6 +974,13 @@ document.addEventListener('DOMContentLoaded', () => {
       price_f_priority: 'Priority support',
       price_f_api: 'API & integrations',
       price_f_manager: 'Dedicated manager',
+      // Developer plan
+      price_plan_dev_desc: 'For integrators & devs',
+      price_f_apikeys: 'API keys (sk_live_)',
+      price_f_webhooks: 'API & webhooks',
+      price_f_integrations: 'Third-party integrations',
+      price_f_ratelimit: '5,000 requests/day',
+      price_f_techsupport: 'Priority tech support',
       // Trust badges
       trust_secure: 'Secure payment',
       trust_trial: '14-day trial',

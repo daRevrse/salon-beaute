@@ -19,9 +19,10 @@ const generatePrescriptionNumber = () => {
 router.get('/', async (req, res) => {
   try {
     const { patient_id, status } = req.query;
-    let sql = `SELECT p.*, pat.first_name, pat.last_name, pat.patient_number, CONCAT(u.first_name, ' ', u.last_name) as doctor_name
+    let sql = `SELECT p.*, c.first_name, c.last_name, mp.patient_number, CONCAT(u.first_name, ' ', u.last_name) as doctor_name
                FROM medical_prescriptions p
-               LEFT JOIN medical_patients pat ON p.patient_id = pat.id
+               LEFT JOIN medical_patients mp ON p.patient_id = mp.id
+               LEFT JOIN clients c ON mp.client_id = c.id
                LEFT JOIN users u ON p.doctor_id = u.id
                WHERE p.tenant_id = ?`;
     const params = [req.tenantId];

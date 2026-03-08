@@ -34,6 +34,8 @@ import {
   XCircleIcon,
   PencilSquareIcon,
   PaintBrushIcon,
+  LockClosedIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 
 import { useToast } from "../hooks/useToast";
@@ -148,6 +150,35 @@ const Settings = () => {
     { value: "Playfair Display", label: "Playfair Display (Luxe)" },
     { value: "Montserrat", label: "Montserrat (Sans-serif)" },
   ];
+
+  const isProPlan = tenant?.subscription_plan === "professional" || tenant?.subscription_plan === "enterprise" || tenant?.subscription_plan === "pro" || tenant?.subscription_plan === "custom";
+
+  const PlanRestrictionOverlay = ({ title, description }) => (
+    <div className="relative overflow-hidden bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-8 sm:p-12 text-center">
+      <div className="absolute top-0 right-0 p-4">
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 shadow-sm uppercase tracking-wider">
+          Plan PRO requis
+        </span>
+      </div>
+      <div className="max-w-md mx-auto">
+        <div className="w-16 h-16 bg-white rounded-2xl shadow-soft flex items-center justify-center mx-auto mb-6 text-slate-400">
+          <LockClosedIcon className="h-8 w-8" />
+        </div>
+        <h3 className="text-xl font-display font-bold text-slate-900 mb-2">
+          {title}
+        </h3>
+        <p className="text-slate-600 mb-8 text-sm sm:text-base">
+          {description}
+        </p>
+        <button
+          onClick={() => navigate("/billing")}
+          className={`px-6 py-3 bg-gradient-to-r ${config.gradient} text-white rounded-xl font-semibold shadow-soft hover:shadow-glow transition-all`}
+        >
+          Passer au plan Pro
+        </button>
+      </div>
+    </div>
+  );
 
   useEffect(() => {
     fetchSettings();
@@ -802,10 +833,10 @@ const Settings = () => {
                         <div className="flex justify-between">
                           <span className="text-white/80">Plan:</span>
                           <span className="font-medium">
-                            {tenant?.subscription_plan === "professional"
-                              ? "Professional"
-                              : tenant?.subscription_plan === "enterprise"
-                              ? "Enterprise"
+                            {tenant?.subscription_plan === "pro" || tenant?.subscription_plan === "professional"
+                              ? "Pro"
+                              : tenant?.subscription_plan === "custom" || tenant?.subscription_plan === "enterprise"
+                              ? "Sur mesure"
                               : "Essential"}
                           </span>
                         </div>
@@ -980,8 +1011,14 @@ const Settings = () => {
             {/* Staff Tab */}
             {activeTab === "staff" && (
               <div className="space-y-6 sm:space-y-8">
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 border-b border-slate-200 pb-3">
+                {!isProPlan ? (
+                  <PlanRestrictionOverlay 
+                    title={`Gestion du ${term.staff}`}
+                    description={`Ajoutez des membres à votre équipe, gérez leurs permissions et suivez leurs performances. fonctionnalité disponible uniquement à partir du plan Pro.`}
+                  />
+                ) : (
+                  <div>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 border-b border-slate-200 pb-3">
                     <h2 className="text-lg sm:text-xl font-semibold text-slate-800 flex items-center mb-3 sm:mb-0">
                       <UsersIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${config.textColor} mr-2 sm:mr-3`} />
                       Gestion du {term.staff.toLowerCase()}
@@ -1117,8 +1154,9 @@ const Settings = () => {
                     )}
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+          )}
 
             {/* Promotions Tab */}
             {activeTab === "promotions" && (
@@ -1256,149 +1294,128 @@ const Settings = () => {
             {/* Theme Tab */}
             {activeTab === "theme" && (
               <div className="space-y-6 sm:space-y-8">
-                <div>
-                  <h2 className="text-lg sm:text-xl font-semibold text-slate-800 mb-4 sm:mb-6 flex items-center border-b border-slate-200 pb-3">
-                    <PaintBrushIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${config.textColor} mr-2 sm:mr-3`} />
-                    Thème de votre page de réservation
-                  </h2>
+                {!isProPlan ? (
+                  <PlanRestrictionOverlay 
+                    title="Personnalisation du thème"
+                    description="Donnez du style à votre page de réservation en changeant les couleurs, les polices et le design global. fonctionnalité disponible uniquement à partir du plan Pro."
+                  />
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <h2 className="text-lg sm:text-xl font-semibold text-slate-800 mb-4 sm:mb-6 flex items-center border-b border-slate-200 pb-3">
+                        <PaintBrushIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${config.textColor} mr-2 sm:mr-3`} />
+                        Personnalisation visuelle
+                      </h2>
 
-                  <div className="max-w-md space-y-6">
-                    {/* Primary Color */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Couleur principale
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={themeSettings.primaryColor}
-                          onChange={(e) => setThemeSettings({ ...themeSettings, primaryColor: e.target.value })}
-                          className="h-10 w-20 rounded-lg cursor-pointer border border-slate-200"
-                        />
-                        <input
-                          type="text"
-                          value={themeSettings.primaryColor}
-                          onChange={(e) => setThemeSettings({ ...themeSettings, primaryColor: e.target.value })}
-                          className={`flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 ${config.focusRing} focus:border-transparent`}
-                          placeholder="#8B5CF6"
-                        />
+                      {/* Primary Color */}
+                      <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Couleur principale
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="color"
+                            value={themeSettings.primaryColor}
+                            onChange={(e) => setThemeSettings({ ...themeSettings, primaryColor: e.target.value })}
+                            className="h-10 w-20 rounded-lg cursor-pointer border border-slate-200"
+                          />
+                          <input
+                            type="text"
+                            value={themeSettings.primaryColor}
+                            onChange={(e) => setThemeSettings({ ...themeSettings, primaryColor: e.target.value })}
+                            className={`flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                          />
+                        </div>
                       </div>
-                      <p className="mt-1 text-xs text-slate-500">Couleur des boutons et éléments principaux</p>
+
+                      {/* Secondary Color */}
+                      <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Couleur secondaire
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="color"
+                            value={themeSettings.secondaryColor}
+                            onChange={(e) => setThemeSettings({ ...themeSettings, secondaryColor: e.target.value })}
+                            className="h-10 w-20 rounded-lg cursor-pointer border border-slate-200"
+                          />
+                          <input
+                            type="text"
+                            value={themeSettings.secondaryColor}
+                            onChange={(e) => setThemeSettings({ ...themeSettings, secondaryColor: e.target.value })}
+                            className={`flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Font Family */}
+                      <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Police de caractères
+                        </label>
+                        <select
+                          value={themeSettings.fontFamily}
+                          onChange={(e) => setThemeSettings({ ...themeSettings, fontFamily: e.target.value })}
+                          className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+                        >
+                          {FONT_OPTIONS.map((font) => (
+                            <option key={font.value} value={font.value}>
+                              {font.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Footer Colors */}
+                      <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-4">
+                        <label className="block text-sm font-medium text-slate-700">Pied de page</label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <span className="block text-xs text-slate-500 mb-1">Fond</span>
+                            <input
+                              type="color"
+                              value={themeSettings.footerBgColor || "#1E293B"}
+                              onChange={(e) => setThemeSettings({ ...themeSettings, footerBgColor: e.target.value })}
+                              className="h-10 w-full rounded-lg cursor-pointer border border-slate-200"
+                            />
+                          </div>
+                          <div>
+                            <span className="block text-xs text-slate-500 mb-1">Texte</span>
+                            <input
+                              type="color"
+                              value={themeSettings.footerTextColor || "#FFFFFF"}
+                              onChange={(e) => setThemeSettings({ ...themeSettings, footerTextColor: e.target.value })}
+                              className="h-10 w-full rounded-lg cursor-pointer border border-slate-200"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Secondary Color */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Couleur secondaire
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={themeSettings.secondaryColor}
-                          onChange={(e) => setThemeSettings({ ...themeSettings, secondaryColor: e.target.value })}
-                          className="h-10 w-20 rounded-lg cursor-pointer border border-slate-200"
-                        />
-                        <input
-                          type="text"
-                          value={themeSettings.secondaryColor}
-                          onChange={(e) => setThemeSettings({ ...themeSettings, secondaryColor: e.target.value })}
-                          className={`flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 ${config.focusRing} focus:border-transparent`}
-                          placeholder="#6366F1"
+                    {/* LIVE PREVIEW IFRAME */}
+                    <div className="flex flex-col">
+                      <h2 className="text-lg sm:text-xl font-semibold text-slate-800 mb-4 sm:mb-6 flex items-center border-b border-slate-200 pb-3">
+                        <SparklesIcon className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-500 mr-2 sm:mr-3" />
+                        Aperçu en direct
+                      </h2>
+                      <div className="flex-1 min-h-[600px] border-8 border-slate-800 rounded-[3rem] overflow-hidden shadow-2xl relative">
+                        {/* Device Notch */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-800 rounded-b-2xl z-20"></div>
+                        
+                        <iframe
+                          title="Booking Preview"
+                          src={`${window.location.origin}/book/${tenant?.slug}?primaryColor=${encodeURIComponent(themeSettings.primaryColor)}&secondaryColor=${encodeURIComponent(themeSettings.secondaryColor)}&fontFamily=${encodeURIComponent(themeSettings.fontFamily)}&footerBgColor=${encodeURIComponent(themeSettings.footerBgColor)}&footerTextColor=${encodeURIComponent(themeSettings.footerTextColor)}`}
+                          className="w-full h-full border-none"
+                          style={{ zoom: "0.8" }}
                         />
                       </div>
-                      <p className="mt-1 text-xs text-slate-500">Couleur des accents et dégradés</p>
-                    </div>
-
-                    {/* Font Family */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Police de caractères
-                      </label>
-                      <select
-                        value={themeSettings.fontFamily}
-                        onChange={(e) => setThemeSettings({ ...themeSettings, fontFamily: e.target.value })}
-                        className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
-                      >
-                        {FONT_OPTIONS.map((font) => (
-                          <option key={font.value} value={font.value}>
-                            {font.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-slate-500">Police utilisée sur votre page publique</p>
-                    </div>
-
-                    {/* Footer Background Color */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Couleur de fond du pied de page
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={themeSettings.footerBgColor || "#1E293B"}
-                          onChange={(e) => setThemeSettings({ ...themeSettings, footerBgColor: e.target.value })}
-                          className="h-10 w-20 rounded-lg cursor-pointer border border-slate-200"
-                        />
-                        <input
-                          type="text"
-                          value={themeSettings.footerBgColor || "#1E293B"}
-                          onChange={(e) => setThemeSettings({ ...themeSettings, footerBgColor: e.target.value })}
-                          className={`flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 ${config.focusRing} focus:border-transparent`}
-                          placeholder="#1E293B"
-                        />
-                      </div>
-                      <p className="mt-1 text-xs text-slate-500">Couleur d'arrière-plan du footer</p>
-                    </div>
-
-                    {/* Footer Text Color */}
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Couleur du texte du pied de page
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={themeSettings.footerTextColor || "#FFFFFF"}
-                          onChange={(e) => setThemeSettings({ ...themeSettings, footerTextColor: e.target.value })}
-                          className="h-10 w-20 rounded-lg cursor-pointer border border-slate-200"
-                        />
-                        <input
-                          type="text"
-                          value={themeSettings.footerTextColor || "#FFFFFF"}
-                          onChange={(e) => setThemeSettings({ ...themeSettings, footerTextColor: e.target.value })}
-                          className={`flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 ${config.focusRing} focus:border-transparent`}
-                          placeholder="#FFFFFF"
-                        />
-                      </div>
-                      <p className="mt-1 text-xs text-slate-500">Couleur du texte dans le footer</p>
-                    </div>
-
-                    {/* Preview Card */}
-                    <div className="mt-8 p-6 rounded-2xl border-2 border-slate-200">
-                      <h3 className="text-sm font-medium text-slate-700 mb-4">Aperçu</h3>
-                      <div
-                        className="p-4 rounded-xl text-white text-center font-medium shadow-soft mb-4"
-                        style={{
-                          background: `linear-gradient(135deg, ${themeSettings.primaryColor}, ${themeSettings.secondaryColor})`,
-                          fontFamily: themeSettings.fontFamily
-                        }}
-                      >
-                        Votre bouton de réservation
-                      </div>
-                      <div
-                        className="p-4 rounded-xl text-center text-sm"
-                        style={{
-                          backgroundColor: themeSettings.footerBgColor || "#1E293B",
-                          color: themeSettings.footerTextColor || "#FFFFFF",
-                          fontFamily: themeSettings.fontFamily
-                        }}
-                      >
-                        Aperçu du pied de page
-                      </div>
+                      <p className="mt-4 text-center text-sm text-slate-500 italic">
+                        Il s'agit d'une simulation de votre page de réservation mobile.
+                      </p>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 

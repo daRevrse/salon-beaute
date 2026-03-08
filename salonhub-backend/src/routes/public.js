@@ -390,15 +390,30 @@ router.get("/salon/:slug/availability", checkPublicSubscription('slug'), async (
       [tenantId]
     );
 
+    // Helper pour parser les horaires quel que soit le format
+    const parseDaySchedule = (daySchedule) => {
+      if (!daySchedule || daySchedule === "closed") return { closed: true };
+      if (typeof daySchedule === "string" && daySchedule.includes("-")) {
+        const [open, close] = daySchedule.split("-");
+        return { open, close, closed: false };
+      }
+      return daySchedule; // Suppose déjà au format { open, close, closed }
+    };
+
     let businessHours = null;
     let slotDuration = 30;
 
     settings.forEach((setting) => {
       if (setting.setting_key === "business_hours") {
         try {
-          businessHours = JSON.parse(setting.setting_value);
+          // Gérer le cas où c'est déjà un objet ou une chaîne JSON
+          businessHours =
+            typeof setting.setting_value === "string" && (setting.setting_value.startsWith("{") || setting.setting_value.startsWith("["))
+              ? JSON.parse(setting.setting_value)
+              : setting.setting_value;
         } catch (e) {
           console.error("Erreur parsing business_hours:", e);
+          businessHours = setting.setting_value;
         }
       } else if (setting.setting_key === "slot_duration") {
         slotDuration = parseInt(setting.setting_value);
@@ -431,13 +446,13 @@ router.get("/salon/:slug/availability", checkPublicSubscription('slug'), async (
     ];
     const dayName = dayNames[dateObj.getDay()];
 
-    console.log(
-      "Debug - businessHours:",
-      JSON.stringify(businessHours, null, 2)
-    );
-    console.log("Debug - dayName:", dayName);
+    console.log(`[Availability] Debug - Tenant: ${tenantId}, Slug: ${slug}, Date: ${date}, Day: ${dayName}`);
+    console.log("[Availability] Debug - raw businessHours:", JSON.stringify(businessHours));
 
-    const daySchedule = businessHours[dayName];
+    const rawDaySchedule = businessHours ? businessHours[dayName] : null;
+    const daySchedule = parseDaySchedule(rawDaySchedule);
+
+    console.log("[Availability] Debug - parsed daySchedule:", JSON.stringify(daySchedule));
 
     // Vérifier si le salon est fermé ce jour
     if (!daySchedule || daySchedule.closed) {

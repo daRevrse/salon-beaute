@@ -36,7 +36,7 @@ router.get("/:slug/practitioners", checkPublicSubscription('slug'), async (req, 
     // Récupérer les praticiens (staff actif)
     const practitioners = await db.query(
       `SELECT u.id, CONCAT(u.first_name, ' ', u.last_name) as name,
-              u.avatar_url, u.specialty, u.bio
+              u.avatar_url, u.role
        FROM users u
        WHERE u.tenant_id = ? AND u.is_active = TRUE AND u.role IN ('admin', 'staff')
        ORDER BY u.first_name, u.last_name`,
@@ -88,11 +88,22 @@ router.get("/:slug/availability", checkPublicSubscription('slug'), async (req, r
 
     const tenantId = tenants[0].id;
 
-    // Récupérer les horaires d'ouverture
+    // Helper pour parser les horaires quel que soit le format
+    const parseDaySchedule = (daySchedule) => {
+      if (!daySchedule || daySchedule === "closed") return { closed: true };
+      if (typeof daySchedule === "string" && daySchedule.includes("-")) {
+        const [open, close] = daySchedule.split("-");
+        return { open, close, closed: false };
+      }
+      return daySchedule; // Suppose déjà au format { open, close, closed }
+    };
+
     const settings = await db.query(
-      "SELECT setting_value FROM settings WHERE tenant_id = ? AND setting_key = 'business_hours'",
+      "SELECT setting_key, setting_value FROM settings WHERE tenant_id = ? AND setting_key IN ('business_hours', 'slot_duration')",
       [tenantId]
     );
+
+    console.log(`[Medical Availability] Debug - Tenant: ${tenantId}, Settings length: ${settings.length}`);
 
     let businessHours = {
       monday: { open: "09:00", close: "18:00", closed: false },
@@ -103,18 +114,30 @@ router.get("/:slug/availability", checkPublicSubscription('slug'), async (req, r
       saturday: { open: "09:00", close: "13:00", closed: false },
       sunday: { closed: true },
     };
+    let slotDuration = 30;
 
-    if (settings.length > 0) {
-      try {
-        businessHours = JSON.parse(settings[0].setting_value);
-      } catch (e) {
-        console.error("Erreur parsing business_hours:", e);
+    settings.forEach((s) => {
+      if (s.setting_key === "business_hours") {
+        try {
+          businessHours =
+            typeof s.setting_value === "string" && (s.setting_value.startsWith("{") || s.setting_value.startsWith("["))
+              ? JSON.parse(s.setting_value)
+              : s.setting_value;
+        } catch (e) {
+          console.error("Erreur parsing business_hours:", e);
+          businessHours = s.setting_value;
+        }
+      } else if (s.setting_key === "slot_duration") {
+        slotDuration = parseInt(s.setting_value) || 30;
       }
-    }
+    });
 
     // Déterminer le jour de la semaine
-    const dayOfWeek = new Date(date).toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
-    const dayHours = businessHours[dayOfWeek];
+    const dateObj = new Date(date + "T00:00:00");
+    const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const dayOfWeek = dayNames[dateObj.getDay()];
+
+    const dayHours = parseDaySchedule(businessHours ? businessHours[dayOfWeek] : null);
 
     if (!dayHours || dayHours.closed) {
       return res.json({
@@ -137,7 +160,7 @@ router.get("/:slug/availability", checkPublicSubscription('slug'), async (req, r
 
     // Récupérer les RDV existants pour cette date
     let appointmentsQuery = `
-      SELECT appointment_time as time, duration
+      SELECT start_time, end_time
       FROM appointments
       WHERE tenant_id = ? AND appointment_date = ? AND status NOT IN ('cancelled', 'no_show')
     `;
@@ -158,28 +181,34 @@ router.get("/:slug/availability", checkPublicSubscription('slug'), async (req, r
     let currentMinutes = openTime[0] * 60 + openTime[1];
     const endMinutes = closeTime[0] * 60 + closeTime[1];
 
-    while (currentMinutes + duration <= endMinutes) {
-      const hours = Math.floor(currentMinutes / 60);
-      const minutes = currentMinutes % 60;
-      const timeStr = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+      console.log(`[Medical Availability] Loop - current: ${currentMinutes}, end: ${endMinutes}, duration: ${duration}, slotDuration: ${slotDuration}`);
+      
+      while (currentMinutes + duration <= endMinutes) {
+        const hours = Math.floor(currentMinutes / 60);
+        const minutes = currentMinutes % 60;
+        const timeStr = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 
-      // Vérifier si le créneau n'est pas déjà pris
-      const slotEndMinutes = currentMinutes + duration;
-      const isAvailable = !existingAppointments.some((apt) => {
-        const aptTime = apt.time.split(":").map(Number);
-        const aptMinutes = aptTime[0] * 60 + aptTime[1];
-        const aptEndMinutes = aptMinutes + (apt.duration || 30);
+        // Vérifier si le créneau n'est pas déjà pris
+        const slotEndMinutes = currentMinutes + duration;
+        const isAvailable = !existingAppointments.some((apt) => {
+          if (!apt.start_time || !apt.end_time) return false;
+          
+          const [startH, startM] = apt.start_time.split(":").map(Number);
+          const [endH, endM] = apt.end_time.split(":").map(Number);
+          
+          const aptStartMinutes = startH * 60 + startM;
+          const aptEndMinutes = endH * 60 + endM;
 
-        // Vérifier le chevauchement
-        return !(slotEndMinutes <= aptMinutes || currentMinutes >= aptEndMinutes);
-      });
+          // Vérifier le chevauchement
+          return !(slotEndMinutes <= aptStartMinutes || currentMinutes >= aptEndMinutes);
+        });
 
-      if (isAvailable) {
-        slots.push(timeStr);
+        if (isAvailable) {
+          slots.push(timeStr);
+        }
+
+        currentMinutes += slotDuration;
       }
-
-      currentMinutes += 30; // Incrément de 30 min
-    }
 
     res.json({
       success: true,
@@ -257,7 +286,7 @@ router.post("/:slug/appointments", checkPublicSubscription('slug'), async (req, 
     // Vérifier la disponibilité du créneau
     let availabilityQuery = `
       SELECT id FROM appointments
-      WHERE tenant_id = ? AND appointment_date = ? AND appointment_time = ?
+      WHERE tenant_id = ? AND appointment_date = ? AND start_time = ?
         AND status NOT IN ('cancelled', 'no_show')
     `;
     const availabilityParams = [tenantId, date, time];
@@ -285,56 +314,66 @@ router.post("/:slug/appointments", checkPublicSubscription('slug'), async (req, 
 
     if (existingClients.length > 0) {
       clientId = existingClients[0].id;
-      // Mettre à jour les infos
+      // Mettre à jour les infos (source unique)
       await db.query(
-        `UPDATE clients SET first_name = ?, last_name = ?, phone = ? WHERE id = ?`,
-        [first_name, last_name, phone, clientId]
+        `UPDATE clients SET first_name = ?, last_name = ?, phone = ?, date_of_birth = COALESCE(?, date_of_birth) WHERE id = ?`,
+        [first_name, last_name, phone, date_of_birth || null, clientId]
       );
     } else {
       const newClient = await db.query(
-        `INSERT INTO clients (tenant_id, first_name, last_name, email, phone)
-         VALUES (?, ?, ?, ?, ?)`,
-        [tenantId, first_name, last_name, email, phone]
+        `INSERT INTO clients (tenant_id, first_name, last_name, email, phone, date_of_birth)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [tenantId, first_name, last_name, email, phone, date_of_birth || null]
       );
       clientId = newClient.insertId;
+    }
+
+    // Gérer le profil médical
+    let patientId = null;
+    const existingPatients = await db.query(
+      "SELECT id FROM medical_patients WHERE tenant_id = ? AND client_id = ?",
+      [tenantId, clientId]
+    );
+
+    if (existingPatients.length > 0) {
+      patientId = existingPatients[0].id;
+    } else if (is_first_visit) {
+        // Créer un profil médical
+        const patient_number = `PAT-${Date.now().toString().substring(7)}-${Math.floor(Math.random() * 1000)}`;
+        const patientResult = await db.query(
+          `INSERT INTO medical_patients
+           (tenant_id, client_id, patient_number)
+           VALUES (?, ?, ?)`,
+          [tenantId, clientId, patient_number]
+        );
+        patientId = patientResult.insertId;
     }
 
     // Générer un code de confirmation
     const confirmationCode = `MED-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
+    // Calculer end_time
+    const [h, m] = time.split(':').map(Number);
+    const endMinutes = h * 60 + m + (service.duration || 30);
+    const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}`;
+
     // Créer le rendez-vous
     const result = await db.query(
       `INSERT INTO appointments
-       (tenant_id, client_id, service_id, staff_id, appointment_date, appointment_time, duration, status, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?)`,
+       (tenant_id, client_id, patient_id, service_id, staff_id, appointment_date, start_time, end_time, status, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?)`,
       [
         tenantId,
         clientId,
+        patientId,
         service_id,
         practitioner_id || null,
         date,
         time,
-        service.duration,
+        endTime,
         reason ? `Motif: ${reason}${is_first_visit ? " (Première visite)" : ""}` : (is_first_visit ? "Première visite" : null),
       ]
     );
-
-    // Créer une entrée dans medical_patients si première visite
-    if (is_first_visit) {
-      const existingPatient = await db.query(
-        "SELECT id FROM medical_patients WHERE tenant_id = ? AND email = ?",
-        [tenantId, email]
-      );
-
-      if (existingPatient.length === 0) {
-        await db.query(
-          `INSERT INTO medical_patients
-           (tenant_id, first_name, last_name, email, phone, date_of_birth)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [tenantId, first_name, last_name, email, phone, date_of_birth || null]
-        );
-      }
-    }
 
     res.status(201).json({
       success: true,

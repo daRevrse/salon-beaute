@@ -400,7 +400,7 @@ router.put(
       const { plan, reason } = req.body;
 
       // Validate plan
-      const validPlans = ["essential", "pro", "custom", "trial"];
+      const validPlans = ["essential", "pro", "developer", "custom", "trial"];
       if (!plan || !validPlans.includes(plan)) {
         return res.status(400).json({
           success: false,
@@ -1236,7 +1236,7 @@ router.put(
       const changes = {};
 
       if (plan) {
-        const validPlans = ["essential", "pro", "custom", "trial"];
+        const validPlans = ["essential", "pro", "developer", "custom", "trial"];
         if (!validPlans.includes(plan)) {
           return res.status(400).json({
             success: false,

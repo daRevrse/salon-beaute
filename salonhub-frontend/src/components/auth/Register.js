@@ -37,6 +37,7 @@ const BUSINESS_TYPES = [
     lightBg: "bg-violet-50",
     borderColor: "border-violet-500",
     textColor: "text-violet-600",
+    comingSoon: false,
   },
   {
     id: "restaurant",
@@ -48,6 +49,7 @@ const BUSINESS_TYPES = [
     lightBg: "bg-amber-50",
     borderColor: "border-amber-500",
     textColor: "text-amber-600",
+    comingSoon: true,
   },
   {
     id: "training",
@@ -59,6 +61,7 @@ const BUSINESS_TYPES = [
     lightBg: "bg-emerald-50",
     borderColor: "border-emerald-500",
     textColor: "text-emerald-600",
+    comingSoon: true,
   },
   {
     id: "medical",
@@ -70,6 +73,7 @@ const BUSINESS_TYPES = [
     lightBg: "bg-cyan-50",
     borderColor: "border-cyan-500",
     textColor: "text-cyan-600",
+    comingSoon: true,
   },
 ];
 
@@ -137,6 +141,10 @@ const Register = () => {
   };
 
   const selectBusinessType = (typeId) => {
+    // Prevent selection of coming-soon sectors
+    const type = BUSINESS_TYPES.find((bt) => bt.id === typeId);
+    if (type?.comingSoon) return;
+
     setFormData({
       ...formData,
       business_type: typeId,
@@ -371,24 +379,38 @@ const Register = () => {
                     {BUSINESS_TYPES.map((type) => {
                       const Icon = type.icon;
                       const isSelected = formData.business_type === type.id;
+                      const isDisabled = type.comingSoon;
 
                       return (
                         <button
                           key={type.id}
                           type="button"
                           onClick={() => selectBusinessType(type.id)}
+                          disabled={isDisabled}
                           className={`
-                            relative flex items-start gap-4 p-6 rounded-2xl cursor-pointer
+                            relative flex items-start gap-4 p-6 rounded-2xl
                             transition-all duration-300 ease-premium text-left
-                            border-2 hover:-translate-y-1 hover:shadow-soft-lg
-                            ${isSelected
-                              ? `${type.borderColor} ${type.lightBg} shadow-soft-lg`
-                              : "border-slate-200 bg-white hover:border-slate-300"
+                            border-2
+                            ${isDisabled
+                              ? "opacity-50 cursor-not-allowed border-slate-200 bg-slate-50"
+                              : isSelected
+                              ? `${type.borderColor} ${type.lightBg} shadow-soft-lg cursor-pointer`
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:-translate-y-1 hover:shadow-soft-lg cursor-pointer"
                             }
                           `}
                         >
+                          {/* Coming Soon Badge */}
+                          {isDisabled && (
+                            <div className="absolute top-3 right-3">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-amber-400 to-orange-400 text-white shadow-sm">
+                                <SparklesIcon className="h-3 w-3" />
+                                Soon
+                              </span>
+                            </div>
+                          )}
+
                           {/* Selected Indicator */}
-                          {isSelected && (
+                          {isSelected && !isDisabled && (
                             <div className="absolute top-4 right-4">
                               <CheckCircleSolid className={`h-6 w-6 ${type.textColor}`} />
                             </div>
@@ -398,7 +420,9 @@ const Register = () => {
                           <div
                             className={`
                               w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0
-                              ${isSelected
+                              ${isDisabled
+                                ? "bg-slate-100"
+                                : isSelected
                                 ? `bg-gradient-to-br ${type.gradient}`
                                 : type.lightBg
                               }
@@ -406,17 +430,21 @@ const Register = () => {
                           >
                             <Icon
                               className={`w-7 h-7 ${
-                                isSelected ? "text-white" : type.textColor
+                                isDisabled
+                                  ? "text-slate-400"
+                                  : isSelected
+                                  ? "text-white"
+                                  : type.textColor
                               }`}
                             />
                           </div>
 
                           {/* Content */}
-                          <div className="flex-1 min-w-0 pr-6">
-                            <span className="font-display text-lg text-slate-800 block mb-1">
+                          <div className="flex-1 min-w-0 pr-8">
+                            <span className={`font-display text-lg block mb-1 ${isDisabled ? "text-slate-400" : "text-slate-800"}`}>
                               {type.name}
                             </span>
-                            <span className="text-sm text-slate-500 block">
+                            <span className={`text-sm block ${isDisabled ? "text-slate-400" : "text-slate-500"}`}>
                               {type.description}
                             </span>
                           </div>

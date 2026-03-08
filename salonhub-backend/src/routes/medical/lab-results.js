@@ -10,9 +10,10 @@ const { query } = require('../../config/database');
 router.get('/', async (req, res) => {
   try {
     const { patient_id, status } = req.query;
-    let sql = `SELECT l.*, p.first_name, p.last_name, p.patient_number, u.name as ordered_by_name
+    let sql = `SELECT l.*, c.first_name, c.last_name, mp.patient_number, CONCAT(u.first_name, ' ', u.last_name) as ordered_by_name
                FROM medical_lab_results l
-               LEFT JOIN medical_patients p ON l.patient_id = p.id
+               LEFT JOIN medical_patients mp ON l.patient_id = mp.id
+               LEFT JOIN clients c ON mp.client_id = c.id
                LEFT JOIN users u ON l.ordered_by = u.id
                WHERE l.tenant_id = ?`;
     const params = [req.tenantId];

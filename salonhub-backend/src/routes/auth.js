@@ -1066,4 +1066,98 @@ router.put("/profile/password", authMiddleware, tenantMiddleware, async (req, re
   }
 });
 
+// ==========================================
+// GET - Statistiques détaillées du profil (owner/admin only)
+// ==========================================
+router.get("/profile/stats", authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    // Vérifier permissions
+    if (!["owner", "admin"].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        error: "Accès refusé. Réservé aux administrateurs.",
+      });
+    }
+
+    const tenantId = req.tenantId;
+
+    // 1. Chiffre d'affaires (Total et 30 derniers jours)
+    const [revenueStats] = await query(
+      `SELECT 
+        SUM(s.price) as total_revenue,
+        SUM(CASE WHEN a.appointment_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN s.price ELSE 0 END) as revenue_30d,
+        COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_count
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      WHERE a.tenant_id = ? AND a.status = 'completed'`,
+      [tenantId]
+    );
+
+    // 2. Clients fidèles (>= 3 RDV complétés)
+    const [loyalClients] = await query(
+      `SELECT COUNT(*) as count FROM (
+        SELECT client_id FROM appointments 
+        WHERE tenant_id = ? AND status = 'completed' 
+        GROUP BY client_id HAVING COUNT(*) >= 3
+      ) as loyal`,
+      [tenantId]
+    );
+
+    // 3. Taux de remplissage (Last 30 days)
+    // On calcule le nombre total de minutes de RDV / capacité théorique
+    // Capacité théorique (estimée) = 30 jours * 8 heures * nb employés actifs
+    const [fillStats] = await query(
+      `SELECT 
+        SUM(s.duration) as total_minutes,
+        (SELECT COUNT(*) FROM users WHERE tenant_id = ? AND is_active = 1) as staff_count
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      WHERE a.tenant_id = ? AND a.status = 'completed' 
+      AND a.appointment_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)`,
+      [tenantId, tenantId]
+    );
+
+    const staffCount = fillStats.staff_count || 1;
+    const theoreticalCapacityMinutes = 30 * 8 * 60 * staffCount;
+    const fillRate = theoreticalCapacityMinutes > 0 
+      ? Math.min(Math.round((fillStats.total_minutes || 0) / theoreticalCapacityMinutes * 100), 100)
+      : 0;
+
+    // 4. Tendances (Revenus par mois - last 6 months)
+    const trends = await query(
+      `SELECT 
+        DATE_FORMAT(appointment_date, '%b %Y') as month,
+        SUM(s.price) as revenue
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      WHERE a.tenant_id = ? AND a.status = 'completed'
+      AND a.appointment_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+      GROUP BY month
+      ORDER BY MIN(appointment_date) ASC`,
+      [tenantId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        total_revenue: parseFloat(revenueStats.total_revenue || 0),
+        revenue_30d: parseFloat(revenueStats.revenue_30d || 0),
+        completed_appointments: revenueStats.completed_count || 0,
+        loyal_clients_count: loyalClients.count || 0,
+        fill_rate: fillRate,
+        trends: trends.map(t => ({
+          month: t.month,
+          revenue: parseFloat(t.revenue || 0)
+        }))
+      }
+    });
+  } catch (error) {
+    console.error("Erreur récupération stats profil:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur lors de la récupération des statistiques",
+    });
+  }
+});
+
 module.exports = router;

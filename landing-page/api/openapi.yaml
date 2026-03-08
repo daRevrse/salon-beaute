@@ -1,0 +1,3513 @@
+openapi: "3.0.3"
+
+info:
+  title: SalonHub API
+  version: "1.0.0"
+  description: |
+    SalonHub is a multi-tenant SaaS platform designed for beauty salons, restaurants,
+    training centers, and medical practices. The API provides comprehensive management
+    of appointments, clients, services, staff, settings, and public booking flows.
+
+    ## Authentication
+
+    The API supports two authentication methods:
+
+    - **JWT Bearer Token** -- Obtained via `/auth/login` or `/auth/register`. Include as `Authorization: Bearer <token>`.
+    - **API Key** -- Prefixed with `sk_live_`. Include as `Authorization: Bearer sk_live_...`. API keys are scoped and can be managed via the `/api-keys` endpoints.
+
+    ## Multi-Tenancy
+
+    Most endpoints require tenant context. The tenant is resolved automatically from the
+    authenticated user's JWT token. Public endpoints use the tenant slug in the URL path.
+
+    ## Error Handling
+
+    All error responses follow a consistent format:
+    ```json
+    {
+      "success": false,
+      "error": "ERROR_CODE",
+      "message": "Human-readable description"
+    }
+    ```
+  contact:
+    name: SalonHub Support
+    email: support@salonhub.app
+    url: https://salonhub.app
+  license:
+    name: Proprietary
+    url: https://salonhub.app/terms
+
+servers:
+  - url: https://api.salonhub.app/api
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User registration, login, profile, and staff management
+  - name: Clients
+    description: Client management and history
+  - name: Services
+    description: Service catalog management
+  - name: Appointments
+    description: Appointment scheduling and management
+  - name: Public Booking
+    description: Public-facing endpoints for online booking (no auth required)
+  - name: Settings
+    description: Salon settings and subscription management
+  - name: API Keys
+    description: API key management for developer integrations
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ──────────────────────────────────────────────
+  # AUTH ROUTES
+  # ──────────────────────────────────────────────
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new salon and owner account
+      description: Creates a new tenant (salon) and the owner user account. Returns a JWT token for immediate authentication.
+      operationId: registerSalon
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            example:
+              salon_name: "Belle Coiffure"
+              salon_email: "contact@bellecoiffure.fr"
+              salon_phone: "+33612345678"
+              salon_address: "12 Rue de la Paix"
+              salon_city: "Paris"
+              salon_postal_code: "75002"
+              first_name: "Marie"
+              last_name: "Dupont"
+              email: "marie@bellecoiffure.fr"
+              password: "securepass123"
+              subscription_plan: "essential"
+              business_type: "beauty"
+      responses:
+        "201":
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+              example:
+                success: true
+                token: "eyJhbGciOiJIUzI1NiIs..."
+                user:
+                  id: 1
+                  email: "marie@bellecoiffure.fr"
+                  first_name: "Marie"
+                  last_name: "Dupont"
+                  role: "owner"
+                tenant:
+                  id: 1
+                  name: "Belle Coiffure"
+                  slug: "belle-coiffure"
+                  business_type: "beauty"
+                  subscription_status: "trialing"
+                  subscription_plan: "essential"
+                  trial_ends_at: "2026-04-01T00:00:00.000Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Email or salon already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error: "CONFLICT"
+                message: "A user with this email already exists"
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login with email and password
+      description: Authenticates a user and returns a JWT token along with user and tenant details.
+      operationId: loginUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: "marie@bellecoiffure.fr"
+              password: "securepass123"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+              example:
+                success: true
+                token: "eyJhbGciOiJIUzI1NiIs..."
+                user:
+                  id: 1
+                  email: "marie@bellecoiffure.fr"
+                  first_name: "Marie"
+                  last_name: "Dupont"
+                  role: "owner"
+                  tenant_id: 1
+                  avatar_url: "https://cdn.salonhub.app/avatars/1.jpg"
+                tenant:
+                  id: 1
+                  name: "Belle Coiffure"
+                  slug: "belle-coiffure"
+                  subscription_status: "active"
+                  subscription_plan: "essential"
+                  trial_ends_at: null
+                  logo_url: "https://cdn.salonhub.app/logos/1.png"
+                  business_type: "beauty"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error: "UNAUTHORIZED"
+                message: "Invalid email or password"
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user profile
+      description: Returns the authenticated user's profile along with tenant information.
+      operationId: getCurrentUser
+      responses:
+        "200":
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: "#/components/schemas/UserWithTenant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/password:
+    put:
+      tags: [Authentication]
+      summary: Change password
+      description: Updates the authenticated user's password. Requires current password verification.
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                  example: "oldpassword123"
+                new_password:
+                  type: string
+                  minLength: 6
+                  example: "newpassword456"
+      responses:
+        "200":
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Password updated successfully"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/staff:
+    get:
+      tags: [Authentication]
+      summary: List all staff members
+      description: Returns all staff members for the current tenant. Requires owner or admin role.
+      operationId: listStaff
+      responses:
+        "200":
+          description: Staff list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+              example:
+                success: true
+                data:
+                  - id: 2
+                    email: "sophie@bellecoiffure.fr"
+                    first_name: "Sophie"
+                    last_name: "Martin"
+                    phone: "+33698765432"
+                    role: "staff"
+                    is_active: true
+                    avatar_url: null
+                    created_at: "2026-01-15T10:30:00.000Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Authentication]
+      summary: Create a staff member
+      description: Creates a new staff member for the current tenant. Requires owner or admin role.
+      operationId: createStaff
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStaffRequest"
+            example:
+              email: "sophie@bellecoiffure.fr"
+              password: "staffpass123"
+              first_name: "Sophie"
+              last_name: "Martin"
+              phone: "+33698765432"
+              role: "staff"
+      responses:
+        "201":
+          description: Staff member created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/staff/{id}:
+    put:
+      tags: [Authentication]
+      summary: Update a staff member
+      description: Updates a staff member's details. Requires owner or admin role.
+      operationId: updateStaff
+      parameters:
+        - $ref: "#/components/parameters/StaffId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStaffRequest"
+            example:
+              first_name: "Sophie"
+              last_name: "Martin-Leroy"
+              phone: "+33698765432"
+              role: "admin"
+              is_active: true
+      responses:
+        "200":
+          description: Staff member updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Authentication]
+      summary: Delete a staff member
+      description: Deletes a staff member from the current tenant. Requires owner or admin role.
+      operationId: deleteStaff
+      parameters:
+        - $ref: "#/components/parameters/StaffId"
+      responses:
+        "200":
+          description: Staff member deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Staff member deleted successfully"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /auth/profile:
+    get:
+      tags: [Authentication]
+      summary: Get user profile
+      description: Returns the authenticated user's profile within the current tenant context.
+      operationId: getUserProfile
+      responses:
+        "200":
+          description: Profile retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [Authentication]
+      summary: Update user profile
+      description: Updates the authenticated user's profile within the current tenant context.
+      operationId: updateUserProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+            example:
+              first_name: "Marie"
+              last_name: "Dupont-Leroy"
+              phone: "+33612345678"
+              email: "marie@bellecoiffure.fr"
+              avatar_url: "https://cdn.salonhub.app/avatars/1-new.jpg"
+      responses:
+        "200":
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # CLIENT ROUTES
+  # ──────────────────────────────────────────────
+  /clients:
+    get:
+      tags: [Clients]
+      summary: List clients
+      description: Returns a paginated list of clients for the current tenant. Supports search filtering.
+      operationId: listClients
+      parameters:
+        - name: search
+          in: query
+          description: Search by name, email, or phone
+          schema:
+            type: string
+            example: "dupont"
+        - name: limit
+          in: query
+          description: Number of results per page
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+            example: 50
+        - name: offset
+          in: query
+          description: Offset for pagination
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+            example: 0
+      responses:
+        "200":
+          description: Client list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Client"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Clients]
+      summary: Create a client
+      description: Creates a new client for the current tenant.
+      operationId: createClient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClientRequest"
+            example:
+              first_name: "Jean"
+              last_name: "Martin"
+              email: "jean.martin@email.com"
+              phone: "+33612340000"
+              date_of_birth: "1990-05-15"
+              gender: "male"
+              notes: "Prefers morning appointments"
+              email_marketing_consent: true
+              sms_marketing_consent: false
+      responses:
+        "201":
+          description: Client created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Client"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /clients/{id}:
+    get:
+      tags: [Clients]
+      summary: Get a client by ID
+      description: Returns detailed client information including appointment stats.
+      operationId: getClient
+      parameters:
+        - $ref: "#/components/parameters/ClientId"
+      responses:
+        "200":
+          description: Client retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/Client"
+                      - type: object
+                        properties:
+                          stats:
+                            $ref: "#/components/schemas/ClientStats"
+              example:
+                success: true
+                data:
+                  id: 10
+                  first_name: "Jean"
+                  last_name: "Martin"
+                  email: "jean.martin@email.com"
+                  phone: "+33612340000"
+                  date_of_birth: "1990-05-15"
+                  gender: "male"
+                  notes: "Prefers morning appointments"
+                  email_marketing_consent: true
+                  sms_marketing_consent: false
+                  created_at: "2026-01-10T09:00:00.000Z"
+                  updated_at: "2026-02-20T14:30:00.000Z"
+                  stats:
+                    total_appointments: 12
+                    total_spent: 540.00
+                    last_visit_date: "2026-02-18"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Clients]
+      summary: Update a client
+      description: Updates an existing client's information.
+      operationId: updateClient
+      parameters:
+        - $ref: "#/components/parameters/ClientId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClientRequest"
+            example:
+              phone: "+33698760000"
+              notes: "Prefers morning appointments. Allergic to certain products."
+      responses:
+        "200":
+          description: Client updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Client"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Clients]
+      summary: Delete a client
+      description: Deletes a client. Fails if the client has future appointments.
+      operationId: deleteClient
+      parameters:
+        - $ref: "#/components/parameters/ClientId"
+      responses:
+        "200":
+          description: Client deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Client deleted successfully"
+        "400":
+          description: Client has future appointments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error: "BAD_REQUEST"
+                message: "Cannot delete client with future appointments"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /clients/{id}/appointments:
+    get:
+      tags: [Clients]
+      summary: Get client appointment history
+      description: Returns the appointment history for a specific client.
+      operationId: getClientAppointments
+      parameters:
+        - $ref: "#/components/parameters/ClientId"
+      responses:
+        "200":
+          description: Appointment history retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Appointment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ──────────────────────────────────────────────
+  # SERVICE ROUTES
+  # ──────────────────────────────────────────────
+  /services:
+    get:
+      tags: [Services]
+      summary: List services
+      description: Returns services for the current tenant. Supports filtering and returns both a flat list and grouped by category.
+      operationId: listServices
+      parameters:
+        - name: category
+          in: query
+          description: Filter by category name
+          schema:
+            type: string
+            example: "Coiffure"
+        - name: is_active
+          in: query
+          description: Filter by active status
+          schema:
+            type: boolean
+            example: true
+        - name: search
+          in: query
+          description: Search by service name
+          schema:
+            type: string
+            example: "coupe"
+      responses:
+        "200":
+          description: Services retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Service"
+                  grouped:
+                    type: object
+                    description: Services grouped by category
+                    additionalProperties:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Service"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Services]
+      summary: Create a service
+      description: Creates a new service for the current tenant.
+      operationId: createService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServiceRequest"
+            example:
+              name: "Coupe Femme"
+              duration: 45
+              price: 35.00
+              description: "Coupe, shampoing et brushing"
+              slot_duration: 60
+              category: "Coiffure"
+              is_active: true
+              requires_deposit: false
+              deposit_amount: null
+              available_for_online_booking: true
+              image_url: "https://cdn.salonhub.app/services/coupe-femme.jpg"
+              gallery: []
+      responses:
+        "201":
+          description: Service created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Service"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /services/{id}:
+    get:
+      tags: [Services]
+      summary: Get a service by ID
+      description: Returns detailed service information including usage stats.
+      operationId: getService
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "200":
+          description: Service retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Service"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Services]
+      summary: Update a service
+      description: Updates an existing service.
+      operationId: updateService
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateServiceRequest"
+            example:
+              price: 40.00
+              duration: 50
+      responses:
+        "200":
+          description: Service updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Service"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Services]
+      summary: Delete a service
+      description: Permanently deletes a service.
+      operationId: deleteService
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "200":
+          description: Service deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Service deleted successfully"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /services/{id}/toggle:
+    patch:
+      tags: [Services]
+      summary: Toggle service active status
+      description: Toggles the is_active flag on a service.
+      operationId: toggleService
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "200":
+          description: Service toggled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Service"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /services/meta/categories:
+    get:
+      tags: [Services]
+      summary: List service categories
+      description: Returns all service categories with their service count.
+      operationId: listServiceCategories
+      responses:
+        "200":
+          description: Categories retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        category:
+                          type: string
+                          example: "Coiffure"
+                        count:
+                          type: integer
+                          example: 8
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # APPOINTMENT ROUTES
+  # ──────────────────────────────────────────────
+  /appointments:
+    get:
+      tags: [Appointments]
+      summary: List appointments
+      description: Returns a paginated list of appointments with full join data (client, service, staff). Supports date range and status filtering.
+      operationId: listAppointments
+      parameters:
+        - name: date
+          in: query
+          description: Filter by exact date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+            example: "2026-03-15"
+        - name: start_date
+          in: query
+          description: Filter from this date (inclusive)
+          schema:
+            type: string
+            format: date
+            example: "2026-03-01"
+        - name: end_date
+          in: query
+          description: Filter until this date (inclusive)
+          schema:
+            type: string
+            format: date
+            example: "2026-03-31"
+        - name: status
+          in: query
+          description: Filter by appointment status
+          schema:
+            type: string
+            enum: [pending, confirmed, cancelled, completed, no_show]
+            example: "confirmed"
+        - name: client_id
+          in: query
+          description: Filter by client ID
+          schema:
+            type: integer
+            example: 10
+        - name: staff_id
+          in: query
+          description: Filter by staff member ID
+          schema:
+            type: integer
+            example: 2
+        - name: limit
+          in: query
+          description: Number of results per page
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 500
+            example: 100
+        - name: offset
+          in: query
+          description: Offset for pagination
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+            example: 0
+      responses:
+        "200":
+          description: Appointments retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Appointment"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Appointments]
+      summary: Create an appointment
+      description: Creates a new appointment for the current tenant.
+      operationId: createAppointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAppointmentRequest"
+            example:
+              client_id: 10
+              service_id: 5
+              appointment_date: "2026-03-20"
+              start_time: "10:00"
+              end_time: "10:45"
+              staff_id: 2
+              notes: "First-time client"
+              client_notes: ""
+              booked_by: "staff"
+              booking_source: "dashboard"
+      responses:
+        "201":
+          description: Appointment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Appointment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Time slot conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error: "CONFLICT"
+                message: "This time slot is already booked"
+
+  /appointments/today:
+    get:
+      tags: [Appointments]
+      summary: Get today's appointments
+      description: Returns all appointments scheduled for today.
+      operationId: getTodayAppointments
+      responses:
+        "200":
+          description: Today's appointments retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Appointment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /appointments/{id}:
+    get:
+      tags: [Appointments]
+      summary: Get an appointment by ID
+      description: Returns detailed appointment information.
+      operationId: getAppointment
+      parameters:
+        - $ref: "#/components/parameters/AppointmentId"
+      responses:
+        "200":
+          description: Appointment retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Appointment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Appointments]
+      summary: Update an appointment
+      description: Updates an existing appointment's details.
+      operationId: updateAppointment
+      parameters:
+        - $ref: "#/components/parameters/AppointmentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAppointmentRequest"
+            example:
+              start_time: "11:00"
+              end_time: "11:45"
+              notes: "Rescheduled by client"
+      responses:
+        "200":
+          description: Appointment updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Appointment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Appointments]
+      summary: Delete an appointment
+      description: Permanently deletes an appointment.
+      operationId: deleteAppointment
+      parameters:
+        - $ref: "#/components/parameters/AppointmentId"
+      responses:
+        "200":
+          description: Appointment deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Appointment deleted successfully"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /appointments/{id}/status:
+    patch:
+      tags: [Appointments]
+      summary: Update appointment status
+      description: Changes the status of an appointment. Supports optional cancellation reason when status is set to cancelled.
+      operationId: updateAppointmentStatus
+      parameters:
+        - $ref: "#/components/parameters/AppointmentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAppointmentStatusRequest"
+            example:
+              status: "confirmed"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Appointment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /appointments/availability/slots:
+    get:
+      tags: [Appointments]
+      summary: Get available time slots
+      description: Returns available booking slots for a given date and service. Optionally filtered by staff member.
+      operationId: getAvailableSlots
+      parameters:
+        - name: date
+          in: query
+          required: true
+          description: Date to check availability (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+            example: "2026-03-20"
+        - name: service_id
+          in: query
+          required: true
+          description: Service ID to check availability for
+          schema:
+            type: integer
+            example: 5
+        - name: staff_id
+          in: query
+          description: Optionally filter by specific staff member
+          schema:
+            type: integer
+            example: 2
+      responses:
+        "200":
+          description: Available slots retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        start_time:
+                          type: string
+                          example: "09:00"
+                        end_time:
+                          type: string
+                          example: "09:45"
+                        staff_id:
+                          type: integer
+                          nullable: true
+                          example: 2
+                        staff_name:
+                          type: string
+                          nullable: true
+                          example: "Sophie Martin"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # PUBLIC BOOKING ROUTES
+  # ──────────────────────────────────────────────
+  /public/search:
+    get:
+      tags: [Public Booking]
+      summary: Search salons
+      description: Public search across salons. Requires a minimum of 2 characters. No authentication required but subscription status is verified.
+      operationId: publicSearch
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query (minimum 2 characters)
+          schema:
+            type: string
+            minLength: 2
+            example: "coiffure paris"
+        - name: type
+          in: query
+          description: Filter by business type
+          schema:
+            type: string
+            enum: [beauty, restaurant, training, medical]
+            example: "beauty"
+        - name: limit
+          in: query
+          description: Number of results
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+            example: 20
+        - name: offset
+          in: query
+          description: Offset for pagination
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+            example: 0
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PublicTenant"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /public/tenant/{slug}:
+    get:
+      tags: [Public Booking]
+      summary: Get basic tenant info by slug
+      description: Returns basic public information about a tenant (salon).
+      operationId: getPublicTenant
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/TenantSlug"
+      responses:
+        "200":
+          description: Tenant info retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/PublicTenant"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /public/services/{slug}:
+    get:
+      tags: [Public Booking]
+      summary: Get public services by tenant slug
+      description: Returns the list of publicly available services for a tenant.
+      operationId: getPublicServices
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/TenantSlug"
+      responses:
+        "200":
+          description: Services retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PublicService"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /public/salon/{slug}:
+    get:
+      tags: [Public Booking]
+      summary: Get salon info with business hours
+      description: Returns detailed public salon information including business hours.
+      operationId: getPublicSalon
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/SalonSlug"
+      responses:
+        "200":
+          description: Salon info retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/PublicTenant"
+                      - type: object
+                        properties:
+                          business_hours:
+                            $ref: "#/components/schemas/BusinessHours"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /public/salon/{slug}/services:
+    get:
+      tags: [Public Booking]
+      summary: Get active bookable services for a salon
+      description: Returns only active services that are available for online booking.
+      operationId: getPublicSalonServices
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/SalonSlug"
+      responses:
+        "200":
+          description: Bookable services retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PublicService"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /public/salon/{slug}/settings:
+    get:
+      tags: [Public Booking]
+      summary: Get public salon settings
+      description: Returns public-facing settings including business hours and theme configuration.
+      operationId: getPublicSalonSettings
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/SalonSlug"
+      responses:
+        "200":
+          description: Settings retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      business_hours:
+                        $ref: "#/components/schemas/BusinessHours"
+                      theme_settings:
+                        type: object
+                        properties:
+                          primary_color:
+                            type: string
+                            example: "#6366F1"
+                          logo_url:
+                            type: string
+                            nullable: true
+                            example: "https://cdn.salonhub.app/logos/1.png"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /public/salon/{slug}/availability:
+    get:
+      tags: [Public Booking]
+      summary: Check salon availability
+      description: Returns available time slots for a specific service on a given date.
+      operationId: getPublicAvailability
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/SalonSlug"
+        - name: service_id
+          in: query
+          required: true
+          description: Service ID to check availability for
+          schema:
+            type: integer
+            example: 5
+        - name: date
+          in: query
+          required: true
+          description: Date to check (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+            example: "2026-03-20"
+      responses:
+        "200":
+          description: Availability retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  slots:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        start_time:
+                          type: string
+                          example: "09:00"
+                        end_time:
+                          type: string
+                          example: "09:45"
+                        available:
+                          type: boolean
+                          example: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /public/appointments:
+    post:
+      tags: [Public Booking]
+      summary: Book a public appointment
+      description: Creates an appointment through the public booking flow. No authentication required. Subscription status is verified for the salon.
+      operationId: createPublicAppointment
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePublicAppointmentRequest"
+            example:
+              salon_slug: "belle-coiffure"
+              first_name: "Alice"
+              last_name: "Lemoine"
+              phone: "+33699887766"
+              email: "alice@email.com"
+              service_id: 5
+              appointment_date: "2026-03-20"
+              start_time: "10:00"
+              notes: "First visit"
+              preferred_contact_method: "sms"
+              promo_code: "WELCOME10"
+              final_amount: 31.50
+      responses:
+        "201":
+          description: Appointment booked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Appointment"
+                  message:
+                    type: string
+                    example: "Appointment booked successfully"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: Salon not found or subscription inactive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /public/promotions/validate:
+    post:
+      tags: [Public Booking]
+      summary: Validate a promo code
+      description: Validates a promotional code for a specific salon and order.
+      operationId: validatePromoCode
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidatePromoRequest"
+            example:
+              code: "WELCOME10"
+              salon_slug: "belle-coiffure"
+              order_amount: 35.00
+              service_ids: [5]
+      responses:
+        "200":
+          description: Promo code validated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      valid:
+                        type: boolean
+                        example: true
+                      discount_type:
+                        type: string
+                        enum: [percentage, fixed]
+                        example: "percentage"
+                      discount_value:
+                        type: number
+                        example: 10
+                      final_amount:
+                        type: number
+                        example: 31.50
+                      message:
+                        type: string
+                        example: "10% discount applied"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # ──────────────────────────────────────────────
+  # SETTINGS ROUTES
+  # ──────────────────────────────────────────────
+  /settings:
+    get:
+      tags: [Settings]
+      summary: Get all settings
+      description: Returns all settings for the current tenant including salon info, business hours, and subscription details.
+      operationId: getSettings
+      responses:
+        "200":
+          description: Settings retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Settings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [Settings]
+      summary: Update tenant settings
+      description: Updates business hours, slot duration, currency, and theme settings.
+      operationId: updateSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsRequest"
+            example:
+              business_hours:
+                monday:
+                  open: "09:00"
+                  close: "18:00"
+                  is_open: true
+                tuesday:
+                  open: "09:00"
+                  close: "18:00"
+                  is_open: true
+                wednesday:
+                  open: "09:00"
+                  close: "18:00"
+                  is_open: true
+                thursday:
+                  open: "09:00"
+                  close: "18:00"
+                  is_open: true
+                friday:
+                  open: "09:00"
+                  close: "18:00"
+                  is_open: true
+                saturday:
+                  open: "09:00"
+                  close: "14:00"
+                  is_open: true
+                sunday:
+                  open: "09:00"
+                  close: "18:00"
+                  is_open: false
+              slot_duration: 30
+              currency: "EUR"
+              theme_settings:
+                primary_color: "#6366F1"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Settings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /settings/salon:
+    get:
+      tags: [Settings]
+      summary: Get salon information
+      description: Returns the salon's profile information.
+      operationId: getSalonSettings
+      responses:
+        "200":
+          description: Salon info retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Tenant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [Settings]
+      summary: Update salon information
+      description: Updates the salon's profile details including name, contact info, and branding.
+      operationId: updateSalonSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSalonRequest"
+            example:
+              name: "Belle Coiffure Paris"
+              slug: "belle-coiffure-paris"
+              phone: "+33612345678"
+              email: "contact@bellecoiffure.fr"
+              address: "12 Rue de la Paix"
+              city: "Paris"
+              postal_code: "75002"
+              logo_url: "https://cdn.salonhub.app/logos/1.png"
+              banner_url: "https://cdn.salonhub.app/banners/1.jpg"
+              slogan: "Your beauty, our passion"
+      responses:
+        "200":
+          description: Salon info updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/Tenant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /settings/subscription:
+    get:
+      tags: [Settings]
+      summary: Get subscription information
+      description: Returns the current subscription plan, status, and trial details.
+      operationId: getSubscription
+      responses:
+        "200":
+          description: Subscription info retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      subscription_plan:
+                        type: string
+                        enum: [essential, professional, enterprise, developer, custom, trial]
+                        example: "essential"
+                      subscription_status:
+                        type: string
+                        enum: [active, trialing, past_due, cancelled, inactive]
+                        example: "active"
+                      trial_ends_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        example: null
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /settings/currency:
+    get:
+      tags: [Settings]
+      summary: Get currency setting
+      description: Returns the configured currency for the current tenant.
+      operationId: getCurrency
+      responses:
+        "200":
+          description: Currency retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      currency:
+                        type: string
+                        example: "EUR"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /settings/onboarding/complete:
+    put:
+      tags: [Settings]
+      summary: Mark onboarding as complete
+      description: Marks the tenant onboarding flow as completed.
+      operationId: completeOnboarding
+      responses:
+        "200":
+          description: Onboarding completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Onboarding completed"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # API KEYS ROUTES
+  # ──────────────────────────────────────────────
+  /api-keys:
+    post:
+      tags: [API Keys]
+      summary: Create an API key
+      description: |
+        Creates a new API key for the current tenant. Requires owner or admin role
+        and a developer, custom, or trial subscription plan.
+
+        **Important:** The full API key (prefixed with `sk_live_`) is returned only once
+        in this response. Store it securely.
+      operationId: createApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApiKeyRequest"
+            example:
+              name: "Mobile App Integration"
+              scopes: ["clients:read", "appointments:read", "appointments:write"]
+              expires_at: "2027-03-01T00:00:00.000Z"
+      responses:
+        "201":
+          description: API key created (full key returned only once)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/ApiKeyFull"
+              example:
+                success: true
+                data:
+                  id: 1
+                  name: "Mobile App Integration"
+                  key: "sk_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+                  prefix: "sk_live_a1b2c3d4"
+                  scopes: ["clients:read", "appointments:read", "appointments:write"]
+                  is_active: true
+                  expires_at: "2027-03-01T00:00:00.000Z"
+                  created_at: "2026-03-02T12:00:00.000Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Insufficient subscription plan or role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error: "FORBIDDEN"
+                message: "API keys require a developer, custom, or trial subscription plan"
+    get:
+      tags: [API Keys]
+      summary: List API keys
+      description: Returns all API keys for the current tenant. Only the prefix is shown, not the full key.
+      operationId: listApiKeys
+      responses:
+        "200":
+          description: API keys retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApiKey"
+              example:
+                success: true
+                data:
+                  - id: 1
+                    name: "Mobile App Integration"
+                    prefix: "sk_live_a1b2c3d4"
+                    scopes: ["clients:read", "appointments:read", "appointments:write"]
+                    is_active: true
+                    last_used_at: "2026-03-01T18:45:00.000Z"
+                    expires_at: "2027-03-01T00:00:00.000Z"
+                    created_at: "2026-03-02T12:00:00.000Z"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api-keys/{id}:
+    patch:
+      tags: [API Keys]
+      summary: Update an API key
+      description: Updates an API key's name, scopes, or active status.
+      operationId: updateApiKey
+      parameters:
+        - $ref: "#/components/parameters/ApiKeyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateApiKeyRequest"
+            example:
+              name: "Mobile App Integration v2"
+              scopes: ["clients:read", "clients:write", "appointments:read", "appointments:write"]
+              is_active: true
+      responses:
+        "200":
+          description: API key updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: "#/components/schemas/ApiKey"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [API Keys]
+      summary: Delete an API key
+      description: Soft-deletes an API key. The key will no longer be usable for authentication.
+      operationId: deleteApiKey
+      parameters:
+        - $ref: "#/components/parameters/ApiKeyId"
+      responses:
+        "200":
+          description: API key deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "API key deleted successfully"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+# ════════════════════════════════════════════════
+# COMPONENTS
+# ════════════════════════════════════════════════
+components:
+  # ──────────────────────────────────────────────
+  # SECURITY SCHEMES
+  # ──────────────────────────────────────────────
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from `/auth/login` or `/auth/register`.
+        Include as: `Authorization: Bearer <jwt_token>`
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+      description: |
+        API key prefixed with `sk_live_`. Obtained from `/api-keys`.
+        Include as: `Authorization: Bearer sk_live_...`
+        Requires developer, custom, or trial subscription plan.
+
+  # ──────────────────────────────────────────────
+  # PARAMETERS
+  # ──────────────────────────────────────────────
+  parameters:
+    StaffId:
+      name: id
+      in: path
+      required: true
+      description: Staff member ID
+      schema:
+        type: integer
+        example: 2
+
+    ClientId:
+      name: id
+      in: path
+      required: true
+      description: Client ID
+      schema:
+        type: integer
+        example: 10
+
+    ServiceId:
+      name: id
+      in: path
+      required: true
+      description: Service ID
+      schema:
+        type: integer
+        example: 5
+
+    AppointmentId:
+      name: id
+      in: path
+      required: true
+      description: Appointment ID
+      schema:
+        type: integer
+        example: 100
+
+    ApiKeyId:
+      name: id
+      in: path
+      required: true
+      description: API key ID
+      schema:
+        type: integer
+        example: 1
+
+    TenantSlug:
+      name: slug
+      in: path
+      required: true
+      description: Tenant URL slug
+      schema:
+        type: string
+        example: "belle-coiffure"
+
+    SalonSlug:
+      name: slug
+      in: path
+      required: true
+      description: Salon URL slug
+      schema:
+        type: string
+        example: "belle-coiffure"
+
+  # ──────────────────────────────────────────────
+  # RESPONSES
+  # ──────────────────────────────────────────────
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error: "BAD_REQUEST"
+            message: "Validation failed: email is required"
+
+    Unauthorized:
+      description: Authentication required or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error: "UNAUTHORIZED"
+            message: "Authentication required"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error: "FORBIDDEN"
+            message: "You do not have permission to perform this action"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            success: false
+            error: "NOT_FOUND"
+            message: "Resource not found"
+
+  # ──────────────────────────────────────────────
+  # SCHEMAS
+  # ──────────────────────────────────────────────
+  schemas:
+    # ── Error ──
+    Error:
+      type: object
+      required: [success, error, message]
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Machine-readable error code
+          example: "BAD_REQUEST"
+        message:
+          type: string
+          description: Human-readable error description
+          example: "Validation failed"
+
+    # ── Pagination ──
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of records
+          example: 150
+        limit:
+          type: integer
+          description: Records per page
+          example: 50
+        offset:
+          type: integer
+          description: Current offset
+          example: 0
+        hasMore:
+          type: boolean
+          description: Whether more records exist
+          example: true
+
+    # ── User ──
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "marie@bellecoiffure.fr"
+        first_name:
+          type: string
+          example: "Marie"
+        last_name:
+          type: string
+          example: "Dupont"
+        phone:
+          type: string
+          nullable: true
+          example: "+33612345678"
+        role:
+          type: string
+          enum: [owner, admin, staff]
+          example: "owner"
+        is_active:
+          type: boolean
+          example: true
+        avatar_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/avatars/1.jpg"
+        tenant_id:
+          type: integer
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-01-01T10:00:00.000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-02-15T14:30:00.000Z"
+
+    UserWithTenant:
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - type: object
+          properties:
+            tenant:
+              $ref: "#/components/schemas/Tenant"
+
+    # ── Tenant ──
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Belle Coiffure"
+        slug:
+          type: string
+          example: "belle-coiffure"
+        business_type:
+          type: string
+          enum: [beauty, restaurant, training, medical]
+          example: "beauty"
+        phone:
+          type: string
+          nullable: true
+          example: "+33612345678"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "contact@bellecoiffure.fr"
+        address:
+          type: string
+          nullable: true
+          example: "12 Rue de la Paix"
+        city:
+          type: string
+          nullable: true
+          example: "Paris"
+        postal_code:
+          type: string
+          nullable: true
+          example: "75002"
+        logo_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/logos/1.png"
+        banner_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/banners/1.jpg"
+        slogan:
+          type: string
+          nullable: true
+          example: "Your beauty, our passion"
+        subscription_status:
+          type: string
+          enum: [active, trialing, past_due, cancelled, inactive]
+          example: "active"
+        subscription_plan:
+          type: string
+          enum: [essential, professional, enterprise, developer, custom, trial]
+          example: "essential"
+        trial_ends_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-01-01T10:00:00.000Z"
+
+    PublicTenant:
+      type: object
+      description: Tenant information visible in public contexts
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Belle Coiffure"
+        slug:
+          type: string
+          example: "belle-coiffure"
+        business_type:
+          type: string
+          enum: [beauty, restaurant, training, medical]
+          example: "beauty"
+        city:
+          type: string
+          nullable: true
+          example: "Paris"
+        address:
+          type: string
+          nullable: true
+          example: "12 Rue de la Paix"
+        logo_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/logos/1.png"
+        banner_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/banners/1.jpg"
+        slogan:
+          type: string
+          nullable: true
+          example: "Your beauty, our passion"
+
+    # ── Client ──
+    Client:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 10
+        first_name:
+          type: string
+          example: "Jean"
+        last_name:
+          type: string
+          example: "Martin"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "jean.martin@email.com"
+        phone:
+          type: string
+          nullable: true
+          example: "+33612340000"
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+          example: "1990-05-15"
+        gender:
+          type: string
+          nullable: true
+          enum: [male, female, other, null]
+          example: "male"
+        notes:
+          type: string
+          nullable: true
+          example: "Prefers morning appointments"
+        email_marketing_consent:
+          type: boolean
+          example: true
+        sms_marketing_consent:
+          type: boolean
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-01-10T09:00:00.000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-02-20T14:30:00.000Z"
+
+    ClientStats:
+      type: object
+      properties:
+        total_appointments:
+          type: integer
+          example: 12
+        total_spent:
+          type: number
+          format: float
+          example: 540.00
+        last_visit_date:
+          type: string
+          format: date
+          nullable: true
+          example: "2026-02-18"
+
+    # ── Service ──
+    Service:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        name:
+          type: string
+          example: "Coupe Femme"
+        duration:
+          type: integer
+          description: Duration in minutes
+          example: 45
+        price:
+          type: number
+          format: float
+          example: 35.00
+        description:
+          type: string
+          nullable: true
+          example: "Coupe, shampoing et brushing"
+        slot_duration:
+          type: integer
+          nullable: true
+          description: Booking slot duration in minutes (may differ from actual duration)
+          example: 60
+        category:
+          type: string
+          nullable: true
+          example: "Coiffure"
+        is_active:
+          type: boolean
+          example: true
+        requires_deposit:
+          type: boolean
+          example: false
+        deposit_amount:
+          type: number
+          format: float
+          nullable: true
+          example: null
+        available_for_online_booking:
+          type: boolean
+          example: true
+        image_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/services/coupe-femme.jpg"
+        gallery:
+          type: array
+          nullable: true
+          items:
+            type: string
+          example: []
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-01-05T08:00:00.000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-02-10T11:00:00.000Z"
+
+    PublicService:
+      type: object
+      description: Service information visible in public booking contexts
+      properties:
+        id:
+          type: integer
+          example: 5
+        name:
+          type: string
+          example: "Coupe Femme"
+        duration:
+          type: integer
+          example: 45
+        price:
+          type: number
+          format: float
+          example: 35.00
+        description:
+          type: string
+          nullable: true
+          example: "Coupe, shampoing et brushing"
+        category:
+          type: string
+          nullable: true
+          example: "Coiffure"
+        requires_deposit:
+          type: boolean
+          example: false
+        deposit_amount:
+          type: number
+          format: float
+          nullable: true
+          example: null
+        image_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/services/coupe-femme.jpg"
+
+    # ── Appointment ──
+    Appointment:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 100
+        client_id:
+          type: integer
+          example: 10
+        service_id:
+          type: integer
+          example: 5
+        staff_id:
+          type: integer
+          nullable: true
+          example: 2
+        appointment_date:
+          type: string
+          format: date
+          example: "2026-03-20"
+        start_time:
+          type: string
+          description: "Format: HH:MM"
+          example: "10:00"
+        end_time:
+          type: string
+          description: "Format: HH:MM"
+          example: "10:45"
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, completed, no_show]
+          example: "confirmed"
+        notes:
+          type: string
+          nullable: true
+          example: "First-time client"
+        client_notes:
+          type: string
+          nullable: true
+          example: ""
+        cancellation_reason:
+          type: string
+          nullable: true
+          example: null
+        booked_by:
+          type: string
+          nullable: true
+          example: "staff"
+        booking_source:
+          type: string
+          nullable: true
+          example: "dashboard"
+        client:
+          $ref: "#/components/schemas/AppointmentClient"
+        service:
+          $ref: "#/components/schemas/AppointmentService"
+        staff:
+          $ref: "#/components/schemas/AppointmentStaff"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-03-15T16:00:00.000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-03-15T16:00:00.000Z"
+
+    AppointmentClient:
+      type: object
+      nullable: true
+      description: Embedded client summary in appointment
+      properties:
+        id:
+          type: integer
+          example: 10
+        first_name:
+          type: string
+          example: "Jean"
+        last_name:
+          type: string
+          example: "Martin"
+        email:
+          type: string
+          nullable: true
+          example: "jean.martin@email.com"
+        phone:
+          type: string
+          nullable: true
+          example: "+33612340000"
+
+    AppointmentService:
+      type: object
+      nullable: true
+      description: Embedded service summary in appointment
+      properties:
+        id:
+          type: integer
+          example: 5
+        name:
+          type: string
+          example: "Coupe Femme"
+        duration:
+          type: integer
+          example: 45
+        price:
+          type: number
+          format: float
+          example: 35.00
+
+    AppointmentStaff:
+      type: object
+      nullable: true
+      description: Embedded staff summary in appointment
+      properties:
+        id:
+          type: integer
+          example: 2
+        first_name:
+          type: string
+          example: "Sophie"
+        last_name:
+          type: string
+          example: "Martin"
+
+    # ── API Key ──
+    ApiKey:
+      type: object
+      description: API key (prefix only, full key is not stored)
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Mobile App Integration"
+        prefix:
+          type: string
+          description: First 16 characters of the key
+          example: "sk_live_a1b2c3d4"
+        scopes:
+          type: array
+          items:
+            type: string
+          example: ["clients:read", "appointments:read", "appointments:write"]
+        is_active:
+          type: boolean
+          example: true
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-03-01T18:45:00.000Z"
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2027-03-01T00:00:00.000Z"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-03-02T12:00:00.000Z"
+
+    ApiKeyFull:
+      type: object
+      description: API key with full key value (returned only at creation)
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Mobile App Integration"
+        key:
+          type: string
+          description: The full API key. Only returned once at creation time.
+          example: "sk_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+        prefix:
+          type: string
+          example: "sk_live_a1b2c3d4"
+        scopes:
+          type: array
+          items:
+            type: string
+          example: ["clients:read", "appointments:read", "appointments:write"]
+        is_active:
+          type: boolean
+          example: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2027-03-01T00:00:00.000Z"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-03-02T12:00:00.000Z"
+
+    # ── Settings ──
+    Settings:
+      type: object
+      properties:
+        salon:
+          $ref: "#/components/schemas/Tenant"
+        business_hours:
+          $ref: "#/components/schemas/BusinessHours"
+        slot_duration:
+          type: integer
+          description: Default slot duration in minutes
+          example: 30
+        currency:
+          type: string
+          example: "EUR"
+        theme_settings:
+          type: object
+          properties:
+            primary_color:
+              type: string
+              example: "#6366F1"
+            logo_url:
+              type: string
+              nullable: true
+              example: "https://cdn.salonhub.app/logos/1.png"
+
+    BusinessHours:
+      type: object
+      description: Weekly business hours configuration
+      properties:
+        monday:
+          $ref: "#/components/schemas/DayHours"
+        tuesday:
+          $ref: "#/components/schemas/DayHours"
+        wednesday:
+          $ref: "#/components/schemas/DayHours"
+        thursday:
+          $ref: "#/components/schemas/DayHours"
+        friday:
+          $ref: "#/components/schemas/DayHours"
+        saturday:
+          $ref: "#/components/schemas/DayHours"
+        sunday:
+          $ref: "#/components/schemas/DayHours"
+
+    DayHours:
+      type: object
+      properties:
+        open:
+          type: string
+          description: Opening time (HH:MM)
+          example: "09:00"
+        close:
+          type: string
+          description: Closing time (HH:MM)
+          example: "18:00"
+        is_open:
+          type: boolean
+          example: true
+
+    # ── Request Bodies ──
+    RegisterRequest:
+      type: object
+      required: [salon_name, salon_email, first_name, last_name, email, password]
+      properties:
+        salon_name:
+          type: string
+          example: "Belle Coiffure"
+        salon_email:
+          type: string
+          format: email
+          example: "contact@bellecoiffure.fr"
+        salon_phone:
+          type: string
+          nullable: true
+          example: "+33612345678"
+        salon_address:
+          type: string
+          nullable: true
+          example: "12 Rue de la Paix"
+        salon_city:
+          type: string
+          nullable: true
+          example: "Paris"
+        salon_postal_code:
+          type: string
+          nullable: true
+          example: "75002"
+        first_name:
+          type: string
+          example: "Marie"
+        last_name:
+          type: string
+          example: "Dupont"
+        email:
+          type: string
+          format: email
+          example: "marie@bellecoiffure.fr"
+        password:
+          type: string
+          minLength: 8
+          example: "securepass123"
+        subscription_plan:
+          type: string
+          enum: [essential, professional, enterprise]
+          default: "essential"
+          example: "essential"
+        business_type:
+          type: string
+          enum: [beauty, restaurant, training, medical]
+          default: "beauty"
+          example: "beauty"
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "marie@bellecoiffure.fr"
+        password:
+          type: string
+          example: "securepass123"
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        token:
+          type: string
+          description: JWT authentication token
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            email:
+              type: string
+              example: "marie@bellecoiffure.fr"
+            first_name:
+              type: string
+              example: "Marie"
+            last_name:
+              type: string
+              example: "Dupont"
+            role:
+              type: string
+              example: "owner"
+        tenant:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            name:
+              type: string
+              example: "Belle Coiffure"
+            slug:
+              type: string
+              example: "belle-coiffure"
+            business_type:
+              type: string
+              example: "beauty"
+            subscription_status:
+              type: string
+              example: "trialing"
+            subscription_plan:
+              type: string
+              example: "essential"
+            trial_ends_at:
+              type: string
+              format: date-time
+              nullable: true
+              example: "2026-04-01T00:00:00.000Z"
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            email:
+              type: string
+              example: "marie@bellecoiffure.fr"
+            first_name:
+              type: string
+              example: "Marie"
+            last_name:
+              type: string
+              example: "Dupont"
+            role:
+              type: string
+              example: "owner"
+            tenant_id:
+              type: integer
+              example: 1
+            avatar_url:
+              type: string
+              nullable: true
+              example: "https://cdn.salonhub.app/avatars/1.jpg"
+        tenant:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            name:
+              type: string
+              example: "Belle Coiffure"
+            slug:
+              type: string
+              example: "belle-coiffure"
+            subscription_status:
+              type: string
+              example: "active"
+            subscription_plan:
+              type: string
+              example: "essential"
+            trial_ends_at:
+              type: string
+              format: date-time
+              nullable: true
+              example: null
+            logo_url:
+              type: string
+              nullable: true
+              example: "https://cdn.salonhub.app/logos/1.png"
+            business_type:
+              type: string
+              example: "beauty"
+
+    CreateStaffRequest:
+      type: object
+      required: [email, password, first_name, last_name]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "sophie@bellecoiffure.fr"
+        password:
+          type: string
+          minLength: 8
+          example: "staffpass123"
+        first_name:
+          type: string
+          example: "Sophie"
+        last_name:
+          type: string
+          example: "Martin"
+        phone:
+          type: string
+          nullable: true
+          example: "+33698765432"
+        role:
+          type: string
+          enum: [staff, admin]
+          default: "staff"
+          example: "staff"
+
+    UpdateStaffRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          example: "Sophie"
+        last_name:
+          type: string
+          example: "Martin-Leroy"
+        phone:
+          type: string
+          nullable: true
+          example: "+33698765432"
+        role:
+          type: string
+          enum: [staff, admin]
+          example: "admin"
+        is_active:
+          type: boolean
+          example: true
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          example: "Marie"
+        last_name:
+          type: string
+          example: "Dupont-Leroy"
+        phone:
+          type: string
+          nullable: true
+          example: "+33612345678"
+        email:
+          type: string
+          format: email
+          example: "marie@bellecoiffure.fr"
+        avatar_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/avatars/1-new.jpg"
+
+    CreateClientRequest:
+      type: object
+      required: [first_name, last_name]
+      properties:
+        first_name:
+          type: string
+          example: "Jean"
+        last_name:
+          type: string
+          example: "Martin"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "jean.martin@email.com"
+        phone:
+          type: string
+          nullable: true
+          example: "+33612340000"
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+          example: "1990-05-15"
+        gender:
+          type: string
+          nullable: true
+          enum: [male, female, other]
+          example: "male"
+        notes:
+          type: string
+          nullable: true
+          example: "Prefers morning appointments"
+        email_marketing_consent:
+          type: boolean
+          default: false
+          example: true
+        sms_marketing_consent:
+          type: boolean
+          default: false
+          example: false
+
+    UpdateClientRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          example: "Jean"
+        last_name:
+          type: string
+          example: "Martin"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "jean.martin@email.com"
+        phone:
+          type: string
+          nullable: true
+          example: "+33698760000"
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+          example: "1990-05-15"
+        gender:
+          type: string
+          nullable: true
+          enum: [male, female, other]
+          example: "male"
+        notes:
+          type: string
+          nullable: true
+          example: "Prefers morning appointments. Allergic to certain products."
+        email_marketing_consent:
+          type: boolean
+          example: true
+        sms_marketing_consent:
+          type: boolean
+          example: false
+
+    CreateServiceRequest:
+      type: object
+      required: [name, duration, price]
+      properties:
+        name:
+          type: string
+          example: "Coupe Femme"
+        duration:
+          type: integer
+          description: Duration in minutes
+          minimum: 1
+          example: 45
+        price:
+          type: number
+          format: float
+          minimum: 0
+          example: 35.00
+        description:
+          type: string
+          nullable: true
+          example: "Coupe, shampoing et brushing"
+        slot_duration:
+          type: integer
+          nullable: true
+          description: Booking slot duration in minutes
+          example: 60
+        category:
+          type: string
+          nullable: true
+          example: "Coiffure"
+        is_active:
+          type: boolean
+          default: true
+          example: true
+        requires_deposit:
+          type: boolean
+          default: false
+          example: false
+        deposit_amount:
+          type: number
+          format: float
+          nullable: true
+          example: null
+        available_for_online_booking:
+          type: boolean
+          default: true
+          example: true
+        image_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/services/coupe-femme.jpg"
+        gallery:
+          type: array
+          nullable: true
+          items:
+            type: string
+          example: []
+
+    UpdateServiceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Coupe Femme Premium"
+        duration:
+          type: integer
+          minimum: 1
+          example: 50
+        price:
+          type: number
+          format: float
+          minimum: 0
+          example: 40.00
+        description:
+          type: string
+          nullable: true
+          example: "Coupe, shampoing, brushing et soin"
+        slot_duration:
+          type: integer
+          nullable: true
+          example: 60
+        category:
+          type: string
+          nullable: true
+          example: "Coiffure"
+        is_active:
+          type: boolean
+          example: true
+        requires_deposit:
+          type: boolean
+          example: false
+        deposit_amount:
+          type: number
+          format: float
+          nullable: true
+          example: null
+        available_for_online_booking:
+          type: boolean
+          example: true
+        image_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/services/coupe-femme.jpg"
+        gallery:
+          type: array
+          nullable: true
+          items:
+            type: string
+          example: []
+
+    CreateAppointmentRequest:
+      type: object
+      required: [client_id, service_id, appointment_date, start_time, end_time]
+      properties:
+        client_id:
+          type: integer
+          example: 10
+        service_id:
+          type: integer
+          example: 5
+        appointment_date:
+          type: string
+          format: date
+          description: "Format: YYYY-MM-DD"
+          example: "2026-03-20"
+        start_time:
+          type: string
+          description: "Format: HH:MM"
+          example: "10:00"
+        end_time:
+          type: string
+          description: "Format: HH:MM"
+          example: "10:45"
+        staff_id:
+          type: integer
+          nullable: true
+          example: 2
+        notes:
+          type: string
+          nullable: true
+          example: "First-time client"
+        client_notes:
+          type: string
+          nullable: true
+          example: ""
+        booked_by:
+          type: string
+          nullable: true
+          example: "staff"
+        booking_source:
+          type: string
+          nullable: true
+          example: "dashboard"
+
+    UpdateAppointmentRequest:
+      type: object
+      properties:
+        client_id:
+          type: integer
+          example: 10
+        service_id:
+          type: integer
+          example: 5
+        appointment_date:
+          type: string
+          format: date
+          example: "2026-03-20"
+        start_time:
+          type: string
+          example: "11:00"
+        end_time:
+          type: string
+          example: "11:45"
+        staff_id:
+          type: integer
+          nullable: true
+          example: 2
+        notes:
+          type: string
+          nullable: true
+          example: "Rescheduled by client"
+        client_notes:
+          type: string
+          nullable: true
+          example: ""
+        booked_by:
+          type: string
+          nullable: true
+          example: "staff"
+        booking_source:
+          type: string
+          nullable: true
+          example: "dashboard"
+
+    UpdateAppointmentStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, completed, no_show]
+          example: "confirmed"
+        cancellation_reason:
+          type: string
+          nullable: true
+          description: Required when status is cancelled
+          example: "Client requested cancellation"
+
+    CreatePublicAppointmentRequest:
+      type: object
+      required: [salon_slug, first_name, last_name, phone, service_id, appointment_date, start_time]
+      properties:
+        salon_slug:
+          type: string
+          example: "belle-coiffure"
+        first_name:
+          type: string
+          example: "Alice"
+        last_name:
+          type: string
+          example: "Lemoine"
+        phone:
+          type: string
+          example: "+33699887766"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "alice@email.com"
+        service_id:
+          type: integer
+          example: 5
+        appointment_date:
+          type: string
+          format: date
+          example: "2026-03-20"
+        start_time:
+          type: string
+          example: "10:00"
+        notes:
+          type: string
+          nullable: true
+          example: "First visit"
+        preferred_contact_method:
+          type: string
+          nullable: true
+          enum: [email, sms, phone]
+          example: "sms"
+        promo_code:
+          type: string
+          nullable: true
+          example: "WELCOME10"
+        final_amount:
+          type: number
+          format: float
+          nullable: true
+          example: 31.50
+
+    ValidatePromoRequest:
+      type: object
+      required: [code, salon_slug, order_amount]
+      properties:
+        code:
+          type: string
+          example: "WELCOME10"
+        salon_slug:
+          type: string
+          example: "belle-coiffure"
+        order_amount:
+          type: number
+          format: float
+          example: 35.00
+        service_ids:
+          type: array
+          items:
+            type: integer
+          example: [5]
+
+    UpdateSettingsRequest:
+      type: object
+      properties:
+        business_hours:
+          $ref: "#/components/schemas/BusinessHours"
+        slot_duration:
+          type: integer
+          description: Default slot duration in minutes
+          example: 30
+        currency:
+          type: string
+          example: "EUR"
+        theme_settings:
+          type: object
+          properties:
+            primary_color:
+              type: string
+              example: "#6366F1"
+
+    UpdateSalonRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Belle Coiffure Paris"
+        slug:
+          type: string
+          example: "belle-coiffure-paris"
+        phone:
+          type: string
+          nullable: true
+          example: "+33612345678"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "contact@bellecoiffure.fr"
+        address:
+          type: string
+          nullable: true
+          example: "12 Rue de la Paix"
+        city:
+          type: string
+          nullable: true
+          example: "Paris"
+        postal_code:
+          type: string
+          nullable: true
+          example: "75002"
+        logo_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/logos/1.png"
+        banner_url:
+          type: string
+          nullable: true
+          example: "https://cdn.salonhub.app/banners/1.jpg"
+        slogan:
+          type: string
+          nullable: true
+          example: "Your beauty, our passion"
+
+    CreateApiKeyRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: "Mobile App Integration"
+        scopes:
+          type: array
+          items:
+            type: string
+          example: ["clients:read", "appointments:read", "appointments:write"]
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2027-03-01T00:00:00.000Z"
+
+    UpdateApiKeyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Mobile App Integration v2"
+        scopes:
+          type: array
+          items:
+            type: string
+          example: ["clients:read", "clients:write", "appointments:read", "appointments:write"]
+        is_active:
+          type: boolean
+          example: true

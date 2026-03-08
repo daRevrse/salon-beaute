@@ -31,6 +31,19 @@ const PLANS = {
       "Campagnes Marketing",
     ],
   },
+  developer: {
+    name: "Developer",
+    price: 14.99,
+    priceId: process.env.STRIPE_PRICE_DEVELOPER,
+    features: [
+      "Tout du plan Pro",
+      "API & webhooks",
+      "Clés API (sk_live_)",
+      "Intégrations tierces",
+      "5 000 requêtes API/jour",
+      "Support technique prioritaire",
+    ],
+  },
   custom: {
     name: "Sur mesure",
     price: null,

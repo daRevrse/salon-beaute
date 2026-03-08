@@ -28,16 +28,9 @@ SELECT '✓ Tables medical nettoyées' AS status;
 CREATE TABLE medical_patients (
   id INT(11) AUTO_INCREMENT PRIMARY KEY,
   tenant_id INT(11) NOT NULL,
-  client_id INT(11) NULL,
+  client_id INT(11) NOT NULL,
   patient_number VARCHAR(50) NOT NULL,
-  first_name VARCHAR(100) NOT NULL,
-  last_name VARCHAR(100) NOT NULL,
-  date_of_birth DATE NOT NULL,
-  gender ENUM('male', 'female', 'other', 'prefer_not_to_say') NOT NULL,
   blood_type VARCHAR(5) NULL,
-  email VARCHAR(255) NULL,
-  phone VARCHAR(20) NULL,
-  address TEXT NULL,
   emergency_contact_name VARCHAR(100) NULL,
   emergency_contact_phone VARCHAR(20) NULL,
   emergency_contact_relation VARCHAR(50) NULL,
@@ -49,10 +42,9 @@ CREATE TABLE medical_patients (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-  FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
+  FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
   INDEX idx_tenant_patients (tenant_id),
-  INDEX idx_patient_name (tenant_id, last_name, first_name),
-  INDEX idx_dob (tenant_id, date_of_birth),
+  INDEX idx_client (client_id),
   UNIQUE KEY unique_patient_number (tenant_id, patient_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

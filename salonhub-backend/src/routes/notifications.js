@@ -392,13 +392,13 @@ router.get("/admin-inbox/unread-count", async (req, res) => {
          AND (
            a.target_type = 'all'
            OR (a.target_type = 'plan' AND a.target_plans IS NOT NULL AND JSON_CONTAINS(a.target_plans, ?))
-           OR (a.target_type = 'specific' AND a.target_tenant_ids IS NOT NULL AND JSON_CONTAINS(a.target_tenant_ids, CAST(? AS JSON)))
+           OR (a.target_type = 'specific' AND a.target_tenant_ids IS NOT NULL AND JSON_CONTAINS(a.target_tenant_ids, ?))
          )
          AND NOT EXISTS (
            SELECT 1 FROM announcement_reads ar
            WHERE ar.announcement_id = a.id AND ar.tenant_id = ? AND ar.user_id = ?
          )`,
-        [JSON.stringify(tenantPlan), tenantId, tenantId, userId]
+        [JSON.stringify(tenantPlan), JSON.stringify(tenantId.toString()), tenantId, userId]
       );
       announcementsCount = unreadAnnouncements[0]?.count || 0;
     } catch (err) {
@@ -465,11 +465,11 @@ router.get("/admin-inbox", async (req, res) => {
          AND (
            a.target_type = 'all'
            OR (a.target_type = 'plan' AND a.target_plans IS NOT NULL AND JSON_CONTAINS(a.target_plans, ?))
-           OR (a.target_type = 'specific' AND a.target_tenant_ids IS NOT NULL AND JSON_CONTAINS(a.target_tenant_ids, CAST(? AS JSON)))
+           OR (a.target_type = 'specific' AND a.target_tenant_ids IS NOT NULL AND JSON_CONTAINS(a.target_tenant_ids, ?))
          )
          ORDER BY a.created_at DESC
          LIMIT ? OFFSET ?`,
-        [tenantId, userId, JSON.stringify(tenantPlan), tenantId, parseInt(limit), parseInt(offset)]
+        [tenantId, userId, JSON.stringify(tenantPlan), JSON.stringify(tenantId.toString()), parseInt(limit), parseInt(offset)]
       );
     } catch (err) {
       // announcement_reads table may not exist yet

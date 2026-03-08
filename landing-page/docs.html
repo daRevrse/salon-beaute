@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Documentation API SalonHub — Reference, guides et modules d'integration.">
+    <title>Documentation API — SalonHub</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #6366F1;
+            --primary-light: rgba(99,102,241,.08);
+            --primary-border: rgba(99,102,241,.15);
+            --dark: #1F2937;
+            --gray: #6B7280;
+            --bg: #F9FAFB;
+            --radius: 12px;
+            --radius-xl: 20px;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: var(--dark);
+            min-height: 100vh;
+        }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+        /* Header */
+        .docs-header {
+            background: rgba(255,255,255,.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(0,0,0,.06);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .docs-header .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .docs-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .docs-logo img { width: 32px; height: 32px; }
+        .docs-logo span { opacity: .4; margin: 0 6px; }
+        .docs-nav { display: flex; align-items: center; gap: 16px; }
+        .docs-nav a {
+            color: var(--gray);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color .2s;
+        }
+        .docs-nav a:hover { color: var(--primary); }
+        .lang-switch { display: flex; gap: 4px; }
+        .lang-switch button {
+            padding: 4px 10px;
+            border: 1px solid rgba(0,0,0,.1);
+            border-radius: 6px;
+            background: transparent;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gray);
+            transition: all .2s;
+        }
+        .lang-switch button.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        /* Hero */
+        .docs-hero {
+            text-align: center;
+            padding: 80px 0 60px;
+        }
+        .docs-hero h1 {
+            font-size: clamp(32px, 5vw, 48px);
+            font-weight: 800;
+            margin-bottom: 16px;
+            line-height: 1.15;
+        }
+        .docs-hero h1 span {
+            background: linear-gradient(135deg, var(--primary), #818CF8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .docs-hero p {
+            color: var(--gray);
+            font-size: 18px;
+            max-width: 560px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Cards Grid */
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            padding-bottom: 80px;
+        }
+        .docs-card {
+            background: rgba(255,255,255,.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,.8);
+            box-shadow: 0 4px 24px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.02);
+            border-radius: var(--radius-xl);
+            padding: 36px 32px;
+            text-decoration: none;
+            color: var(--dark);
+            transition: transform .3s, box-shadow .3s;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .docs-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(99,102,241,.1), 0 2px 8px rgba(0,0,0,.04);
+        }
+        .docs-card__icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+        }
+        .docs-card__icon svg { width: 22px; height: 22px; }
+        .docs-card h3 { font-size: 20px; font-weight: 700; }
+        .docs-card p { color: var(--gray); font-size: 14px; line-height: 1.6; }
+        .docs-card__arrow {
+            margin-top: auto;
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Footer */
+        .docs-footer {
+            border-top: 1px solid rgba(0,0,0,.06);
+            padding: 24px 0;
+            text-align: center;
+            color: var(--gray);
+            font-size: 13px;
+        }
+        .docs-footer a { color: var(--primary); text-decoration: none; }
+
+        @media (max-width: 640px) {
+            .docs-grid { grid-template-columns: 1fr; }
+            .docs-hero { padding: 60px 0 40px; }
+        }
+    </style>
+</head>
+<body class="page-docs">
+
+    <header class="docs-header">
+        <div class="container">
+            <a href="index.html" class="docs-logo">
+                <img src="logo.png" alt="SalonHub">
+                SalonHub <span>/</span> <span style="opacity:1;color:var(--primary)">Docs</span>
+            </a>
+            <div class="docs-nav">
+                <a href="api/reference.html" data-i18n="docs_nav_ref">Reference</a>
+                <a href="api/quickstart.html" data-i18n="docs_nav_start">Demarrage</a>
+                <a href="api/integrations.html" data-i18n="docs_nav_int">Integrations</a>
+                <div class="lang-switch" id="langSwitch">
+                    <button class="lang-switch__btn active" data-lang="fr">FR</button>
+                    <button class="lang-switch__btn" data-lang="en">EN</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="docs-hero">
+        <div class="container">
+            <h1 data-i18n="docs_hero_title">Documentation <span>API</span></h1>
+            <p data-i18n="docs_hero_desc">Tout ce dont vous avez besoin pour integrer SalonHub dans vos projets. Reference complete, guides et modules prets a l'emploi.</p>
+        </div>
+    </section>
+
+    <section class="container">
+        <div class="docs-grid">
+            <a href="api/reference.html" class="docs-card">
+                <div class="docs-card__icon"><i data-lucide="book-open"></i></div>
+                <h3 data-i18n="docs_card1_title">Reference API</h3>
+                <p data-i18n="docs_card1_desc">Documentation interactive de tous les endpoints. Schemas, exemples de requetes et reponses.</p>
+                <span class="docs-card__arrow" data-i18n="docs_explore">Explorer <i data-lucide="arrow-right" style="width:16px;height:16px"></i></span>
+            </a>
+            <a href="api/quickstart.html" class="docs-card">
+                <div class="docs-card__icon"><i data-lucide="zap"></i></div>
+                <h3 data-i18n="docs_card2_title">Demarrage rapide</h3>
+                <p data-i18n="docs_card2_desc">De zero a votre premier appel API en 5 minutes. Authentification, cles API et premiers pas.</p>
+                <span class="docs-card__arrow" data-i18n="docs_explore">Explorer <i data-lucide="arrow-right" style="width:16px;height:16px"></i></span>
+            </a>
+            <a href="api/integrations.html" class="docs-card">
+                <div class="docs-card__icon"><i data-lucide="code"></i></div>
+                <h3 data-i18n="docs_card3_title">Modules d'integration</h3>
+                <p data-i18n="docs_card3_desc">SDKs et wrappers prets a l'emploi en JavaScript, PHP, Python et cURL.</p>
+                <span class="docs-card__arrow" data-i18n="docs_explore">Explorer <i data-lucide="arrow-right" style="width:16px;height:16px"></i></span>
+            </a>
+            <a href="index.html#pricing" class="docs-card">
+                <div class="docs-card__icon"><i data-lucide="key"></i></div>
+                <h3 data-i18n="docs_card4_title">Cles API & Plans</h3>
+                <p data-i18n="docs_card4_desc">Gerez vos cles API, scopes et limites. Plan Developer a partir de 14,99 par mois.</p>
+                <span class="docs-card__arrow" data-i18n="docs_see_plans">Voir les plans <i data-lucide="arrow-right" style="width:16px;height:16px"></i></span>
+            </a>
+        </div>
+    </section>
+
+    <footer class="docs-footer">
+        <div class="container">
+            <p>&copy; 2025 <a href="index.html">FlowKraft Agency</a> — SalonHub API v1.0</p>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+        // Simple i18n for docs pages
+        const docsTranslations = {
+            fr: {},
+            en: {
+                docs_nav_ref: "Reference",
+                docs_nav_start: "Getting Started",
+                docs_nav_int: "Integrations",
+                docs_hero_title: 'Documentation <span>API</span>',
+                docs_hero_desc: "Everything you need to integrate SalonHub into your projects. Complete reference, guides and ready-to-use modules.",
+                docs_card1_title: "API Reference",
+                docs_card1_desc: "Interactive documentation of all endpoints. Schemas, request and response examples.",
+                docs_card2_title: "Quick Start",
+                docs_card2_desc: "From zero to your first API call in 5 minutes. Authentication, API keys and first steps.",
+                docs_card3_title: "Integration Modules",
+                docs_card3_desc: "Ready-to-use SDKs and wrappers in JavaScript, PHP, Python and cURL.",
+                docs_card4_title: "API Keys & Plans",
+                docs_card4_desc: "Manage your API keys, scopes and limits. Developer plan from 14.99 per month.",
+                docs_explore: 'Explore <i data-lucide="arrow-right" style="width:16px;height:16px"></i>',
+                docs_see_plans: 'See plans <i data-lucide="arrow-right" style="width:16px;height:16px"></i>',
+            }
+        };
+        let currentLang = localStorage.getItem('salonhub_lang') || 'fr';
+        function applyDocsLang(lang) {
+            currentLang = lang;
+            localStorage.setItem('salonhub_lang', lang);
+            document.querySelectorAll('.lang-switch__btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+            if (lang === 'fr') { location.reload(); return; }
+            const t = docsTranslations[lang] || {};
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const k = el.getAttribute('data-i18n');
+                if (t[k]) el.innerHTML = t[k];
+            });
+            lucide.createIcons();
+        }
+        document.querySelectorAll('.lang-switch__btn').forEach(btn => {
+            btn.addEventListener('click', () => applyDocsLang(btn.dataset.lang));
+        });
+        if (currentLang !== 'fr') applyDocsLang(currentLang);
+    </script>
+</body>
+</html>

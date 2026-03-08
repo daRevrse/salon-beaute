@@ -1166,7 +1166,7 @@ ul {
 /* Pricing Grid */
 .pricing-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   align-items: start;
   margin-bottom: 56px;
@@ -1973,8 +1973,8 @@ ul {
     grid-template-columns: repeat(2, 1fr);
   }
   .pricing-grid {
-    grid-template-columns: 1fr;
-    max-width: 420px;
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 860px;
     margin-left: auto;
     margin-right: auto;
     margin-bottom: 56px;
@@ -2013,13 +2013,7 @@ ul {
   .hero-float--2 {
     left: 0;
   }
-  /* Glass responsive 1024 */
-  .page-home .hero-split {
-    gap: 36px;
-  }
-  .page-home .hero-collage {
-    height: 400px;
-  }
+  /* Glass responsive 1024 (hero rules moved to post-glassmorphism block) */
   .page-home .price-card--pop {
     transform: none;
   }
@@ -2040,6 +2034,10 @@ ul {
   }
 }
 @media (max-width: 768px) {
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
   .nav-menu,
   .nav-actions {
     display: none;
@@ -2082,10 +2080,13 @@ ul {
     z-index: 99;
   }
   .hero {
-    padding: 120px 0 60px;
+    padding: 100px 0 48px;
   }
   .hero-title {
     font-size: 32px;
+  }
+  .hero-desc {
+    max-width: 100%;
   }
   .hero-ctas {
     flex-direction: column;
@@ -2165,30 +2166,7 @@ ul {
     width: 100%;
     max-width: 320px;
   }
-  /* Glass responsive 768 */
-  .page-home .hero-split {
-    flex-direction: column;
-    text-align: center;
-    gap: 40px;
-  }
-  .page-home .hero-split .hero-content {
-    max-width: 100%;
-  }
-  .page-home .hero-split .hero-ctas {
-    justify-content: center;
-  }
-  .page-home .hero-split .hero-trust {
-    justify-content: center;
-  }
-  .page-home .hero-metrics {
-    justify-content: center;
-  }
-  .page-home .hero-visual {
-    max-width: 100%;
-  }
-  .page-home .hero-collage {
-    height: 340px;
-  }
+  /* Glass responsive 768 (hero rules moved to post-glassmorphism block) */
   .page-home .social-proof__row {
     gap: 12px;
   }
@@ -2248,11 +2226,22 @@ ul {
   .container {
     padding: 0 16px;
   }
+  .hero {
+    padding: 88px 0 36px;
+  }
   .hero-title {
     font-size: 28px;
   }
   .hero-pill {
     font-size: 12px;
+  }
+  .hero-desc {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .hero-ctas .btn {
+    font-size: 15px;
+    padding: 14px 20px;
   }
   .hero-trust {
     flex-direction: column;
@@ -2264,10 +2253,7 @@ ul {
   .testi-stat-card__big {
     font-size: 40px;
   }
-  /* Glass responsive 480 */
-  .page-home .hero-collage {
-    height: 280px;
-  }
+  /* Glass responsive 480 (hero rules moved to post-glassmorphism block) */
   .page-home .hero-metrics {
     flex-direction: column;
     gap: 8px;
@@ -3419,6 +3405,99 @@ ul {
 .page-home .proof-item,
 .page-home .hero-metric {
   will-change: transform;
+}
+
+/* ---- GLASSMORPHISM RESPONSIVE HERO ----
+   These MUST come AFTER the base .page-home .hero-split rules above
+   to properly override flex-direction: row → column via cascade order */
+@media (max-width: 1024px) {
+  .page-home .hero-split {
+    gap: 36px;
+  }
+  .page-home .hero-split .hero-content {
+    max-width: 480px;
+    flex-shrink: 0;
+  }
+  .page-home .hero-visual {
+    min-width: 280px;
+  }
+  .page-home .hero-float--1 {
+    right: 0;
+  }
+  .page-home .hero-float--2 {
+    left: 0;
+  }
+  .page-home .hero-collage {
+    height: clamp(340px, 38vw, 400px);
+  }
+}
+@media (max-width: 900px) {
+  .page-home .hero-split {
+    flex-direction: column;
+    text-align: center;
+    gap: 32px;
+  }
+  .page-home .hero-split .hero-content {
+    max-width: 100%;
+  }
+  .page-home .hero-split .hero-ctas {
+    justify-content: center;
+  }
+  .page-home .hero-split .hero-trust {
+    justify-content: center;
+  }
+  .page-home .hero-metrics {
+    justify-content: center;
+  }
+  .page-home .hero-float {
+    display: none;
+  }
+  .page-home .hero-visual {
+    max-width: 520px;
+    min-width: unset;
+    margin: 0 auto;
+  }
+  .page-home .hero-collage {
+    height: clamp(280px, 45vw, 380px);
+  }
+}
+@media (max-width: 768px) {
+  .page-home .hero-split {
+    flex-direction: column;
+    text-align: center;
+    gap: 40px;
+  }
+  .page-home .hero-split .hero-content {
+    max-width: 100%;
+  }
+  .page-home .hero-split .hero-ctas {
+    justify-content: center;
+  }
+  .page-home .hero-split .hero-trust {
+    justify-content: center;
+  }
+  .page-home .hero-metrics {
+    justify-content: center;
+  }
+  .page-home .hero-float {
+    display: none;
+  }
+  .page-home .hero-visual {
+    max-width: 480px;
+    min-width: unset;
+    margin: 0 auto;
+  }
+  .page-home .hero-collage {
+    height: clamp(220px, 55vw, 340px);
+  }
+}
+@media (max-width: 480px) {
+  .page-home .hero-collage {
+    height: clamp(180px, 60vw, 260px);
+  }
+  .page-home .hero-visual {
+    max-width: 360px;
+  }
 }
 
 /* ==============================================

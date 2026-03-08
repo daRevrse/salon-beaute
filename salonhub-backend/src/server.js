@@ -194,6 +194,9 @@ app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/promotions", require("./routes/promotions"));
 app.use("/api/scheduler", require("./routes/scheduler"));
 
+// Routes API Keys (Developer/Custom plans)
+app.use("/api/api-keys", require("./routes/api-keys"));
+
 // Routes Restaurant (multi-secteur)
 app.use("/api/restaurant", require("./routes/restaurant"));
 

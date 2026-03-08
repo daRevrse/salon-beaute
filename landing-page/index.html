@@ -340,6 +340,28 @@
 
                 <div class="price-card">
                     <div class="price-card__head">
+                        <h3>Developer</h3>
+                        <p data-i18n="price_plan_dev_desc">Pour les integrateurs & devs</p>
+                    </div>
+                    <div class="price-card__price">
+                        <span class="price-amount" data-price-monthly="14.99" data-price-annual="12.49" data-price="14.99"
+                            data-currency="EUR">14,99&euro;</span>
+                        <span class="price-period" data-i18n="price_period">/mois</span>
+                    </div>
+                    <ul class="price-card__list">
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_allpro">Tout du plan Pro</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_apikeys">Cles API (sk_live_)</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_webhooks">API & webhooks</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_integrations">Integrations tierces</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_ratelimit">5 000 requetes/jour</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_techsupport">Support technique prioritaire</span></li>
+                    </ul>
+                    <a href="https://app.salonhub.flowkraftagency.com/register"
+                        class="btn btn-primary btn-full" data-i18n="price_cta">Commencer</a>
+                </div>
+
+                <div class="price-card">
+                    <div class="price-card__head">
                         <h3 data-i18n="price_plan3">Sur mesure</h3>
                         <p data-i18n="price_plan3_desc">Multi-salons et franchises</p>
                     </div>
@@ -388,6 +410,7 @@
                                 <th data-i18n="compare_feature">Fonctionnalite</th>
                                 <th data-i18n="price_plan1">Essentiel</th>
                                 <th>Pro</th>
+                                <th>Developer</th>
                                 <th data-i18n="price_plan3">Sur mesure</th>
                             </tr>
                         </thead>
@@ -397,15 +420,18 @@
                                 <td data-i18n="compare_unlimited">Illimites</td>
                                 <td data-i18n="compare_unlimited">Illimites</td>
                                 <td data-i18n="compare_unlimited">Illimites</td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
                             </tr>
                             <tr>
                                 <td data-i18n="compare_users">Utilisateurs</td>
                                 <td>1</td>
                                 <td>3</td>
+                                <td>5</td>
                                 <td data-i18n="compare_unlimited">Illimites</td>
                             </tr>
                             <tr>
                                 <td data-i18n="price_f_page">Page de reservation</td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
@@ -415,10 +441,12 @@
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
                             </tr>
                             <tr>
                                 <td data-i18n="price_f_pay">Paiement en ligne</td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                             </tr>
@@ -427,15 +455,39 @@
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
                             </tr>
                             <tr>
                                 <td data-i18n="price_f_marketing">Campagnes Marketing</td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_apikeys">Cles API (sk_live_)</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_webhooks">API & webhooks</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_ratelimit">5 000 requetes/jour</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
                             </tr>
                             <tr>
                                 <td data-i18n="price_f_multi">Multi-salons</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
@@ -445,9 +497,11 @@
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
                             </tr>
                             <tr>
-                                <td data-i18n="price_f_api">API & integrations</td>
+                                <td data-i18n="price_f_manager">Gestionnaire dedie</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="x" class="c-no"></i></td>
                                 <td><i data-lucide="check" class="c-yes"></i></td>
@@ -591,7 +645,7 @@
                         <li><i data-lucide="file-json"></i> <span data-i18n="api_f3">Reponses JSON structurees</span></li>
                         <li><i data-lucide="book-open"></i> <span data-i18n="api_f4">Documentation interactive</span></li>
                     </ul>
-                    <a href="#" class="btn btn-outline" data-i18n="api_cta">Explorer la documentation</a>
+                    <a href="docs.html" class="btn btn-outline" data-i18n="api_cta">Explorer la documentation</a>
                 </div>
                 <div class="developer-api__code" data-anim="fade" data-delay="2">
                     <div class="code-block glass-card">
