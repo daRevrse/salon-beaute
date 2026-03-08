@@ -7,6 +7,7 @@ import React, { useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { usePublicTheme } from "../../contexts/PublicThemeContext";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
 import {
   PhoneIcon as PhoneIconOutline,
@@ -26,8 +27,7 @@ const BookingConfirmation = () => {
   const location = useLocation();
   const { service, date, slot, client, appointment } = location.state || {};
   const { formatPrice } = useCurrency();
-
-  const { salon, fetchSalon } = usePublicBooking(slug);
+  const { salon, dynamicStyles } = usePublicTheme();
 
   // Business type configuration
   const businessType = salon?.business_type || "beauty";
@@ -39,8 +39,7 @@ const BookingConfirmation = () => {
       navigate(`/book/${slug}`);
       return;
     }
-    fetchSalon();
-  }, [service, date, slot, slug, navigate, fetchSalon]);
+  }, [service, date, slot, slug, navigate]);
 
   const handleNewBooking = () => {
     navigate(`/book/${slug}`);
@@ -84,10 +83,10 @@ const BookingConfirmation = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50" style={dynamicStyles.fontFamily}>
       {/* Header */}
-      <header className="bg-white shadow-soft border-b border-slate-200">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <header className="bg-white/80 backdrop-blur-md shadow-soft border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="text-center">
             <h1 className="text-2xl font-display font-bold text-slate-900">
               {salon?.name || term.establishment}
@@ -100,8 +99,11 @@ const BookingConfirmation = () => {
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Success Icon */}
         <div className="text-center mb-10">
-          <div className={`inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-emerald-100 to-green-100 rounded-full mb-4 shadow-soft-xl`}>
-            <CheckCircleIcon className="w-12 h-12 text-emerald-600" />
+          <div 
+            className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 shadow-soft-xl"
+            style={dynamicStyles.primaryBg}
+          >
+            <CheckCircleIcon className="w-12 h-12" style={dynamicStyles.primaryText} />
           </div>
           <h2 className="text-3xl font-display font-bold text-slate-900 mb-2">
             {getConfirmationTitle()}
@@ -112,30 +114,35 @@ const BookingConfirmation = () => {
         </div>
 
         {/* Status Info - Enhanced Alert Style */}
-        <div className={`${config.lightBg} border ${config.lightBorderColor} rounded-2xl p-6 mb-10 shadow-soft`}>
+        <div 
+          className="border rounded-3xl p-6 mb-10 shadow-soft relative overflow-hidden"
+          style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryBorderLight }}
+        >
+          <div 
+            className="absolute left-0 top-0 bottom-0 w-1.5"
+            style={dynamicStyles.primaryButton}
+          />
           <div className="flex items-start">
             <div className="flex-shrink-0">
-              <InformationCircleIcon className={`h-6 w-6 ${config.textColor}`} />
+              <InformationCircleIcon className="h-7 w-7" style={dynamicStyles.primaryText} />
             </div>
-            <div className="ml-3">
-              <h3 className={`text-lg font-medium ${config.darkTextColor} mb-1`}>
+            <div className="ml-4">
+              <h3 className="text-xl font-bold mb-1" style={dynamicStyles.primaryText}>
                 En attente de validation
               </h3>
-              <div className={`mt-2 text-base ${config.textColor}`}>
+              <div className="mt-2 text-slate-700 leading-relaxed">
                 <p>
                   Votre {term.appointment.toLowerCase()} est en statut <strong>"en attente"</strong>.
                   {term.establishment} vous confirmera dans les plus brefs délais.
                   {client?.preferred_contact_method && (
-                    <span>
-                      {" "}
-                      Nous utiliserons{" "}
-                      <strong>
+                    <span className="block mt-2 font-medium">
+                      Nous vous contacterons par 
+                      <span className="mx-1 px-2 py-0.5 rounded-lg" style={dynamicStyles.primaryBg}>
                         {client.preferred_contact_method === "email" && "Email"}
                         {client.preferred_contact_method === "sms" && "SMS"}
                         {client.preferred_contact_method === "whatsapp" && "WhatsApp"}
                         {client.preferred_contact_method === "phone" && "Téléphone"}
-                      </strong>{" "}
-                      pour vous contacter.
+                      </span>.
                     </span>
                   )}
                 </p>
@@ -145,14 +152,14 @@ const BookingConfirmation = () => {
         </div>
 
         {/* Booking Details - Enhanced Card Style */}
-        <div className="bg-white rounded-2xl shadow-soft-xl border border-slate-200 overflow-hidden mb-8">
-          <div className={`bg-gradient-to-r ${config.gradient} px-6 py-4`}>
-            <h3 className="text-xl font-display font-semibold text-white">Récapitulatif</h3>
+        <div className="bg-white rounded-3xl shadow-soft-xl border border-slate-200 overflow-hidden mb-8">
+          <div className="px-8 py-5" style={dynamicStyles.gradientBg}>
+            <h3 className="text-xl font-display font-bold text-white uppercase tracking-wider">Récapitulatif</h3>
           </div>
 
           <div className="px-6 py-6 space-y-3">
             <h4 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-3 flex items-center">
-              <CalendarDaysIcon className={`w-5 h-5 mr-2 ${config.textColor}`} />
+              <CalendarDaysIcon className="w-5 h-5 mr-2" style={dynamicStyles.primaryText} />
               Détails {businessType === "restaurant" ? "de la réservation" : businessType === "training" ? "de la formation" : businessType === "medical" ? "de la consultation" : "du rendez-vous"}
             </h4>
 
@@ -173,7 +180,7 @@ const BookingConfirmation = () => {
                 <span className="text-xl font-semibold text-slate-700">
                   Prix Total
                 </span>
-                <span className={`font-bold ${config.textColor} text-2xl flex items-center`}>
+                <span className="font-bold text-2xl flex items-center" style={dynamicStyles.primaryText}>
                   <CurrencyDollarIcon className="w-6 h-6 mr-1" />
                   {formatPrice(service.price)}
                 </span>
@@ -183,7 +190,7 @@ const BookingConfirmation = () => {
             {client && (
               <>
                 <h4 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-3 pt-6 flex items-center">
-                  <UserCircleIcon className={`w-5 h-5 mr-2 ${config.textColor}`} />
+                  <UserCircleIcon className="w-5 h-5 mr-2" style={dynamicStyles.primaryText} />
                   Vos Coordonnées
                 </h4>
 
@@ -211,7 +218,10 @@ const BookingConfirmation = () => {
                     <span className="text-slate-600 block mb-1 font-medium">
                       Notes
                     </span>
-                    <p className={`text-sm text-slate-700 ${config.lightBg} rounded-xl p-3 italic border ${config.lightBorderColor}`}>
+                    <p 
+                      className="text-sm rounded-xl p-3 italic border"
+                      style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryBorderLight }}
+                    >
                       {client.notes}
                     </p>
                   </div>
@@ -225,7 +235,8 @@ const BookingConfirmation = () => {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
             onClick={handleNewBooking}
-            className={`px-8 py-3 bg-gradient-to-r ${config.gradient} text-white rounded-xl font-medium hover:shadow-glow focus:outline-none focus:ring-2 ${config.focusRing} focus:ring-offset-2 transition-all duration-300 shadow-soft`}
+            className="px-8 py-3 text-white rounded-xl font-medium hover:shadow-glow focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 shadow-soft"
+            style={dynamicStyles.primaryButton}
           >
             {getNewBookingLabel()}
           </button>
@@ -240,10 +251,11 @@ const BookingConfirmation = () => {
             <div className="space-y-2 text-base text-slate-600">
               {salon.phone && (
                 <p className="flex items-center justify-center">
-                  <PhoneIconOutline className={`w-5 h-5 mr-2 ${config.textColor}`} />
+                  <PhoneIconOutline className="w-5 h-5 mr-2" style={dynamicStyles.primaryText} />
                   <a
                     href={`tel:${salon.phone}`}
-                    className={`${config.textColor} hover:${config.darkTextColor} font-medium`}
+                    className="font-medium"
+                    style={dynamicStyles.primaryText}
                   >
                     {salon.phone}
                   </a>

@@ -6,6 +6,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
+import { usePublicTheme } from "../../contexts/PublicThemeContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { getImageUrl } from "../../utils/imageUtils";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
@@ -33,25 +34,15 @@ const formatDuration = (minutes) => {
 const BookingLanding = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { formatPrice, changeCurrency } = useCurrency();
+  const { formatPrice } = useCurrency();
+  const { salon, settings, dynamicStyles, theme: themeSettings } = usePublicTheme();
 
-  const { salon, services, settings, loading, error, fetchSalon, fetchServices, fetchSettings } =
+  const { services, loading, error, fetchServices } =
     usePublicBooking(slug);
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState([]);
-
-  // Thème personnalisé du salon avec support d'overrides via query params (pour l'aperçu)
-  const queryParams = new URLSearchParams(window.location.search);
-  
-  const themeSettings = {
-    primaryColor: queryParams.get("primaryColor") || settings?.theme_settings?.primaryColor || "#8B5CF6",
-    secondaryColor: queryParams.get("secondaryColor") || settings?.theme_settings?.secondaryColor || "#6366F1",
-    fontFamily: queryParams.get("fontFamily") || settings?.theme_settings?.fontFamily || "Inter",
-    footerBgColor: queryParams.get("footerBgColor") || settings?.theme_settings?.footerBgColor || "#1E293B",
-    footerTextColor: queryParams.get("footerTextColor") || settings?.theme_settings?.footerTextColor || "#FFFFFF"
-  };
 
   // Open gallery lightbox for a service
   const openGallery = useCallback((service, e) => {
@@ -75,16 +66,8 @@ const BookingLanding = () => {
   const term = config.terminology;
 
   useEffect(() => {
-    const loadData = async () => {
-      const salonData = await fetchSalon();
-      if (salonData?.currency) {
-        changeCurrency(salonData.currency);
-      }
-      await fetchServices();
-      await fetchSettings(); // Charger les settings pour le thème
-    };
-    loadData();
-  }, []);
+    fetchServices();
+  }, [fetchServices]);
 
   // Auto slideshow every 5 seconds
   useEffect(() => {
@@ -97,11 +80,14 @@ const BookingLanding = () => {
     return () => clearInterval(interval);
   }, [salon?.images]);
 
-  if (loading && !salon && services.length === 0) {
+  if (loading && services.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className={`animate-spin rounded-full h-16 w-16 border-b-2 ${config.borderColor} mx-auto`}></div>
+          <div 
+            className="animate-spin rounded-full h-16 w-16 border-b-2 mx-auto"
+            style={dynamicStyles.primaryBorder}
+          />
           <p className="mt-4 text-slate-600">Chargement...</p>
         </div>
       </div>
@@ -135,29 +121,6 @@ const BookingLanding = () => {
       </div>
     );
   }
-
-  // Style dynamique pour le thème
-  const dynamicStyles = {
-    gradientBg: {
-      background: `linear-gradient(135deg, ${themeSettings.primaryColor}, ${themeSettings.secondaryColor})`
-    },
-    primaryText: {
-      color: themeSettings.primaryColor
-    },
-    primaryBg: {
-      backgroundColor: `${themeSettings.primaryColor}15`
-    },
-    fontFamily: {
-      fontFamily: themeSettings.fontFamily
-    },
-    footer: {
-      backgroundColor: themeSettings.footerBgColor || "#1E293B",
-      color: themeSettings.footerTextColor || "#FFFFFF"
-    },
-    footerMuted: {
-      color: `${themeSettings.footerTextColor || "#FFFFFF"}99`
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-50" style={dynamicStyles.fontFamily}>

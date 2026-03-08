@@ -52,6 +52,7 @@ import RestaurantQRCode from "./pages/public/restaurant/RestaurantQRCode";
 
 // Pages publiques (Booking)
 import PublicRouter from "./pages/public/PublicRouter";
+import PublicBookingLayout from "./pages/public/PublicBookingLayout";
 import BookingLanding from "./pages/public/BookingLanding";
 import BookingDateTime from "./pages/public/BookingDateTime";
 import BookingClientInfo from "./pages/public/BookingClientInfo";
@@ -155,19 +156,21 @@ function App() {
                 <Route path="/r/:slug/qr" element={<RestaurantQRCode />} />
 
                 {/* Routes publiques - Booking (Router dynamique selon secteur) */}
-                <Route path="/book/:slug" element={<PublicRouter />} />
-                <Route
-                  path="/book/:slug/datetime"
-                  element={<BookingDateTime />}
-                />
-                <Route
-                  path="/book/:slug/info"
-                  element={<BookingClientInfo />}
-                />
-                <Route
-                  path="/book/:slug/confirmation"
-                  element={<BookingConfirmation />}
-                />
+                <Route element={<PublicBookingLayout />}>
+                  <Route path="/book/:slug" element={<PublicRouter />} />
+                  <Route
+                    path="/book/:slug/datetime"
+                    element={<BookingDateTime />}
+                  />
+                  <Route
+                    path="/book/:slug/info"
+                    element={<BookingClientInfo />}
+                  />
+                  <Route
+                    path="/book/:slug/confirmation"
+                    element={<BookingConfirmation />}
+                  />
+                </Route>
 
                 {/* Routes publiques - Training */}
                 <Route path="/t/:slug" element={<TrainingLanding />} />

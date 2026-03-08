@@ -3,12 +3,12 @@
  * Gestion du thème pour les pages publiques de réservation
  */
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 
 const PublicThemeContext = createContext();
 
 // Valeurs par défaut du thème
-const DEFAULT_THEME = {
+export const DEFAULT_THEME = {
   primaryColor: "#8B5CF6",
   secondaryColor: "#6366F1",
   fontFamily: "Inter",
@@ -16,18 +16,26 @@ const DEFAULT_THEME = {
   footerTextColor: "#FFFFFF"
 };
 
-export const PublicThemeProvider = ({ children, initialTheme }) => {
-  const [theme, setTheme] = useState({ ...DEFAULT_THEME, ...initialTheme });
-
-  // Mettre à jour le thème si initialTheme change
-  useEffect(() => {
-    if (initialTheme) {
-      setTheme({ ...DEFAULT_THEME, ...initialTheme });
-    }
-  }, [initialTheme]);
+export const PublicThemeProvider = ({ children, initialSalon = null, initialSettings = null }) => {
+  const [salon, setSalon] = useState(initialSalon);
+  const [settings, setSettings] = useState(initialSettings);
+  
+  // Thème personnalisé du salon avec support d'overrides via query params (pour l'aperçu)
+  const theme = useMemo(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const dbTheme = settings?.theme_settings || {};
+    
+    return {
+      primaryColor: queryParams.get("primaryColor") || dbTheme.primaryColor || DEFAULT_THEME.primaryColor,
+      secondaryColor: queryParams.get("secondaryColor") || dbTheme.secondaryColor || DEFAULT_THEME.secondaryColor,
+      fontFamily: queryParams.get("fontFamily") || dbTheme.fontFamily || DEFAULT_THEME.fontFamily,
+      footerBgColor: queryParams.get("footerBgColor") || dbTheme.footerBgColor || DEFAULT_THEME.footerBgColor,
+      footerTextColor: queryParams.get("footerTextColor") || dbTheme.footerTextColor || DEFAULT_THEME.footerTextColor
+    };
+  }, [settings]);
 
   // Styles dynamiques pré-calculés
-  const dynamicStyles = {
+  const dynamicStyles = useMemo(() => ({
     gradientBg: {
       background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})`
     },
@@ -35,14 +43,30 @@ export const PublicThemeProvider = ({ children, initialTheme }) => {
       color: theme.primaryColor
     },
     primaryBg: {
-      backgroundColor: `${theme.primaryColor}15`
+      backgroundColor: `${theme.primaryColor}10` // 10% opacity
+    },
+    primaryBgMedium: {
+      backgroundColor: `${theme.primaryColor}20` // 20% opacity
     },
     primaryBorder: {
       borderColor: theme.primaryColor
     },
+    primaryBorderLight: {
+      borderColor: `${theme.primaryColor}40` // 40% opacity
+    },
     primaryButton: {
       background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})`,
       color: "#FFFFFF"
+    },
+    primaryButtonHover: {
+      background: `linear-gradient(135deg, ${theme.secondaryColor}, ${theme.primaryColor})`,
+      color: "#FFFFFF"
+    },
+    secondaryText: {
+      color: theme.secondaryColor
+    },
+    secondaryBg: {
+      backgroundColor: `${theme.secondaryColor}10`
     },
     fontFamily: {
       fontFamily: theme.fontFamily
@@ -53,12 +77,27 @@ export const PublicThemeProvider = ({ children, initialTheme }) => {
     },
     footerMuted: {
       color: `${theme.footerTextColor || "#FFFFFF"}99`
+    },
+    activeOption: {
+      borderColor: theme.primaryColor,
+      backgroundColor: `${theme.primaryColor}10`,
+      color: theme.primaryColor
+    },
+    focusRing: {
+      boxShadow: `0 0 0 2px ${theme.primaryColor}40`,
+      borderColor: theme.primaryColor
+    },
+    shadowGlow: {
+      boxShadow: `0 0 20px ${theme.primaryColor}40`
     }
-  };
+  }), [theme]);
 
   const value = {
+    salon,
+    setSalon,
+    settings,
+    setSettings,
     theme,
-    setTheme,
     dynamicStyles,
     DEFAULT_THEME
   };
@@ -74,20 +113,7 @@ export const PublicThemeProvider = ({ children, initialTheme }) => {
 export const usePublicTheme = () => {
   const context = useContext(PublicThemeContext);
   if (!context) {
-    // Retourner les valeurs par défaut si utilisé hors du Provider
-    return {
-      theme: DEFAULT_THEME,
-      dynamicStyles: {
-        gradientBg: { background: `linear-gradient(135deg, ${DEFAULT_THEME.primaryColor}, ${DEFAULT_THEME.secondaryColor})` },
-        primaryText: { color: DEFAULT_THEME.primaryColor },
-        primaryBg: { backgroundColor: `${DEFAULT_THEME.primaryColor}15` },
-        primaryBorder: { borderColor: DEFAULT_THEME.primaryColor },
-        primaryButton: { background: `linear-gradient(135deg, ${DEFAULT_THEME.primaryColor}, ${DEFAULT_THEME.secondaryColor})`, color: "#FFFFFF" },
-        fontFamily: { fontFamily: DEFAULT_THEME.fontFamily },
-        footer: { backgroundColor: DEFAULT_THEME.footerBgColor, color: DEFAULT_THEME.footerTextColor },
-        footerMuted: { color: `${DEFAULT_THEME.footerTextColor}99` }
-      }
-    };
+    throw new Error("usePublicTheme must be used within a PublicThemeProvider");
   }
   return context;
 };

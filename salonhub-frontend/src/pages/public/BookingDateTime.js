@@ -26,16 +26,12 @@ const BookingDateTime = () => {
   const location = useLocation();
   const service = location.state?.service;
   const { formatPrice } = useCurrency();
-  const { dynamicStyles } = usePublicTheme();
+  const { salon, settings, dynamicStyles, theme: themeSettings } = usePublicTheme();
 
   const {
-    salon,
-    settings,
     availableSlots,
     loading,
     error,
-    fetchSalon,
-    fetchSettings,
     fetchAvailability,
   } = usePublicBooking(slug);
 
@@ -44,29 +40,8 @@ const BookingDateTime = () => {
   const config = getBusinessTypeConfig(businessType);
   const term = config.terminology;
 
-  // Thème personnalisé
-  const themeSettings = settings?.theme_settings || {};
-  const customStyles = {
-    gradientBg: {
-      background: `linear-gradient(135deg, ${themeSettings.primaryColor || "#8B5CF6"}, ${themeSettings.secondaryColor || "#6366F1"})`
-    },
-    primaryText: {
-      color: themeSettings.primaryColor || "#8B5CF6"
-    },
-    primaryBg: {
-      backgroundColor: `${themeSettings.primaryColor || "#8B5CF6"}15`
-    },
-    fontFamily: {
-      fontFamily: themeSettings.fontFamily || "Inter"
-    },
-    footer: {
-      backgroundColor: themeSettings.footerBgColor || "#1E293B",
-      color: themeSettings.footerTextColor || "#FFFFFF"
-    },
-    footerMuted: {
-      color: `${themeSettings.footerTextColor || "#FFFFFF"}99`
-    }
-  };
+  // Thème personnalisé - Utilisation de dynamicStyles du contexte
+  const customStyles = dynamicStyles;
 
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -76,9 +51,7 @@ const BookingDateTime = () => {
       navigate(`/book/${slug}`);
       return;
     }
-    fetchSalon();
-    fetchSettings();
-  }, [service, slug, navigate, fetchSalon, fetchSettings]);
+  }, [service, slug, navigate]);
 
   useEffect(() => {
     if (selectedDate && service) {
@@ -169,12 +142,13 @@ const BookingDateTime = () => {
       {/* Content */}
       <div className="relative z-10">
         {/* Header */}
-        <header className="bg-white/80 backdrop-blur-md shadow-soft border-b border-slate-200">
+        <header className="bg-white/80 backdrop-blur-md shadow-soft border-b border-slate-200 sticky top-0 z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center justify-between">
               <button
                 onClick={handleBack}
-                className={`flex items-center ${config.textColor} hover:${config.darkTextColor} transition-colors font-medium`}
+                className="flex items-center transition-colors font-medium"
+                style={dynamicStyles.primaryText}
               >
                 <ChevronLeftIcon className="w-5 h-5 mr-2" />
                 Retour
@@ -193,9 +167,12 @@ const BookingDateTime = () => {
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Step indicator */}
           <div className="text-center mb-10">
-            <p className={`text-sm font-medium ${config.textColor} mb-2`}>
-              Étape 2/3
-            </p>
+            <div 
+              className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold mb-2"
+              style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryText }}
+            >
+              Étape 2 sur 3
+            </div>
             <h2 className="text-3xl font-display font-bold text-slate-900">
               Choisissez la date et l'heure
             </h2>
@@ -203,22 +180,31 @@ const BookingDateTime = () => {
 
           {/* Selected Service - Enhanced Card Style */}
           {service && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-8 shadow-soft">
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 mb-8 shadow-soft relative overflow-hidden">
+               <div 
+                className="absolute left-0 top-0 bottom-0 w-1.5"
+                style={dynamicStyles.primaryButton}
+              />
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-slate-900 text-xl">
+                  <p className="font-bold text-slate-900 text-xl">
                     {service.name}
                   </p>
-                  <p className="text-sm text-slate-600 mt-1 flex items-center">
-                    <ClockIcon className="w-4 h-4 mr-1 inline-block" />
-                    {formatDuration(service.duration)} &bull;
-                    <CurrencyDollarIcon className="w-4 h-4 ml-2 mr-1 inline-block" />
-                    {formatPrice(service.price)}
+                  <p className="text-sm text-slate-600 mt-2 flex items-center space-x-3">
+                    <span className="flex items-center">
+                      <ClockIcon className="w-4 h-4 mr-1.5" style={dynamicStyles.primaryText} />
+                      {formatDuration(service.duration)}
+                    </span>
+                    <span className="flex items-center">
+                      <CurrencyDollarIcon className="w-4 h-4 mr-1.5" style={dynamicStyles.primaryText} />
+                      {formatPrice(service.price)}
+                    </span>
                   </p>
                 </div>
                 <button
                   onClick={handleBack}
-                  className={`text-sm font-medium ${config.textColor} hover:${config.darkTextColor} transition-colors`}
+                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all hover:bg-slate-50"
+                  style={dynamicStyles.primaryText}
                 >
                   Changer
                 </button>
@@ -228,9 +214,15 @@ const BookingDateTime = () => {
 
           {/* Business Hours */}
           {businessSchedule && openDays.length > 0 && (
-            <div className={`bg-gradient-to-br ${config.lightBg} border ${config.lightBorderColor} rounded-2xl p-5 mb-8 shadow-soft`}>
+            <div 
+              className="border rounded-2xl p-5 mb-8 shadow-soft"
+              style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryBorderLight }}
+            >
               <div className="flex items-start">
-                <InformationCircleIcon className={`w-6 h-6 ${config.textColor} mr-3 flex-shrink-0 mt-0.5`} />
+                <InformationCircleIcon 
+                  className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5" 
+                  style={dynamicStyles.primaryText}
+                />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-slate-900 mb-3">
                     Horaires d'ouverture
@@ -247,7 +239,10 @@ const BookingDateTime = () => {
                       >
                         <span className="font-medium text-sm">{day.day}</span>
                         {day.isOpen ? (
-                          <span className={`text-sm ${config.darkTextColor} font-semibold`}>
+                          <span 
+                            className="text-sm font-semibold"
+                            style={dynamicStyles.primaryText}
+                          >
                             {day.open} - {day.close}
                           </span>
                         ) : (
@@ -270,7 +265,10 @@ const BookingDateTime = () => {
           {/* Date Selection */}
           <div className="bg-white rounded-2xl shadow-soft-xl p-6 mb-8 border border-slate-200">
             <label className="flex items-center text-lg font-semibold text-slate-700 mb-4">
-              <CalendarDaysIcon className={`w-6 h-6 mr-2 ${config.textColor}`} />
+              <CalendarDaysIcon 
+                className="w-6 h-6 mr-2" 
+                style={dynamicStyles.primaryText}
+              />
               Sélectionnez une date
             </label>
             <input
@@ -278,7 +276,15 @@ const BookingDateTime = () => {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               min={today}
-              className={`w-full px-4 py-3 border border-slate-200 rounded-xl text-lg focus:ring-2 ${config.focusRing} focus:border-transparent transition-shadow`}
+              className="w-full px-5 py-4 border border-slate-200 rounded-2xl text-lg outline-none transition-all bg-slate-50/50 focus:bg-white"
+              onFocus={(e) => {
+                e.target.style.boxShadow = dynamicStyles.focusRing.boxShadow;
+                e.target.style.borderColor = dynamicStyles.focusRing.borderColor;
+              }}
+              onBlur={(e) => {
+                e.target.style.boxShadow = "none";
+                e.target.style.borderColor = "#e2e8f0";
+              }}
             />
           </div>
 
@@ -324,7 +330,19 @@ const BookingDateTime = () => {
                   <button
                     key={index}
                     onClick={() => handleSlotSelect(slot)}
-                    className={`px-4 py-3 border ${config.lightBorderColor} rounded-xl text-center ${config.lightBg} hover:${config.mediumBg} hover:${config.borderColor} transition-colors duration-150 font-medium text-slate-900 shadow-soft focus:outline-none focus:ring-2 ${config.focusRing}`}
+                    className="px-4 py-3 border rounded-xl text-center transition-colors duration-150 font-medium text-slate-900 shadow-soft focus:outline-none focus:ring-2"
+                    style={{ 
+                      ...dynamicStyles.primaryBg, 
+                      ...dynamicStyles.primaryBorderLight,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = themeSettings.primaryColor;
+                      e.currentTarget.style.backgroundColor = `${themeSettings.primaryColor}20`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = `${themeSettings.primaryColor}40`;
+                      e.currentTarget.style.backgroundColor = `${themeSettings.primaryColor}10`;
+                    }}
                   >
                     {slot.time}
                   </button>

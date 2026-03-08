@@ -259,44 +259,40 @@ const Clients = () => {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header with gradient */}
-        <div className="mb-8">
-          <div className={`bg-gradient-to-r ${config.gradient} rounded-2xl p-6 sm:p-8 text-white shadow-soft-xl`}>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center">
-                <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl mr-4">
-                  <UsersIcon className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-display font-bold">
-                    {term.clients}
-                  </h1>
-                  <p className="text-white/80 mt-1">
-                    Gérez vos {term.clients.toLowerCase()} et communiquez avec eux
-                  </p>
-                </div>
+        {/* Header Section */}
+        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+          <div>
+            <div className="flex items-center gap-4 mb-2">
+              <div className={`p-3 rounded-2xl bg-gradient-to-br ${config.gradient} shadow-soft-lg`}>
+                <UsersIcon className="h-7 w-7 text-white" />
               </div>
-              <button
-                onClick={() => handleOpenModal()}
-                className="flex items-center justify-center px-5 py-3 bg-white text-slate-800 rounded-xl hover:bg-white/90 transition-all duration-300 font-semibold shadow-soft"
-              >
-                <PlusIcon className="h-5 w-5 mr-2" />
-                {term.clientAdd}
-              </button>
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-800">
+                {term.clients}
+              </h1>
             </div>
+            <p className="text-slate-500 max-w-lg">
+              Gérez votre base de {term.clients.toLowerCase()} et maintenez une relation privilégiée avec eux.
+            </p>
           </div>
+          <button
+            onClick={() => handleOpenModal()}
+            className={`inline-flex items-center px-6 py-3.5 bg-gradient-to-r ${config.gradient} text-white font-bold rounded-2xl shadow-soft hover:shadow-glow hover:-translate-y-0.5 transition-all duration-300`}
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            {term.clientAdd}
+          </button>
         </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+        {/* Search & Filter Bar */}
+        <div className="mb-8">
+          <div className="relative group">
+            <MagnifyingGlassIcon className={`absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:${config.textColor} transition-colors`} />
             <input
               type="text"
               value={searchQuery}
               onChange={handleSearch}
-              placeholder={`Rechercher un ${term.client.toLowerCase()} (nom, email, téléphone)...`}
-              className={`w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent shadow-soft transition-all duration-300`}
+              placeholder={`Rechercher un ${term.client.toLowerCase()} par nom, email ou téléphone...`}
+              className="input-premium input-premium-icon !rounded-2xl shadow-soft"
             />
           </div>
         </div>
@@ -326,24 +322,24 @@ const Clients = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className={`${config.lightBg}`}>
+              <table className="min-w-full divide-y divide-slate-100">
+                <thead className="bg-slate-50/50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                      Nom
+                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Client
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                      Email
+                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Coordonnées
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                      Téléphone
+                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Inscrit le
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                      Créé le
+                    <th className="px-6 py-5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-slate-100">
+                <tbody className="bg-white divide-y divide-slate-50">
                   {clients.map((client) => (
                     <tr
                       key={client.id}
@@ -351,43 +347,74 @@ const Clients = () => {
                         setDetailClient(client);
                         setShowDetailModal(true);
                       }}
-                      className={`${config.hoverBg} transition-colors cursor-pointer`}
+                      className="hover:bg-slate-50/80 transition-all cursor-pointer group"
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className={`flex-shrink-0 h-10 w-10 rounded-full ${config.lightBg} flex items-center justify-center`}>
-                            <span className={`${config.darkTextColor} font-semibold`}>
+                          <div className={`flex-shrink-0 h-11 w-11 rounded-2xl ${config.lightBg} flex items-center justify-center border-2 border-white shadow-sm ring-1 ring-slate-100`}>
+                            <span className={`${config.darkTextColor} font-bold text-base`}>
                               {client.first_name?.charAt(0)}
                               {client.last_name?.charAt(0)}
                             </span>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-semibold text-slate-800">
+                            <div className="text-sm font-bold text-slate-900 group-hover:text-violet-600 transition-colors">
                               {client.first_name} {client.last_name}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              ID: #{client.id}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-600 flex items-center">
-                          {client.email ? (
-                            <>
-                              <EnvelopeIcon className="h-4 w-4 mr-2 text-slate-400" />
+                        <div className="space-y-1">
+                          {client.email && (
+                            <div className="text-sm text-slate-600 flex items-center">
+                              <EnvelopeIcon className="h-3.5 w-3.5 mr-2 text-slate-400" />
                               {client.email}
-                            </>
-                          ) : (
-                            <span className="text-slate-400">-</span>
+                            </div>
+                          )}
+                          {client.phone && (
+                            <div className="text-sm text-slate-600 flex items-center">
+                              <PhoneIcon className="h-3.5 w-3.5 mr-2 text-slate-400" />
+                              {client.phone}
+                            </div>
+                          )}
+                          {!client.email && !client.phone && (
+                            <span className="text-xs text-slate-400 italic">Aucune coordonnée</span>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-slate-600">
-                          {client.phone || <span className="text-slate-400">-</span>}
+                          {new Date(client.created_at).toLocaleDateString("fr-FR", {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-500">
-                          {new Date(client.created_at).toLocaleDateString("fr-FR")}
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenModal(client);
+                            }}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                          >
+                            <PencilIcon className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              initiateDelete(client.id);
+                            }}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -401,19 +428,22 @@ const Clients = () => {
 
       {/* Modal Création/Édition */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-md bg-white shadow-soft-2xl rounded-2xl animate-scale-in">
-            <div className={`bg-gradient-to-r ${config.gradient} px-6 py-4 rounded-t-2xl`}>
-              <h3 className="text-lg font-display font-semibold text-white">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-lg bg-white shadow-soft-2xl rounded-3xl animate-scale-in overflow-hidden border border-slate-100">
+            <div className={`bg-gradient-to-r ${config.gradient} px-8 py-6 flex items-center justify-between`}>
+              <h3 className="text-xl font-display font-bold text-white uppercase tracking-wider">
                 {editingClient ? term.clientEdit : term.clientAdd}
               </h3>
+              <button onClick={handleCloseModal} className="text-white/80 hover:text-white transition-colors">
+                <XMarkIcon className="h-6 w-6" />
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Prénom *
+            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="label-premium">
+                    Prénom <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -421,13 +451,14 @@ const Clients = () => {
                     required
                     value={formData.first_name}
                     onChange={handleChange}
-                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all`}
+                    className="input-premium !rounded-2xl"
+                    placeholder="ex: Marie"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Nom *
+                <div className="space-y-2">
+                  <label className="label-premium">
+                    Nom <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -435,62 +466,72 @@ const Clients = () => {
                     required
                     value={formData.last_name}
                     onChange={handleChange}
-                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all`}
+                    className="input-premium !rounded-2xl"
+                    placeholder="ex: Durand"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <div className="space-y-2">
+                <label className="label-premium">
                   Email
                 </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all`}
-                />
+                <div className="relative">
+                  <EnvelopeIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="input-premium input-premium-icon !rounded-2xl"
+                    placeholder="marie.durand@exemple.com"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <div className="space-y-2">
+                <label className="label-premium">
                   Téléphone
                 </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all`}
-                />
+                <div className="relative">
+                  <PhoneIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="input-premium input-premium-icon !rounded-2xl"
+                    placeholder="+33 6 ..."
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Notes
+              <div className="space-y-2">
+                <label className="label-premium">
+                  Notes privées
                 </label>
                 <textarea
                   name="notes"
                   rows="3"
                   value={formData.notes}
                   onChange={handleChange}
-                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all resize-none`}
+                  className="input-premium !rounded-2xl resize-none"
+                  placeholder="Informations importantes sur ce client..."
                 ></textarea>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-4 pt-6 mt-6 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition-colors"
+                  className="px-6 py-3 border-2 border-slate-200 rounded-2xl text-slate-600 font-bold hover:bg-slate-50 transition-all"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`px-5 py-2.5 bg-gradient-to-r ${config.gradient} text-white rounded-xl font-medium shadow-soft hover:shadow-glow disabled:opacity-50 transition-all duration-300`}
+                  className={`px-8 py-3 bg-gradient-to-r ${config.gradient} text-white rounded-2xl font-bold shadow-soft hover:shadow-glow disabled:opacity-50 transition-all duration-300`}
                 >
                   {loading ? "Enregistrement..." : "Enregistrer"}
                 </button>
@@ -502,18 +543,20 @@ const Clients = () => {
 
       {/* Modal Messagerie */}
       {showMessageModal && messagingClient && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-lg bg-white shadow-soft-2xl rounded-2xl animate-scale-in">
-            <div className={`bg-gradient-to-r ${config.gradient} px-6 py-4 rounded-t-2xl`}>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-lg bg-white shadow-soft-2xl rounded-3xl animate-scale-in overflow-hidden border border-slate-100">
+            <div className={`bg-gradient-to-r ${config.gradient} px-8 py-6`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <ChatBubbleLeftRightIcon className="h-6 w-6 text-white mr-3" />
+                  <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl mr-4">
+                     <ChatBubbleLeftRightIcon className="h-6 w-6 text-white" />
+                  </div>
                   <div>
-                    <h3 className="text-lg font-display font-semibold text-white">
-                      Contacter {messagingClient.first_name} {messagingClient.last_name}
+                    <h3 className="text-xl font-display font-bold text-white uppercase tracking-wider">
+                      Message
                     </h3>
-                    <p className="text-sm text-white/80">
-                      Envoyez un message personnalisé
+                    <p className="text-sm text-white/80 font-medium">
+                      À {messagingClient.first_name} {messagingClient.last_name}
                     </p>
                   </div>
                 </div>
@@ -521,15 +564,15 @@ const Clients = () => {
                   onClick={handleCloseMessageModal}
                   className="text-white/80 hover:text-white transition-colors"
                 >
-                  <XMarkIcon className="h-6 w-6" />
+                  <XMarkIcon className="h-7 w-7" />
                 </button>
               </div>
             </div>
 
-            <form onSubmit={handleSendMessage} className="p-6 space-y-4">
+            <form onSubmit={handleSendMessage} className="p-8 space-y-6">
               {/* Canal d'envoi */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="label-premium mb-3">
                   Canal d'envoi
                 </label>
                 <div className="grid grid-cols-3 gap-3">
@@ -537,13 +580,13 @@ const Clients = () => {
                     <button
                       type="button"
                       onClick={() => setMessageData({ ...messageData, send_via: "email" })}
-                      className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all border-2 ${
                         messageData.send_via === "email"
-                          ? `bg-gradient-to-r ${config.gradient} text-white shadow-soft`
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          ? `border-violet-500 bg-violet-50 text-violet-600 shadow-sm`
+                          : "border-slate-100 bg-slate-50 text-slate-500 hover:bg-white hover:border-slate-200"
                       }`}
                     >
-                      <EnvelopeIcon className="h-4 w-4 inline mr-1" />
+                      <EnvelopeIcon className="h-4 w-4 inline mr-2" />
                       Email
                     </button>
                   )}
@@ -551,13 +594,13 @@ const Clients = () => {
                     <button
                       type="button"
                       onClick={() => setMessageData({ ...messageData, send_via: "sms" })}
-                      className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all border-2 ${
                         messageData.send_via === "sms"
-                          ? `bg-gradient-to-r ${config.gradient} text-white shadow-soft`
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          ? `border-emerald-500 bg-emerald-50 text-emerald-600 shadow-sm`
+                          : "border-slate-100 bg-slate-50 text-slate-500 hover:bg-white hover:border-slate-200"
                       }`}
                     >
-                      <ChatBubbleLeftRightIcon className="h-4 w-4 inline mr-1" />
+                      <ChatBubbleLeftRightIcon className="h-4 w-4 inline mr-2" />
                       WhatsApp
                     </button>
                   )}
@@ -565,10 +608,10 @@ const Clients = () => {
                     <button
                       type="button"
                       onClick={() => setMessageData({ ...messageData, send_via: "both" })}
-                      className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all border-2 ${
                         messageData.send_via === "both"
-                          ? `bg-gradient-to-r ${config.gradient} text-white shadow-soft`
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                          ? `border-slate-800 bg-slate-800 text-white shadow-soft`
+                          : "border-slate-100 bg-slate-50 text-slate-500 hover:bg-white hover:border-slate-200"
                       }`}
                     >
                       Les deux
@@ -579,9 +622,9 @@ const Clients = () => {
 
               {/* Sujet (pour email) */}
               {(messageData.send_via === "email" || messageData.send_via === "both") && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Sujet
+                <div className="space-y-2 animate-fade-in">
+                  <label className="label-premium">
+                    Sujet de l'email
                   </label>
                   <input
                     type="text"
@@ -589,15 +632,15 @@ const Clients = () => {
                     value={messageData.subject}
                     onChange={handleMessageChange}
                     placeholder={`Message de votre ${config.terminology.establishment.toLowerCase()}`}
-                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all`}
+                    className="input-premium !rounded-2xl"
                   />
                 </div>
               )}
 
               {/* Message */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Message *
+              <div className="space-y-2">
+                <label className="label-premium">
+                  Message personnalisé <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   name="message"
@@ -605,41 +648,50 @@ const Clients = () => {
                   rows="5"
                   value={messageData.message}
                   onChange={handleMessageChange}
-                  placeholder="Saisissez votre message..."
-                  className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${config.focusRing} focus:border-transparent transition-all resize-none`}
+                  placeholder="Saisissez votre message ici..."
+                  className="input-premium !rounded-2xl resize-none"
                 ></textarea>
               </div>
 
               {/* Info envoi */}
-              <div className={`${config.lightBg} ${config.lightBorderColor} border rounded-xl p-4 flex items-start`}>
-                <ExclamationCircleIcon className={`h-5 w-5 ${config.textColor} mr-3 flex-shrink-0 mt-0.5`} />
-                <div className={`text-sm ${config.darkTextColor}`}>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-start gap-3">
+                <div className={`p-1.5 rounded-lg ${config.lightBg}`}>
+                  <ExclamationCircleIcon className={`h-5 w-5 ${config.textColor}`} />
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed pt-0.5">
                   {messageData.send_via === "email" && (
-                    <p>L'email sera envoyé immédiatement.</p>
+                    <p>L'email sera envoyé immédiatement via notre serveur sécurisé.</p>
                   )}
                   {messageData.send_via === "sms" && (
-                    <p>WhatsApp s'ouvrira dans un nouvel onglet avec le message pré-rempli.</p>
+                    <p>WhatsApp s'ouvrira dans un nouvel onglet avec votre message prêt à être envoyé.</p>
                   )}
                   {messageData.send_via === "both" && (
-                    <p>L'email sera envoyé et WhatsApp s'ouvrira dans un nouvel onglet.</p>
+                    <p>L'email sera envoyé automatiquement et WhatsApp s'ouvrira pour l'envoi mobile.</p>
                   )}
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-4 pt-6 mt-6 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleCloseMessageModal}
-                  className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition-colors"
+                  className="px-6 py-3 border-2 border-slate-200 rounded-2xl text-slate-600 font-bold hover:bg-slate-50 transition-all font-display"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={sending}
-                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-medium shadow-soft hover:shadow-glow disabled:opacity-50 transition-all duration-300 inline-flex items-center"
+                  className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl font-bold shadow-soft hover:shadow-glow disabled:opacity-50 transition-all duration-300 inline-flex items-center font-display"
                 >
-                  <PaperAirplaneIcon className="h-4 w-4 mr-2" />
+                   {sending ? (
+                    <svg className="animate-spin h-5 w-5 mr-3 text-white" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <PaperAirplaneIcon className="h-5 w-5 mr-2" />
+                  )}
                   {sending ? "Envoi..." : "Envoyer"}
                 </button>
               </div>
@@ -661,119 +713,120 @@ const Clients = () => {
 
       {/* Modal Détails Client */}
       {showDetailModal && detailClient && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-2xl bg-white shadow-soft-2xl rounded-2xl animate-scale-in">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-2xl bg-white shadow-soft-2xl rounded-3xl animate-scale-in overflow-hidden border border-slate-100">
             {/* Header */}
-            <div className={`bg-gradient-to-r ${config.gradient} px-6 py-6 rounded-t-2xl`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="h-16 w-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-soft">
-                    <span className="text-white font-bold text-2xl">
-                      {detailClient.first_name?.charAt(0)}
-                      {detailClient.last_name?.charAt(0)}
+            <div className={`bg-gradient-to-r ${config.gradient} px-8 py-8 flex items-center justify-between`}>
+              <div className="flex items-center">
+                <div className="h-20 w-20 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-soft border border-white/30">
+                  <span className="text-white font-bold text-3xl">
+                    {detailClient.first_name?.charAt(0)}
+                    {detailClient.last_name?.charAt(0)}
+                  </span>
+                </div>
+                <div className="ml-6">
+                  <h3 className="text-3xl font-display font-bold text-white tracking-tight">
+                    {detailClient.first_name} {detailClient.last_name}
+                  </h3>
+                  <div className="flex items-center mt-2 space-x-3">
+                    <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-bold uppercase tracking-wider">
+                      ID: #{detailClient.id}
+                    </span>
+                    <span className="text-white/80 text-sm font-medium">
+                      Membre depuis {new Date(detailClient.created_at).toLocaleDateString("fr-FR", { month: 'long', year: 'numeric' })}
                     </span>
                   </div>
-                  <div className="ml-4">
-                    <h3 className="text-2xl font-display font-bold text-white">
-                      {detailClient.first_name} {detailClient.last_name}
-                    </h3>
-                    <p className="text-white/80 text-sm mt-1">
-                      {term.client} depuis le{" "}
-                      {new Date(detailClient.created_at).toLocaleDateString("fr-FR")}
-                    </p>
-                  </div>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowDetailModal(false);
-                    setDetailClient(null);
-                  }}
-                  className="text-white/80 hover:text-white transition-colors"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
               </div>
+              <button
+                onClick={() => {
+                  setShowDetailModal(false);
+                  setDetailClient(null);
+                }}
+                className="p-2 text-white/80 hover:text-white transition-colors self-start"
+              >
+                <XMarkIcon className="h-8 w-8" />
+              </button>
             </div>
 
             {/* Content */}
-            <div className="p-6">
-              {/* Contact Info */}
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                  <UserCircleIcon className={`h-5 w-5 mr-2 ${config.textColor}`} />
-                  Informations de contact
-                </h4>
-                <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${config.lightBg} p-4 rounded-xl`}>
-                  <div className="flex items-start">
-                    <EnvelopeIcon className="h-5 w-5 text-slate-400 mr-3 mt-0.5" />
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase font-medium">Email</p>
-                      <p className="text-sm text-slate-800 mt-1">
-                        {detailClient.email || (
-                          <span className="text-slate-400 italic">Non renseigné</span>
-                        )}
-                      </p>
+            <div className="p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Contact Info Card */}
+                <div className="space-y-4">
+                  <h4 className="text-base font-bold text-slate-900 border-l-4 border-violet-500 pl-3">
+                    Coordonnées
+                  </h4>
+                  <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">
+                        <EnvelopeIcon className={`h-5 w-5 ${config.textColor}`} />
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">Email</p>
+                        <p className="text-sm text-slate-800 font-semibold truncate hover:text-violet-600 transition-colors cursor-pointer">
+                          {detailClient.email || <span className="text-slate-400 italic font-normal">Non renseigné</span>}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">
+                        <PhoneIcon className={`h-5 w-5 ${config.textColor}`} />
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">Téléphone</p>
+                        <p className="text-sm text-slate-800 font-semibold truncate">
+                          {detailClient.phone || <span className="text-slate-400 italic font-normal">Non renseigné</span>}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-start">
-                    <PhoneIcon className="h-5 w-5 text-slate-400 mr-3 mt-0.5" />
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase font-medium">Téléphone</p>
-                      <p className="text-sm text-slate-800 mt-1">
-                        {detailClient.phone || (
-                          <span className="text-slate-400 italic">Non renseigné</span>
-                        )}
-                      </p>
-                    </div>
+                </div>
+
+                {/* Notes/Bio Card */}
+                <div className="space-y-4">
+                  <h4 className="text-base font-bold text-slate-900 border-l-4 border-emerald-500 pl-3">
+                    Notes privées
+                  </h4>
+                  <div className="bg-emerald-50/50 rounded-2xl p-5 border border-emerald-100 h-full min-h-[120px]">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed italic">
+                      {detailClient.notes || "Aucune note particulière sur ce client."}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Notes */}
-              {detailClient.notes && (
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                    <InformationCircleIcon className={`h-5 w-5 mr-2 ${config.textColor}`} />
-                    Notes
-                  </h4>
-                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl">
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">
-                      {detailClient.notes}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="border-t border-slate-200 pt-6">
-                <h4 className="text-lg font-semibold text-slate-800 mb-4">
-                  Actions rapides
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
+              {/* Enhanced Quick Actions */}
+              <div className="mt-10 pt-8 border-t border-slate-100">
+                <h4 className="text-base font-bold text-slate-900 mb-5 text-center">Actions rapides</h4>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <button
                     onClick={() => {
                       setShowDetailModal(false);
                       setHistoryClient(detailClient);
                       setShowHistoryModal(true);
                     }}
-                    className={`flex items-center justify-center px-4 py-3 bg-gradient-to-r ${config.gradient} text-white rounded-xl hover:shadow-glow transition-all duration-300 font-medium`}
+                    className="flex flex-col items-center justify-center p-4 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-slate-200 rounded-2xl transition-all group"
                   >
-                    <ClockIcon className="h-5 w-5 mr-2" />
-                    {term.clientHistory}
+                    <div className="p-3 bg-white rounded-xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
+                       <ClockIcon className={`h-6 w-6 ${config.textColor}`} />
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{term.clientHistory}</span>
                   </button>
 
-                  {(detailClient.email || detailClient.phone) && (
-                    <button
-                      onClick={() => {
-                        setShowDetailModal(false);
-                        handleOpenMessageModal(detailClient);
-                      }}
-                      className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:shadow-glow transition-all duration-300 font-medium"
-                    >
-                      <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
-                      Contacter
-                    </button>
-                  )}
+                  <button
+                    disabled={!detailClient.email && !detailClient.phone}
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      handleOpenMessageModal(detailClient);
+                    }}
+                    className="flex flex-col items-center justify-center p-4 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-slate-200 rounded-2xl transition-all group disabled:opacity-40"
+                  >
+                    <div className="p-3 bg-white rounded-xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
+                       <ChatBubbleLeftRightIcon className="h-6 w-6 text-emerald-600" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Contacter</span>
+                  </button>
 
                   {can.editClient && (
                     <button
@@ -781,20 +834,24 @@ const Clients = () => {
                         setShowDetailModal(false);
                         handleOpenModal(detailClient);
                       }}
-                      className="flex items-center justify-center px-4 py-3 bg-slate-600 text-white rounded-xl hover:bg-slate-700 transition-all duration-300 font-medium"
+                      className="flex flex-col items-center justify-center p-4 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-slate-200 rounded-2xl transition-all group"
                     >
-                      <PencilIcon className="h-5 w-5 mr-2" />
-                      Modifier
+                      <div className="p-3 bg-white rounded-xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
+                         <PencilIcon className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Modifier</span>
                     </button>
                   )}
 
                   {can.deleteClient && (
                     <button
                       onClick={() => initiateDelete(detailClient.id)}
-                      className="flex items-center justify-center px-4 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-300 font-medium"
+                      className="flex flex-col items-center justify-center p-4 bg-red-50 hover:bg-white border-2 border-transparent hover:border-red-100 rounded-2xl transition-all group"
                     >
-                      <TrashIcon className="h-5 w-5 mr-2" />
-                      Supprimer
+                      <div className="p-3 bg-white rounded-xl shadow-sm mb-3 group-hover:scale-110 transition-transform">
+                         <TrashIcon className="h-6 w-6 text-red-600" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Supprimer</span>
                     </button>
                   )}
                 </div>
