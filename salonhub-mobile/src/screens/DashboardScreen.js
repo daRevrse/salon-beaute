@@ -17,11 +17,13 @@ import api, { FRONTEND_URL } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import useNotifications from '../hooks/useNotifications';
+import SalonSwitcher from '../components/SalonSwitcher';
 
 const DashboardScreen = ({ navigation }) => {
-  const { user } = useAuth();
+  const { user, salons, hasMultipleSalons } = useAuth();
   const socket = useSocket();
   const { unreadCount, refresh: refreshNotifications } = useNotifications();
+  const [showSalonSwitcher, setShowSalonSwitcher] = useState(false);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -240,6 +242,14 @@ const DashboardScreen = ({ navigation }) => {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366F1']} />
       }
     >
+      {/* Salon Switcher Modal */}
+      {(hasMultipleSalons || salons.find(s => s.tenant_id === user?.tenant_id)?.subscription_plan === 'custom') && (
+        <SalonSwitcher
+          visible={showSalonSwitcher}
+          onClose={() => setShowSalonSwitcher(false)}
+        />
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
@@ -247,6 +257,14 @@ const DashboardScreen = ({ navigation }) => {
             <Text style={styles.greeting}>Bienvenue, {user?.first_name} !</Text>
             <Text style={styles.subtitle}>Voici un aperçu de votre activité.</Text>
           </View>
+          {(hasMultipleSalons || salons.find(s => s.tenant_id === user?.tenant_id)?.subscription_plan === 'custom') && (
+            <TouchableOpacity
+              style={styles.switchSalonBtn}
+              onPress={() => setShowSalonSwitcher(true)}
+            >
+              <Ionicons name="swap-horizontal" size={18} color="#6366F1" />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.bellButton}
             onPress={() => navigation.navigate('NotificationList')}
@@ -554,6 +572,15 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
+  switchSalonBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
   bellButton: {
     width: 44,
     height: 44,
@@ -561,7 +588,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12,
+    marginLeft: 8,
   },
   bellBadge: {
     position: 'absolute',

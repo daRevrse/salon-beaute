@@ -93,8 +93,19 @@ class PushService {
       if (existing.length > 0) {
         // Mettre à jour la date de dernière utilisation
         await db.query(
-          "UPDATE push_subscriptions SET last_used_at = NOW() WHERE id = ?",
-          [existing[0].id]
+          `UPDATE push_subscriptions
+           SET client_id = COALESCE(?, client_id), 
+               user_id = COALESCE(?, user_id), 
+               tenant_id = ?, 
+               p256dh_key = ?, 
+               auth_key = ?, 
+               user_agent = ?, 
+               last_used_at = NOW()
+           WHERE endpoint = ?`,
+          [clientId, userId, tenantId, p256dh, auth, userAgent, endpoint]
+        );
+        console.log(
+          `✅ Abonnement push mis à jour (ID: ${existing[0].id})`
         );
         return { subscriptionId: existing[0].id, updated: true };
       }

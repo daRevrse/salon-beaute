@@ -401,43 +401,47 @@ async function handleCheckoutSessionCompleted(session) {
 async function handleSubscriptionUpdated(subscription) {
   const customerId = subscription.customer;
 
-  const [tenant] = await query(
-    "SELECT id FROM tenants WHERE stripe_customer_id = ?",
-    [customerId]
+  // Récupérer le plan depuis les métadonnées de l'abonnement si possible
+  const plan = subscription.metadata.plan;
+
+  let status = "active";
+  if (subscription.status === "canceled") status = "cancelled";
+  if (subscription.status === "past_due") status = "suspended";
+  if (subscription.status === "unpaid") status = "suspended";
+
+  const updateFields = ["subscription_status = ?"];
+  const params = [status];
+
+  if (plan) {
+    updateFields.push("subscription_plan = ?");
+    params.push(plan);
+  }
+
+  params.push(customerId);
+
+  const result = await query(
+    `UPDATE tenants SET ${updateFields.join(", ")} WHERE stripe_customer_id = ?`,
+    params
   );
 
-  if (tenant) {
-    let status = "active";
-    if (subscription.status === "canceled") status = "cancelled";
-    if (subscription.status === "past_due") status = "suspended";
-
-    await query("UPDATE tenants SET subscription_status = ? WHERE id = ?", [
-      status,
-      tenant.id,
-    ]);
-
-    console.log(`✅ Abonnement mis à jour pour tenant ${tenant.id}: ${status}`);
+  if (result.affectedRows > 0) {
+    console.log(`✅ Abonnement mis à jour pour ${result.affectedRows} salon(s) (Customer: ${customerId}): ${status}${plan ? ' (Plan: ' + plan + ')' : ''}`);
   }
 }
 
 async function handleSubscriptionDeleted(subscription) {
   const customerId = subscription.customer;
 
-  const [tenant] = await query(
-    "SELECT id FROM tenants WHERE stripe_customer_id = ?",
+  const result = await query(
+    `UPDATE tenants SET
+      subscription_status = 'cancelled',
+      stripe_subscription_id = NULL
+    WHERE stripe_customer_id = ?`,
     [customerId]
   );
 
-  if (tenant) {
-    await query(
-      `UPDATE tenants SET
-        subscription_status = 'cancelled',
-        stripe_subscription_id = NULL
-      WHERE id = ?`,
-      [tenant.id]
-    );
-
-    console.log(`✅ Abonnement annulé pour tenant ${tenant.id}`);
+  if (result.affectedRows > 0) {
+    console.log(`✅ Abonnement annulé pour ${result.affectedRows} salon(s) (Customer: ${customerId})`);
   }
 }
 
@@ -448,20 +452,16 @@ async function handleInvoicePaymentSucceeded(invoice) {
 
 async function handleInvoicePaymentFailed(invoice) {
   console.log(`❌ Paiement échoué: ${invoice.id}`);
-  // Ici: Suspendre le compte, envoyer email d'alerte, etc.
-
+  
   const customerId = invoice.customer;
 
-  const [tenant] = await query(
-    "SELECT id FROM tenants WHERE stripe_customer_id = ?",
+  const result = await query(
+    'UPDATE tenants SET subscription_status = "suspended" WHERE stripe_customer_id = ?',
     [customerId]
   );
 
-  if (tenant) {
-    await query(
-      'UPDATE tenants SET subscription_status = "suspended" WHERE id = ?',
-      [tenant.id]
-    );
+  if (result.affectedRows > 0) {
+    console.log(`⚠️ Compte(s) suspendu(s) pour ${result.affectedRows} salon(s) (Customer: ${customerId})`);
   }
 }
 

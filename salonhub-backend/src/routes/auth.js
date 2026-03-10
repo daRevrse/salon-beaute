@@ -163,7 +163,14 @@ router.post("/register", async (req, res) => {
         [tenantId, email, passwordHash, first_name, last_name]
       );
 
-      // 3. Créer quelques paramètres par défaut
+      // 3. Entrée user_salons (multi-salon pivot)
+      await connection.query(
+        `INSERT INTO user_salons (user_id, tenant_id, role, is_primary, is_active)
+         VALUES (?, ?, 'owner', TRUE, TRUE)`,
+        [userResult.insertId, tenantId]
+      );
+
+      // 4. Créer quelques paramètres par défaut
       await connection.query(
         `INSERT INTO settings (tenant_id, setting_key, setting_value, setting_type) VALUES
         (?, 'business_hours', '{"monday":"09:00-18:00","tuesday":"09:00-18:00","wednesday":"09:00-18:00","thursday":"09:00-18:00","friday":"09:00-18:00","saturday":"09:00-17:00","sunday":"closed"}', 'json'),
@@ -239,7 +246,7 @@ router.post("/register", async (req, res) => {
 // ==========================================
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
 
     // Validation
     if (!email || !password) {
@@ -317,7 +324,7 @@ router.post("/login", async (req, res) => {
       tenant_id: user.tenant_id,
       email: user.email,
       role: user.role,
-    });
+    }, rememberMe ? "30d" : "7d");
 
     // Calculer le statut effectif de l'abonnement
     let effectiveStatus = user.subscription_status;
@@ -329,6 +336,19 @@ router.post("/login", async (req, res) => {
         await query("UPDATE tenants SET subscription_status = 'expired' WHERE id = ?", [user.tenant_id]);
       }
     }
+
+    // Récupérer la liste des salons de l'utilisateur
+    const salons = await query(
+      `SELECT
+        us.role, us.is_primary, us.is_active as membership_active,
+        t.id as tenant_id, t.name, t.slug, t.logo_url, t.business_type,
+        t.subscription_plan, t.subscription_status
+      FROM user_salons us
+      JOIN tenants t ON us.tenant_id = t.id
+      WHERE us.user_id = ? AND us.is_active = TRUE
+      ORDER BY us.is_primary DESC, t.name ASC`,
+      [user.id]
+    );
 
     res.json({
       success: true,
@@ -354,6 +374,7 @@ router.post("/login", async (req, res) => {
           logo_url: user.logo_url,
           business_type: user.business_type,
         },
+        salons,
       },
     });
   } catch (error) {
@@ -370,9 +391,12 @@ router.post("/login", async (req, res) => {
 // ==========================================
 router.get("/me", authMiddleware, async (req, res) => {
   try {
+    // Utiliser le tenant_id du JWT (qui peut changer après un switch)
+    const activeTenantId = req.user.tenant_id;
+
     const [user] = await query(
       `SELECT
-        u.id, u.email, u.first_name, u.last_name, u.phone, u.role,
+        u.id, u.email, u.first_name, u.last_name, u.phone,
         u.is_active, u.last_login_at, u.created_at, u.avatar_url,
         t.id as tenant_id,
         t.name as tenant_name,
@@ -382,9 +406,9 @@ router.get("/me", authMiddleware, async (req, res) => {
         t.trial_ends_at,
         t.business_type
       FROM users u
-      JOIN tenants t ON u.tenant_id = t.id
+      JOIN tenants t ON t.id = ?
       WHERE u.id = ?`,
-      [req.user.id]
+      [activeTenantId, req.user.id]
     );
 
     if (!user) {
@@ -394,9 +418,32 @@ router.get("/me", authMiddleware, async (req, res) => {
       });
     }
 
+    // Récupérer le rôle dans le salon actif (depuis user_salons)
+    const [membership] = await query(
+      "SELECT role FROM user_salons WHERE user_id = ? AND tenant_id = ?",
+      [req.user.id, activeTenantId]
+    );
+    user.role = membership?.role || req.user.role;
+
+    // Récupérer la liste des salons
+    const salons = await query(
+      `SELECT
+        us.role, us.is_primary, us.is_active as membership_active,
+        t.id as tenant_id, t.name, t.slug, t.logo_url, t.business_type,
+        t.subscription_plan, t.subscription_status
+      FROM user_salons us
+      JOIN tenants t ON us.tenant_id = t.id
+      WHERE us.user_id = ? AND us.is_active = TRUE
+      ORDER BY us.is_primary DESC, t.name ASC`,
+      [req.user.id]
+    );
+
     res.json({
       success: true,
-      data: user,
+      data: {
+        ...user,
+        salons,
+      },
     });
   } catch (error) {
     console.error("Erreur récupération profil:", error);
@@ -574,6 +621,13 @@ router.post("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
         phone || null,
         role || "staff",
       ]
+    );
+
+    // Ajouter aussi dans user_salons (multi-salon pivot)
+    await query(
+      `INSERT IGNORE INTO user_salons (user_id, tenant_id, role, is_primary, is_active)
+       VALUES (?, ?, ?, TRUE, TRUE)`,
+      [result.insertId, req.tenantId, role || "staff"]
     );
 
     res.status(201).json({

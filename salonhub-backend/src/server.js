@@ -197,6 +197,12 @@ app.use("/api/scheduler", require("./routes/scheduler"));
 // Routes API Keys (Developer/Custom plans)
 app.use("/api/api-keys", require("./routes/api-keys"));
 
+// Routes Webhooks (Developer/Custom plans)
+app.use("/api/webhooks", require("./routes/webhooks"));
+
+// Routes Salons (Multi-Salon)
+app.use("/api/salons", require("./routes/salons"));
+
 // Routes Restaurant (multi-secteur)
 app.use("/api/restaurant", require("./routes/restaurant"));
 

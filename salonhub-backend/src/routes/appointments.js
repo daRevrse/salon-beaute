@@ -8,8 +8,12 @@ const router = express.Router();
 const { query } = require("../config/database");
 const { authMiddleware } = require("../middleware/auth");
 const { tenantMiddleware } = require("../middleware/tenant");
+const { checkScope } = require("../middleware/checkScope");
+const webhookService = require("../services/webhookService");
 const whatsappService = require("../services/whatsappService");
 const emailService = require("../services/emailService");
+const pushService = require("../services/pushService");
+const expoPushService = require("../services/expoPushService");
 
 // Appliquer middlewares
 router.use(authMiddleware);
@@ -62,7 +66,7 @@ const checkTimeConflict = async (
 // ==========================================
 // GET - Liste des RDV
 // ==========================================
-router.get("/", async (req, res) => {
+router.get("/", checkScope("appointments:read"), async (req, res) => {
   try {
     const {
       date,
@@ -143,7 +147,7 @@ router.get("/", async (req, res) => {
 // ==========================================
 // GET - RDV du jour (vue planning)
 // ==========================================
-router.get("/today", async (req, res) => {
+router.get("/today", checkScope("appointments:read"), async (req, res) => {
   try {
     const appointments = await query(
       `SELECT
@@ -184,7 +188,7 @@ router.get("/today", async (req, res) => {
 // ==========================================
 // GET - Un RDV par ID
 // ==========================================
-router.get("/:id", async (req, res) => {
+router.get("/:id", checkScope("appointments:read"), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -231,7 +235,7 @@ router.get("/:id", async (req, res) => {
 // ==========================================
 // POST - Créer un RDV
 // ==========================================
-router.post("/", async (req, res) => {
+router.post("/", checkScope("appointments:write"), async (req, res) => {
   try {
     const {
       client_id,
@@ -367,6 +371,46 @@ router.post("/", async (req, res) => {
     } catch (socketError) {
       console.error("Erreur socket:", socketError);
     }
+    
+    // Notification Push Staff (Web + Mobile)
+    try {
+      await pushService.sendToTenant(req.tenantId, {
+        title: "Nouveau rendez-vous !",
+        body: `${newAppointment.client_first_name} ${newAppointment.client_last_name} a réservé : ${newAppointment.service_name}`,
+        icon: "/logo192.png",
+        data: {
+          url: `/dashboard/appointments/${newAppointment.id}`,
+          appointmentId: newAppointment.id
+        }
+      }, true);
+    } catch (pushError) {
+      console.error("Erreur web push staff:", pushError.message);
+    }
+    try {
+      await expoPushService.sendToTenant(req.tenantId, {
+        title: "Nouveau rendez-vous !",
+        body: `${newAppointment.client_first_name} ${newAppointment.client_last_name} a réservé : ${newAppointment.service_name}`,
+        data: { type: "new_appointment", appointmentId: newAppointment.id },
+      });
+    } catch (expoPushError) {
+      console.error("Erreur expo push staff:", expoPushError.message);
+    }
+
+    // Webhook: appointment.created
+    webhookService.dispatch(req.tenantId, "appointment.created", {
+      appointment_id: result.insertId,
+      client_id,
+      service_id,
+      staff_id: staff_id || null,
+      appointment_date,
+      start_time,
+      end_time,
+      status: "pending",
+      client_name: newAppointment
+        ? `${newAppointment.client_first_name} ${newAppointment.client_last_name}`
+        : null,
+      service_name: newAppointment?.service_name || null,
+    });
 
     res.status(201).json({
       success: true,
@@ -387,7 +431,7 @@ router.post("/", async (req, res) => {
 // ==========================================
 // PUT - Modifier un RDV
 // ==========================================
-router.put("/:id", async (req, res) => {
+router.put("/:id", checkScope("appointments:write"), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -482,6 +526,18 @@ router.put("/:id", async (req, res) => {
       console.error("Erreur socket:", socketError);
     }
 
+    // Webhook: appointment.updated
+    webhookService.dispatch(req.tenantId, "appointment.updated", {
+      appointment_id: parseInt(id),
+      client_id: client_id || existing.client_id,
+      service_id: service_id || existing.service_id,
+      staff_id: staff_id !== undefined ? staff_id : existing.staff_id,
+      appointment_date: appointment_date || existing.appointment_date,
+      start_time: start_time || existing.start_time,
+      end_time: end_time || existing.end_time,
+      status: existing.status,
+    });
+
     res.json({
       success: true,
       message: "Rendez-vous modifié avec succès",
@@ -498,7 +554,7 @@ router.put("/:id", async (req, res) => {
 // ==========================================
 // PATCH - Changer statut
 // ==========================================
-router.patch("/:id/status", async (req, res) => {
+router.patch("/:id/status", checkScope("appointments:write"), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, cancellation_reason } = req.body;
@@ -544,8 +600,8 @@ router.patch("/:id/status", async (req, res) => {
 
     await query(updateSql, params);
 
-    // Si le rendez-vous est confirmé, envoyer une notification au client
-    if (status === "confirmed") {
+    // Si le rendez-vous est confirmé ou annulé, envoyer une notification au client
+    if (status === "confirmed" || status === "cancelled") {
       try {
         // Récupérer les détails complets du rendez-vous avec infos client
         const [fullAppointment] = await query(
@@ -630,6 +686,58 @@ router.patch("/:id/status", async (req, res) => {
               );
             }
           }
+
+          // Notification Push Client
+          try {
+            let pushTitle = "Modification de rendez-vous";
+            let pushBody = `Votre rendez-vous chez ${fullAppointment.salon_name} a été mis à jour.`;
+
+            if (status === "confirmed") {
+              pushTitle = "Rendez-vous confirmé ! ✅";
+              pushBody = `Votre séance de ${fullAppointment.service_name} chez ${fullAppointment.salon_name} est confirmée pour le ${appointmentDate} à ${fullAppointment.start_time.substring(0, 5)}.`;
+            } else if (status === "cancelled") {
+              pushTitle = "Rendez-vous annulé ❌";
+              pushBody = `Votre rendez-vous de ${fullAppointment.service_name} chez ${fullAppointment.salon_name} pour le ${appointmentDate} a été annulé.`;
+            }
+
+            await pushService.sendToClient(fullAppointment.client_id, {
+              title: pushTitle,
+              body: pushBody,
+              icon: "/logo192.png",
+              data: {
+                url: `/appointments/${fullAppointment.id}`,
+                appointmentId: fullAppointment.id
+              }
+            });
+          } catch (pushError) {
+            console.error("Erreur push client status:", pushError.message);
+          }
+          
+          // Notification Push Staff (si annulé — Web + Mobile)
+          if (status === "cancelled") {
+            try {
+              await pushService.sendToTenant(req.tenantId, {
+                title: "Rendez-vous annulé",
+                body: `Le rendez-vous de ${fullAppointment.client_first_name} ${fullAppointment.client_last_name} (${fullAppointment.service_name}) a été annulé.`,
+                icon: "/logo192.png",
+                data: {
+                  url: `/dashboard/appointments/${fullAppointment.id}`,
+                  appointmentId: fullAppointment.id
+                }
+              }, true);
+            } catch (staffPushError) {
+              console.error("Erreur web push staff status:", staffPushError.message);
+            }
+            try {
+              await expoPushService.sendToTenant(req.tenantId, {
+                title: "Rendez-vous annulé",
+                body: `Le rendez-vous de ${fullAppointment.client_first_name} ${fullAppointment.client_last_name} (${fullAppointment.service_name}) a été annulé.`,
+                data: { type: "appointment_cancelled", appointmentId: fullAppointment.id },
+              });
+            } catch (expoStaffPushError) {
+              console.error("Erreur expo push staff status:", expoStaffPushError.message);
+            }
+          }
         }
       } catch (error) {
         // On log l'erreur mais on ne bloque pas la réponse
@@ -657,6 +765,30 @@ router.patch("/:id/status", async (req, res) => {
       console.error("Erreur socket:", socketError);
     }
 
+    // Webhooks selon le statut
+    if (status === "cancelled") {
+      webhookService.dispatch(req.tenantId, "appointment.cancelled", {
+        appointment_id: parseInt(id),
+        client_id: appointment.client_id,
+        service_id: appointment.service_id,
+        staff_id: appointment.staff_id,
+        appointment_date: appointment.appointment_date,
+        start_time: appointment.start_time,
+        previous_status: appointment.status,
+        cancellation_reason: cancellation_reason || null,
+      });
+    } else if (status === "completed") {
+      webhookService.dispatch(req.tenantId, "appointment.completed", {
+        appointment_id: parseInt(id),
+        client_id: appointment.client_id,
+        service_id: appointment.service_id,
+        staff_id: appointment.staff_id,
+        appointment_date: appointment.appointment_date,
+        start_time: appointment.start_time,
+        end_time: appointment.end_time,
+      });
+    }
+
     res.json({
       success: true,
       message: `Rendez-vous ${
@@ -679,7 +811,7 @@ router.patch("/:id/status", async (req, res) => {
 // ==========================================
 // DELETE - Supprimer un RDV
 // ==========================================
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", checkScope("appointments:write"), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -706,6 +838,11 @@ router.delete("/:id", async (req, res) => {
       console.error("Erreur socket:", socketError);
     }
 
+    // Webhook: appointment.deleted
+    webhookService.dispatch(req.tenantId, "appointment.deleted", {
+      appointment_id: parseInt(id),
+    });
+
     res.json({
       success: true,
       message: "Rendez-vous supprimé avec succès",
@@ -722,7 +859,7 @@ router.delete("/:id", async (req, res) => {
 // ==========================================
 // GET - Créneaux disponibles
 // ==========================================
-router.get("/availability/slots", async (req, res) => {
+router.get("/availability/slots", checkScope("appointments:read"), async (req, res) => {
   try {
     const { date, service_id, staff_id } = req.query;
 
@@ -784,7 +921,7 @@ router.get("/availability/slots", async (req, res) => {
 // ==========================================
 // POST - Envoyer une confirmation de RDV
 // ==========================================
-router.post("/:id/send-confirmation", async (req, res) => {
+router.post("/:id/send-confirmation", checkScope("appointments:write"), async (req, res) => {
   try {
     const { id } = req.params;
     const { send_via } = req.body; // 'email', 'whatsapp', ou 'both'

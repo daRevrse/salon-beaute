@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import pwaService from '../services/pwaService';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [tenant, setTenant] = useState(null);
+  const [salons, setSalons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -15,6 +17,7 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
       const storedTenant = localStorage.getItem('tenant');
+      const storedSalons = localStorage.getItem('salons');
 
       if (token && storedUser) {
         try {
@@ -24,6 +27,11 @@ export const AuthProvider = ({ children }) => {
           setUser(parsedUser);
           setTenant(parsedTenant);
 
+          // Restaurer les salons
+          if (storedSalons) {
+            try { setSalons(JSON.parse(storedSalons)); } catch {}
+          }
+
           // Synchroniser la devise du tenant
           if (parsedTenant?.currency) {
             localStorage.setItem('tenant_currency', parsedTenant.currency);
@@ -31,8 +39,15 @@ export const AuthProvider = ({ children }) => {
 
           // Vérifier que le token est toujours valide et récupérer données fraîches
           const response = await api.get('/auth/me');
-          const freshUser = response.data.data;
+          const freshData = response.data.data;
+          const { salons: freshSalons, ...freshUser } = freshData;
           setUser(freshUser);
+
+          // Stocker les salons si disponibles
+          if (freshSalons && freshSalons.length > 0) {
+            setSalons(freshSalons);
+            localStorage.setItem('salons', JSON.stringify(freshSalons));
+          }
 
           // Mettre à jour le tenant avec le business_type du user si différent
           if (freshUser.business_type && freshUser.business_type !== parsedTenant?.business_type) {
@@ -86,19 +101,25 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Connexion
-  const login = async (email, password) => {
+  const login = async (email, password, rememberMe = false) => {
     try {
       setError(null);
       setLoading(true);
       
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email, password, rememberMe });
       
-      const { token, user: loggedUser, tenant: userTenant } = response.data.data;
-      
+      const { token, user: loggedUser, tenant: userTenant, salons: userSalons } = response.data.data;
+
       // Sauvegarder
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(loggedUser));
       localStorage.setItem('tenant', JSON.stringify(userTenant));
+
+      // Stocker les salons
+      if (userSalons) {
+        localStorage.setItem('salons', JSON.stringify(userSalons));
+        setSalons(userSalons);
+      }
 
       // Synchroniser la devise du tenant
       if (userTenant?.currency) {
@@ -107,6 +128,11 @@ export const AuthProvider = ({ children }) => {
 
       setUser(loggedUser);
       setTenant(userTenant);
+      
+      // Définir le tenant ID pour la PWA
+      if (userTenant?.id) {
+        pwaService.setTenantId(userTenant.id);
+      }
 
       return { success: true };
     } catch (err) {
@@ -119,7 +145,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Connexion avec Google
-  const loginWithGoogle = async (idToken) => {
+  const loginWithGoogle = async (idToken, rememberMe = false) => {
     try {
       setError(null);
       setLoading(true);
@@ -127,13 +153,19 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/google/login', {
         id_token: idToken,
         platform: 'web',
+        rememberMe
       });
 
-      const { token, user: loggedUser, tenant: userTenant } = response.data.data;
+      const { token, user: loggedUser, tenant: userTenant, salons: userSalons } = response.data.data;
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(loggedUser));
       localStorage.setItem('tenant', JSON.stringify(userTenant));
+
+      if (userSalons) {
+        localStorage.setItem('salons', JSON.stringify(userSalons));
+        setSalons(userSalons);
+      }
 
       if (userTenant?.currency) {
         localStorage.setItem('tenant_currency', userTenant.currency);
@@ -141,6 +173,11 @@ export const AuthProvider = ({ children }) => {
 
       setUser(loggedUser);
       setTenant(userTenant);
+
+      // Définir le tenant ID pour la PWA
+      if (userTenant?.id) {
+        pwaService.setTenantId(userTenant.id);
+      }
 
       return { success: true };
     } catch (err) {
@@ -200,9 +237,44 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     localStorage.removeItem('tenant');
     localStorage.removeItem('tenant_currency');
+    localStorage.removeItem('salons');
     setUser(null);
     setTenant(null);
+    setSalons([]);
     setError(null);
+  };
+
+  // Changer de salon actif (multi-salon)
+  const switchSalon = async (targetTenantId) => {
+    try {
+      setLoading(true);
+      const response = await api.post(`/salons/switch/${targetTenantId}`);
+
+      if (response.data.success) {
+        const { token, user: switchedUser, tenant: switchedTenant } = response.data.data;
+
+        // Mettre à jour le token et les données
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(switchedUser));
+        localStorage.setItem('tenant', JSON.stringify(switchedTenant));
+
+        if (switchedTenant?.currency) {
+          localStorage.setItem('tenant_currency', switchedTenant.currency);
+        }
+
+        setUser(switchedUser);
+        setTenant(switchedTenant);
+
+        return { success: true, tenant: switchedTenant };
+      }
+
+      return { success: false, error: 'Erreur lors du changement de salon' };
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 'Erreur lors du changement de salon';
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Mettre à jour profil
@@ -366,6 +438,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     tenant,
+    salons,
     loading,
     error,
     isAuthenticated: !!user,
@@ -373,11 +446,13 @@ export const AuthProvider = ({ children }) => {
     isAdmin: user?.role === 'admin' || user?.role === 'owner',
     isSubscriptionActive: isSubscriptionActive(),
     trialDaysRemaining: getTrialDaysRemaining(),
+    hasMultipleSalons: salons.length > 1,
     register,
     login,
     loginWithGoogle,
     registerWithGoogle,
     logout,
+    switchSalon,
     updateProfile,
     updateUser,
     changePassword,

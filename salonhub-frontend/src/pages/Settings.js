@@ -13,6 +13,8 @@ import { withPermission } from "../components/common/PermissionGate";
 import { getBusinessTypeConfig } from "../utils/businessTypeConfig";
 import ImageUploader from "../components/common/ImageUploader";
 import PWASettings from "../components/settings/PWASettings";
+import APISettings from "../components/settings/APISettings";
+import WebhookSettings from "../components/settings/WebhookSettings";
 import { getImageUrl } from "../utils/imageUtils";
 import api from "../services/api";
 import {
@@ -36,6 +38,8 @@ import {
   PaintBrushIcon,
   LockClosedIcon,
   SparklesIcon,
+  CodeBracketIcon,
+  SignalIcon,
 } from "@heroicons/react/24/outline";
 
 import { useToast } from "../hooks/useToast";
@@ -671,6 +675,14 @@ const Settings = () => {
                 { id: "promotions", label: "Promotions", icon: TagIcon },
                 { id: "theme", label: "Thème", icon: PaintBrushIcon },
                 { id: "pwa", label: "Notifications", icon: BellIcon },
+                ...(tenant?.subscription_plan === "developer" ||
+                tenant?.subscription_plan === "custom" ||
+                tenant?.subscription_status === "trial"
+                  ? [
+                      { id: "api", label: "API", icon: CodeBracketIcon },
+                      { id: "webhooks", label: "Webhooks", icon: SignalIcon },
+                    ]
+                  : []),
               ].map((tab) => {
                 const TabIcon = tab.icon;
                 return (
@@ -1423,6 +1435,20 @@ const Settings = () => {
             {activeTab === "pwa" && (
               <div>
                 <PWASettings />
+              </div>
+            )}
+
+            {/* API Developer Tab */}
+            {activeTab === "api" && (
+              <div>
+                <APISettings />
+              </div>
+            )}
+
+            {/* Webhooks Tab */}
+            {activeTab === "webhooks" && (
+              <div>
+                <WebhookSettings />
               </div>
             )}
           </div>

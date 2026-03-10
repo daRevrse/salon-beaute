@@ -10,6 +10,9 @@ import { CurrencyProvider } from "./contexts/CurrencyContext";
 import { PermissionProvider } from "./contexts/PermissionContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import UpdateBanner from "./components/common/UpdateBanner";
+import PWAInstallPrompt from "./components/common/PWAInstallPrompt";
+import PushSoftPrompt from "./components/common/PushSoftPrompt";
+import pwaService from "./services/pwaService";
 
 // Auth
 import Login from "./components/auth/Login";
@@ -84,6 +87,11 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
 function App() {
+  React.useEffect(() => {
+    // Tenter de ré-abonner l'utilisateur aux notifications push silencieusement
+    pwaService.autoSubscribe();
+  }, []);
+
   const content = (
     <BrowserRouter>
       <AuthProvider>
@@ -360,6 +368,12 @@ function App() {
 
               {/* Bannière de mise à jour PWA */}
               <UpdateBanner />
+              
+              {/* Prompt d'installation PWA */}
+              <PWAInstallPrompt />
+              
+              {/* Prompt d'activation des notifications */}
+              <PushSoftPrompt />
             </SocketProvider>
           </CurrencyProvider>
         </PermissionProvider>

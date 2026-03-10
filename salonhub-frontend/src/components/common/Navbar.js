@@ -9,6 +9,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { usePermissions } from "../../contexts/PermissionContext";
 import { ImageWithFallback, getImageUrl } from "../../utils/imageUtils";
 import NotificationBell from "./NotificationBell";
+import SalonSwitcher from "./SalonSwitcher";
+import usePWA from "../../hooks/usePWA";
 
 // Heroicons
 import {
@@ -32,6 +34,7 @@ import {
   BookOpenIcon,
   UserGroupIcon,
   DocumentTextIcon,
+  ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 
 // Business Type Configuration
@@ -117,6 +120,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { user, tenant, logout } = useAuth();
   const { can } = usePermissions();
+  const { canInstall, installApp } = usePWA();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
@@ -195,6 +199,11 @@ const Navbar = () => {
                 </span>
               </div>
             </Link>
+
+            {/* Salon Switcher (multi-salon) */}
+            <div className="hidden sm:block ml-2">
+              <SalonSwitcher />
+            </div>
 
             {/* Desktop menu */}
             <div className="hidden lg:flex lg:space-x-1 ml-8">
@@ -331,6 +340,19 @@ const Navbar = () => {
                           Facturation
                         </Link>
                       )}
+
+                      {canInstall && (
+                        <button
+                          onClick={() => {
+                            installApp();
+                            setProfileMenuOpen(false);
+                          }}
+                          className={`flex w-full items-center gap-2 px-4 py-2.5 text-slate-700 ${config.hoverBg} hover:${config.textColor} text-sm transition-colors`}
+                        >
+                          <ArrowDownTrayIcon className="h-5 w-5" />
+                          Installer l'application
+                        </button>
+                      )}
                     </div>
 
                     <hr className="my-1 border-slate-100" />
@@ -370,6 +392,11 @@ const Navbar = () => {
       {/* MOBILE MENU */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-slate-200 bg-white shadow-inner animate-fade-in-down">
+          {/* Salon Switcher for Mobile */}
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-500">Salon actif</span>
+            <SalonSwitcher />
+          </div>
           <div className="py-3 space-y-1">
             {navLinks.map((link) => (
               <Link
@@ -447,6 +474,19 @@ const Navbar = () => {
                 <CreditCardIcon className="h-5 w-5 text-slate-400" />
                 Facturation
               </Link>
+            )}
+
+            {canInstall && (
+              <button
+                onClick={() => {
+                  installApp();
+                  setMobileMenuOpen(false);
+                }}
+                className={`flex w-full items-center gap-2 px-4 py-3 text-sm font-medium ${config.textColor} ${config.lightBg}`}
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+                Installer l'application
+              </button>
             )}
 
             <button

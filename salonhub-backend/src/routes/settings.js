@@ -7,6 +7,7 @@ const router = express.Router();
 const db = require("../config/database");
 const { authMiddleware } = require("../middleware/auth");
 const { tenantMiddleware } = require("../middleware/tenant");
+const { checkScope } = require("../middleware/checkScope");
 
 // Toutes les routes sont protégées
 router.use(authMiddleware);
@@ -16,7 +17,7 @@ router.use(tenantMiddleware);
  * GET /api/settings
  * Récupérer tous les paramètres du salon
  */
-router.get("/", async (req, res) => {
+router.get("/", checkScope("settings:read"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
 
@@ -76,7 +77,7 @@ router.get("/", async (req, res) => {
  * GET /api/settings/salon
  * Récupérer les informations du salon
  */
-router.get("/salon", async (req, res) => {
+router.get("/salon", checkScope("settings:read"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
 
@@ -123,7 +124,7 @@ router.get("/salon", async (req, res) => {
  * GET /api/settings/subscription
  * Récupérer les informations d'abonnement du tenant
  */
-router.get("/subscription", async (req, res) => {
+router.get("/subscription", checkScope("settings:read"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
 
@@ -190,7 +191,7 @@ router.get("/subscription", async (req, res) => {
  * PUT /api/settings/salon
  * Mettre à jour les informations du salon (nom, logo, etc.)
  */
-router.put("/salon", async (req, res) => {
+router.put("/salon", checkScope("settings:write"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
     const { name, slug, phone, email, address, city, postal_code, logo_url, banner_url, slogan } = req.body;
@@ -271,7 +272,7 @@ router.put("/salon", async (req, res) => {
  * PUT /api/settings
  * Mettre à jour les paramètres du salon
  */
-router.put("/", async (req, res) => {
+router.put("/", checkScope("settings:write"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
     const { business_hours, slot_duration, currency, theme_settings } = req.body;
@@ -394,7 +395,7 @@ router.put("/", async (req, res) => {
  * GET /api/settings/currency
  * Récupérer la devise du tenant
  */
-router.get("/currency", async (req, res) => {
+router.get("/currency", checkScope("settings:read"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
 
@@ -418,7 +419,7 @@ router.get("/currency", async (req, res) => {
  * GET /api/settings/:key
  * Récupérer un paramètre spécifique
  */
-router.get("/:key", async (req, res) => {
+router.get("/:key", checkScope("settings:read"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
     const { key } = req.params;
@@ -460,7 +461,7 @@ router.get("/:key", async (req, res) => {
  * PUT /api/settings/onboarding/complete
  * Marquer le tutoriel/onboarding comme terminé
  */
-router.put("/onboarding/complete", async (req, res) => {
+router.put("/onboarding/complete", checkScope("settings:write"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
 

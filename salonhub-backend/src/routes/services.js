@@ -8,6 +8,8 @@ const router = express.Router();
 const { query } = require("../config/database");
 const { authMiddleware } = require("../middleware/auth");
 const { tenantMiddleware } = require("../middleware/tenant");
+const { checkScope } = require("../middleware/checkScope");
+const webhookService = require("../services/webhookService");
 
 // Appliquer middlewares
 router.use(authMiddleware);
@@ -16,7 +18,7 @@ router.use(tenantMiddleware);
 // ==========================================
 // GET - Liste des services
 // ==========================================
-router.get("/", async (req, res) => {
+router.get("/", checkScope("services:read"), async (req, res) => {
   try {
     const { category, is_active, search } = req.query;
 
@@ -69,7 +71,7 @@ router.get("/", async (req, res) => {
 // ==========================================
 // GET - Un service par ID
 // ==========================================
-router.get("/:id", async (req, res) => {
+router.get("/:id", checkScope("services:read"), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -116,7 +118,7 @@ router.get("/:id", async (req, res) => {
 // ==========================================
 // POST - Créer un service
 // ==========================================
-router.post("/", async (req, res) => {
+router.post("/", checkScope("services:write"), async (req, res) => {
   try {
     const {
       name,
@@ -174,6 +176,15 @@ router.post("/", async (req, res) => {
       ]
     );
 
+    // Webhook: service.created
+    webhookService.dispatch(req.tenantId, "service.created", {
+      service_id: result.insertId,
+      name,
+      price,
+      duration,
+      category: category || null,
+    });
+
     res.status(201).json({
       success: true,
       message: "Service créé avec succès",
@@ -193,7 +204,7 @@ router.post("/", async (req, res) => {
 // ==========================================
 // PUT - Modifier un service
 // ==========================================
-router.put("/:id", async (req, res) => {
+router.put("/:id", checkScope("services:write"), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -275,6 +286,14 @@ router.put("/:id", async (req, res) => {
       ]
     );
 
+    // Webhook: service.updated
+    webhookService.dispatch(req.tenantId, "service.updated", {
+      service_id: parseInt(id),
+      name,
+      price,
+      duration,
+    });
+
     res.json({
       success: true,
       message: "Service modifié avec succès",
@@ -291,7 +310,7 @@ router.put("/:id", async (req, res) => {
 // ==========================================
 // DELETE - Supprimer un service
 // ==========================================
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", checkScope("services:write"), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -325,6 +344,11 @@ router.delete("/:id", async (req, res) => {
       });
     }
 
+    // Webhook: service.deleted
+    webhookService.dispatch(req.tenantId, "service.deleted", {
+      service_id: parseInt(id),
+    });
+
     res.json({
       success: true,
       message: "Service supprimé avec succès",
@@ -341,7 +365,7 @@ router.delete("/:id", async (req, res) => {
 // ==========================================
 // PATCH - Toggle actif/inactif
 // ==========================================
-router.patch("/:id/toggle", async (req, res) => {
+router.patch("/:id/toggle", checkScope("services:write"), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -381,7 +405,7 @@ router.patch("/:id/toggle", async (req, res) => {
 // ==========================================
 // GET - Catégories disponibles
 // ==========================================
-router.get("/meta/categories", async (req, res) => {
+router.get("/meta/categories", checkScope("services:read"), async (req, res) => {
   try {
     const categories = await query(
       `SELECT DISTINCT category, COUNT(*) as count 

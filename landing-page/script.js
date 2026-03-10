@@ -384,8 +384,12 @@ document.addEventListener('DOMContentLoaded', () => {
           if (emailInput) emailInput.value = '';
           const btn = newsletterForm.querySelector('button');
           if (btn) {
-            btn.innerHTML = '<i class="fas fa-check"></i>';
-            setTimeout(() => { btn.innerHTML = '<i class="fas fa-paper-plane"></i>'; }, 2500);
+            btn.innerHTML = '<i data-lucide="check"></i>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            setTimeout(() => {
+              btn.innerHTML = '<i data-lucide="send"></i>';
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+            }, 2500);
           }
         }).catch(() => { /* silently fail */ });
       }
@@ -758,7 +762,7 @@ document.addEventListener('DOMContentLoaded', () => {
       hero_title: 'Votre activite,<br><span class="gradient-text">sous controle.</span>',
       hero_desc: 'Rendez-vous, clients, paiements et analyses — la plateforme tout-en-un qui libere votre temps et booste votre chiffre d\'affaires.',
       hero_cta1: 'Demarrer gratuitement',
-      hero_cta2: 'Voir la demo',
+      hero_cta2: 'Demander une démo',
       // Floating cards
       float_revenue: 'de revenus',
       float_absence: 'd\'absences',
@@ -887,7 +891,7 @@ document.addEventListener('DOMContentLoaded', () => {
       footer_desc: 'La plateforme de gestion tout-en-un pour professionnels.',
       footer_nav: 'Navigation',
       footer_contact: 'Contact',
-      footer_location: 'Europe',
+      footer_location: 'Toulouse, France',
       footer_newsletter_title: 'Newsletter',
       footer_newsletter_desc: 'Recevez nos conseils et actualites',
       footer_copy: '&copy; 2025 <strong>FlowKraft Agency</strong>. Tous droits reserves.',
@@ -899,6 +903,9 @@ document.addEventListener('DOMContentLoaded', () => {
       modal_desc: 'Decrivez votre besoin et nous reviendrons vers vous rapidement.',
       modal_submit: 'Envoyer',
       modal_success: 'Message envoye ! Nous reviendrons vers vous sous 24h.',
+      app_pwa_title: 'Utiliser la Web App',
+      app_pwa_desc: 'Installez SalonHub sur votre écran d\'accueil depuis l\'application.',
+      app_pwa_install: 'Ouvrir l\'App',
     },
     en: {
       // Nav
@@ -913,7 +920,7 @@ document.addEventListener('DOMContentLoaded', () => {
       hero_title: 'Your business,<br><span class="gradient-text">under control.</span>',
       hero_desc: 'Appointments, clients, payments and analytics — the all-in-one platform that frees your time and boosts your revenue.',
       hero_cta1: 'Start for free',
-      hero_cta2: 'Watch demo',
+      hero_cta2: 'Request a demo',
       // Floating cards
       float_revenue: 'revenue',
       float_absence: 'absences',
@@ -1042,7 +1049,7 @@ document.addEventListener('DOMContentLoaded', () => {
       footer_desc: 'The all-in-one management platform for professionals.',
       footer_nav: 'Navigation',
       footer_contact: 'Contact',
-      footer_location: 'Europe',
+      footer_location: 'Toulouse, France',
       footer_newsletter_title: 'Newsletter',
       footer_newsletter_desc: 'Get our tips and updates',
       footer_copy: '&copy; 2025 <strong>FlowKraft Agency</strong>. All rights reserved.',
@@ -1054,6 +1061,9 @@ document.addEventListener('DOMContentLoaded', () => {
       modal_desc: 'Describe your needs and we\'ll get back to you shortly.',
       modal_submit: 'Send',
       modal_success: 'Message sent! We\'ll get back to you within 24 hours.',
+      app_pwa_title: 'Use Web App',
+      app_pwa_desc: 'Install SalonHub on your home screen from the app.',
+      app_pwa_install: 'Open App',
     }
   };
 
@@ -1180,6 +1190,59 @@ document.addEventListener('DOMContentLoaded', () => {
       closeContactModal();
     }
   });
+
+  // ================================
+  // MOBILE APP NOTIFY FORM
+  // ================================
+  const appNotifyForm = document.getElementById('appNotifyForm');
+  if (appNotifyForm) {
+    appNotifyForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const emailInput = appNotifyForm.querySelector('input[type="email"]');
+      const email = emailInput?.value;
+      const submitBtn = appNotifyForm.querySelector('button[type="submit"]');
+
+      if (!email) return;
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        const originalText = submitBtn.innerHTML;
+        submitBtn.textContent = '...';
+
+        if (typeof emailjs !== 'undefined') {
+          emailjs.send('default_service', 'template_app_notify', {
+            email,
+            message: `Demande de notification App Mobile: ${email}`,
+          }).then(() => {
+            if (emailInput) emailInput.value = '';
+            submitBtn.innerHTML = '<i data-lucide="check"></i>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            setTimeout(() => {
+              submitBtn.innerHTML = originalText;
+              submitBtn.disabled = false;
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+            }, 2500);
+          }).catch(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          });
+        } else {
+          // Fallback
+          setTimeout(() => {
+            if (emailInput) emailInput.value = '';
+            submitBtn.innerHTML = '<i data-lucide="check"></i>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            setTimeout(() => {
+              submitBtn.innerHTML = originalText;
+              submitBtn.disabled = false;
+              if (typeof lucide !== 'undefined') lucide.createIcons();
+            }, 2000);
+          }, 1000);
+        }
+      }
+    });
+  }
 
   // Contact form submission via EmailJS
   if (contactForm) {

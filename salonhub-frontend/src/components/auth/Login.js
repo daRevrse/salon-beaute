@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import GoogleSignInButton from "./GoogleSignInButton";
+import usePWA from "../../hooks/usePWA";
 import {
   EnvelopeIcon,
   LockClosedIcon,
@@ -25,7 +26,16 @@ const Login = () => {
     email: "",
     password: "",
   });
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+  const { isPWA, canInstall, installApp } = usePWA();
+
+  // Auto-cocher Se souvenir de moi si en mode PWA
+  React.useEffect(() => {
+    if (isPWA) {
+      setRememberMe(true);
+    }
+  }, [isPWA]);
   const [focusedField, setFocusedField] = useState(null);
 
   const handleChange = (e) => {
@@ -45,7 +55,8 @@ const Login = () => {
       return;
     }
 
-    const result = await login(formData.email, formData.password);
+    // On passe l'email, le password ET le flag rememberMe
+    const result = await login(formData.email, formData.password, rememberMe);
 
     if (result.success) {
       navigate("/dashboard");
@@ -229,6 +240,8 @@ const Login = () => {
                     id="remember-me"
                     name="remember-me"
                     type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
                     className="h-4 w-4 rounded border-violet-300 text-violet-600
                              focus:ring-violet-500 focus:ring-offset-0 cursor-pointer
                              transition-colors"
@@ -289,7 +302,7 @@ const Login = () => {
 
                   <GoogleSignInButton
                     onSuccess={async (accessToken, userInfo) => {
-                      const result = await loginWithGoogle(accessToken);
+                      const result = await loginWithGoogle(accessToken, rememberMe);
 
                       if (result.success) {
                         navigate("/dashboard");
@@ -338,6 +351,18 @@ const Login = () => {
                   <span>{item.text}</span>
                 </div>
               ))}
+
+              {/* PWA Install Invitation */}
+              {canInstall && (
+                <button
+                  onClick={installApp}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full
+                           text-sm text-white shadow-soft animate-bounce-subtle"
+                >
+                  <SparklesIcon className="h-4 w-4" />
+                  <span>Installer l'App</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

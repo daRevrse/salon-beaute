@@ -1,12 +1,19 @@
 /**
  * Routes pour gérer les notifications push
  * Permet aux clients et au staff de s'abonner aux notifications
+ * - Web Push (VAPID) pour les navigateurs (PWA)
+ * - Expo Push pour les appareils mobiles (React Native)
  */
 
 const express = require("express");
 const router = express.Router();
 const pushService = require("../services/pushService");
+const expoPushService = require("../services/expoPushService");
 const { authMiddleware } = require("../middleware/auth");
+
+// ==========================================
+// WEB PUSH (VAPID) — Navigateurs / PWA
+// ==========================================
 
 /**
  * GET /api/push/vapid-public-key
@@ -38,7 +45,7 @@ router.get("/vapid-public-key", (req, res) => {
 
 /**
  * POST /api/push/subscribe
- * S'abonner aux notifications push
+ * S'abonner aux notifications push (Web Push / VAPID)
  * Body: { subscription: {...}, clientId?, userId? }
  */
 router.post("/subscribe", async (req, res) => {
@@ -98,7 +105,7 @@ router.post("/subscribe", async (req, res) => {
 
 /**
  * POST /api/push/unsubscribe
- * Se désabonner des notifications push
+ * Se désabonner des notifications push (Web Push)
  * Body: { endpoint }
  */
 router.post("/unsubscribe", async (req, res) => {
@@ -127,9 +134,90 @@ router.post("/unsubscribe", async (req, res) => {
   }
 });
 
+// ==========================================
+// EXPO PUSH — Appareils mobiles (React Native)
+// ==========================================
+
+/**
+ * POST /api/push/register-mobile
+ * Enregistrer un token Expo push (mobile)
+ * Body: { token, deviceName?, platform? }
+ */
+router.post("/register-mobile", authMiddleware, async (req, res) => {
+  try {
+    const { token, deviceName, platform } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        error: "Token Expo manquant",
+      });
+    }
+
+    const result = await expoPushService.registerToken({
+      tenantId: req.user.tenant_id,
+      userId: req.user.id,
+      token,
+      deviceName: deviceName || null,
+      platform: platform || null,
+    });
+
+    res.json({
+      success: true,
+      message: result.updated
+        ? "Token mobile mis à jour"
+        : "Token mobile enregistré",
+      tokenId: result.tokenId,
+    });
+  } catch (error) {
+    console.error("Erreur enregistrement token mobile:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur lors de l'enregistrement du token",
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/push/unregister-mobile
+ * Supprimer un token Expo push (déconnexion mobile)
+ * Body: { token }
+ */
+router.post("/unregister-mobile", authMiddleware, async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        error: "Token manquant",
+      });
+    }
+
+    await expoPushService.removeToken(token);
+
+    res.json({
+      success: true,
+      message: "Token mobile supprimé",
+    });
+  } catch (error) {
+    console.error("Erreur suppression token mobile:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur lors de la suppression du token",
+    });
+  }
+});
+
+// ==========================================
+// TEST — Envoi de notification test (tous canaux)
+// ==========================================
+
 /**
  * POST /api/push/test
- * Envoyer une notification push de test (admin only)
+ * Envoyer une notification push de test (owner only)
+ * Envoie simultanément via Web Push ET Expo Push
  */
 router.post("/test", authMiddleware, async (req, res) => {
   try {
@@ -143,34 +231,52 @@ router.post("/test", authMiddleware, async (req, res) => {
 
     const { clientId, userId, title, body } = req.body;
 
-    const payload = {
-      title: title || "Notification de test",
-      body: body || "Ceci est une notification push de test depuis SalonHub",
+    const notifTitle = title || "Notification de test";
+    const notifBody =
+      body || "Ceci est une notification push de test depuis SalonHub";
+
+    // Payload Web Push (navigateurs)
+    const webPayload = {
+      title: notifTitle,
+      body: notifBody,
       icon: "/logo192.png",
       badge: "/logo192.png",
       tag: "test",
       requireInteraction: false,
     };
 
-    let result;
+    // Payload Expo Push (mobile)
+    const expoPayload = {
+      title: notifTitle,
+      body: notifBody,
+      data: { type: "test" },
+    };
+
+    const results = { web: null, mobile: null };
 
     if (clientId) {
-      result = await pushService.sendToClient(clientId, payload);
+      // Envoyer au client (web push seulement pour les clients)
+      results.web = await pushService.sendToClient(clientId, webPayload);
     } else if (userId) {
-      // Envoyer au staff (pas encore implémenté, à faire si besoin)
-      return res.status(400).json({
-        success: false,
-        error: "Envoi au staff pas encore implémenté",
-      });
+      // Envoyer à un utilisateur spécifique (mobile)
+      results.mobile = await expoPushService.sendToUser(userId, expoPayload);
     } else {
-      // Envoyer à tout le salon
-      result = await pushService.sendToTenant(req.user.tenant_id, payload, true);
+      // Envoyer à tout le salon (web + mobile)
+      results.web = await pushService.sendToTenant(
+        req.user.tenant_id,
+        webPayload,
+        true
+      );
+      results.mobile = await expoPushService.sendToTenant(
+        req.user.tenant_id,
+        expoPayload
+      );
     }
 
     res.json({
       success: true,
       message: "Notification de test envoyée",
-      result: result,
+      results,
     });
   } catch (error) {
     console.error("Erreur envoi notification test:", error);

@@ -209,6 +209,19 @@ router.post("/login", async (req, res) => {
       }
     }
 
+    // Récupérer la liste des salons de l'utilisateur
+    const salons = await query(
+      `SELECT
+        us.role, us.is_primary, us.is_active as membership_active,
+        t.id as tenant_id, t.name, t.slug, t.logo_url, t.business_type,
+        t.subscription_plan, t.subscription_status
+      FROM user_salons us
+      JOIN tenants t ON us.tenant_id = t.id
+      WHERE us.user_id = ? AND us.is_active = TRUE
+      ORDER BY us.is_primary DESC, t.name ASC`,
+      [user.id]
+    );
+
     res.json({
       success: true,
       message: "Connexion Google réussie",
@@ -234,6 +247,7 @@ router.post("/login", async (req, res) => {
           logo_url: user.logo_url,
           business_type: user.business_type,
         },
+        salons,
       },
     });
   } catch (error) {
@@ -395,7 +409,14 @@ router.post("/register", async (req, res) => {
         ]
       );
 
-      // 3. Paramètres par défaut
+      // 3. Entrée user_salons (multi-salon pivot)
+      await connection.query(
+        `INSERT INTO user_salons (user_id, tenant_id, role, is_primary, is_active)
+         VALUES (?, ?, 'owner', TRUE, TRUE)`,
+        [userResult.insertId, tenantId]
+      );
+
+      // 4. Paramètres par défaut
       await connection.query(
         `INSERT INTO settings (tenant_id, setting_key, setting_value, setting_type) VALUES
         (?, 'business_hours', '{"monday":"09:00-18:00","tuesday":"09:00-18:00","wednesday":"09:00-18:00","thursday":"09:00-18:00","friday":"09:00-18:00","saturday":"09:00-17:00","sunday":"closed"}', 'json'),

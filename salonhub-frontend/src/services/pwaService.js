@@ -2,10 +2,22 @@
  * Service de gestion PWA et Notifications Push
  */
 
+import api from './api';
+
 class PWAService {
   constructor() {
     this.deferredPrompt = null;
     this.serviceWorkerRegistration = null;
+    this.tenantId = null;
+    this.currentSubscription = null;
+  }
+
+  /**
+   * Définir le tenant ID actuel
+   */
+  setTenantId(id) {
+    this.tenantId = id;
+    console.log('🏢 PWA Tenant ID défini:', id);
   }
 
   /**
@@ -86,9 +98,15 @@ class PWAService {
           process.env.REACT_APP_VAPID_PUBLIC_KEY || 'default-public-key'
         )
       });
-
-      console.log('✅ Abonné aux notifications push:', subscription);
-      return subscription;
+ 
+       console.log('✅ Abonné aux notifications push:', subscription);
+       
+       this.currentSubscription = subscription;
+       
+       // Sauvegarder sur le backend
+       await this.saveSubscriptionToBackend(subscription);
+       
+       return subscription;
     } catch (error) {
       console.error('❌ Erreur abonnement push:', error);
       return null;
@@ -117,6 +135,60 @@ class PWAService {
   }
 
   /**
+   * Tenter de s'abonner automatiquement si la permission est déjà accordée
+   */
+  async autoSubscribe() {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+      return null;
+    }
+
+    // Attendre que le SW soit prêt
+    if (!this.serviceWorkerRegistration) {
+      await new Promise(resolve => {
+        const check = () => {
+          if (this.serviceWorkerRegistration) resolve();
+          else setTimeout(check, 100);
+        };
+        check();
+      });
+    }
+
+    console.log('🔄 Tentative de ré-abonnement automatique...');
+    return this.subscribeToPushNotifications();
+  }
+
+  /**
+   * Envoyer l'abonnement au serveur
+   */
+  async saveSubscriptionToBackend(subscription = null, clientId = null) {
+    try {
+      const sub = subscription || this.currentSubscription || await this.serviceWorkerRegistration?.pushManager.getSubscription();
+      if (!sub) return false;
+
+      this.currentSubscription = sub;
+
+      // Récupérer les infos utilisateur/tenant si possible
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const tenantStr = localStorage.getItem('tenant');
+      const tenant = tenantStr ? JSON.parse(tenantStr) : null;
+
+      const response = await api.post('/push/subscribe', {
+        subscription: sub,
+        userId: user?.id || null,
+        clientId: clientId || null,
+        tenantId: this.tenantId || tenant?.id || null
+      });
+
+      console.log('✅ Abonnement synchronisé avec le serveur:', response.data);
+      return true;
+    } catch (error) {
+      console.error('❌ Erreur synchronisation abonnement:', error);
+      return false;
+    }
+  }
+
+  /**
    * Afficher une notification locale
    */
   async showLocalNotification(title, options = {}) {
@@ -130,9 +202,15 @@ class PWAService {
         body: options.body || '',
         icon: options.icon || '/logo192.png',
         badge: '/logo192.png',
-        vibrate: [200, 100, 200],
+        vibrate: options.vibrate || [200, 100, 200],
         tag: options.tag || 'salonhub-notification',
-        data: options.data || {},
+        image: options.image || null,
+        actions: options.actions || [],
+        requireInteraction: options.requireInteraction || false,
+        data: {
+          url: options.url || '/',
+          ...options.data
+        },
         ...options
       });
       return true;

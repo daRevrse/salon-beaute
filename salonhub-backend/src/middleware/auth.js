@@ -119,7 +119,7 @@ const roleMiddleware = (allowedRoles) => {
  * @param {Object} user - Données utilisateur
  * @returns {String} Token JWT
  */
-const generateToken = (user) => {
+const generateToken = (user, expiresIn = "7d") => {
   return jwt.sign(
     {
       id: user.id,
@@ -129,7 +129,7 @@ const generateToken = (user) => {
     },
     process.env.JWT_SECRET,
     {
-      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+      expiresIn: process.env.JWT_EXPIRES_IN || expiresIn,
     }
   );
 };

@@ -12,6 +12,7 @@ import { formatDuration } from "../../contexts/PublicThemeContext";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
 import PromoCodeInput from "../../components/common/PromoCodeInput";
 import api from "../../services/api";
+import pwaService from "../../services/pwaService";
 import { getImageUrl } from "../../utils/imageUtils";
 import {
   ClockIcon,
@@ -72,6 +73,12 @@ const BookingClientInfo = () => {
       setFinalAmount(service.price);
     }
   }, [service]);
+
+  useEffect(() => {
+    if (salon?.tenant_id) {
+      pwaService.setTenantId(salon.tenant_id);
+    }
+  }, [salon]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -139,6 +146,11 @@ const BookingClientInfo = () => {
       };
 
       const result = await createAppointment(appointmentData);
+
+      // Si l'utilisateur est abonné aux notifications, lier son clientId à l'abonnement
+      if (result.appointment?.client_id) {
+        await pwaService.saveSubscriptionToBackend(null, result.appointment.client_id);
+      }
 
       navigate(`/book/${slug}/confirmation`, {
         state: {

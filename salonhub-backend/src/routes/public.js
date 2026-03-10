@@ -8,6 +8,8 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/database");
 const emailService = require("../services/emailService");
+const pushService = require("../services/pushService");
+const expoPushService = require("../services/expoPushService");
 const { checkPublicSubscription } = require("../middleware/tenant");
 
 // ===== RECHERCHE PUBLIQUE =====
@@ -740,6 +742,8 @@ router.post("/appointments", async (req, res) => {
     const createdAppointment = await db.query(
       `SELECT
          a.id,
+         a.tenant_id,
+         a.client_id,
          a.appointment_date,
          a.start_time,
          a.end_time,
@@ -807,6 +811,36 @@ router.post("/appointments", async (req, res) => {
       console.log(`📡 Notification temps réel envoyée au salon ${tenantId}`);
     } catch (socketError) {
       console.error("❌ Erreur socket:", socketError);
+    }
+
+    // Notifier le staff via Push (Web + Mobile)
+    try {
+      // Web Push (navigateurs/PWA)
+      await pushService.sendToTenant(tenantId, {
+        title: "Nouveau rendez-vous !",
+        body: `${newApt.client_first_name} ${newApt.client_last_name} a réservé : ${newApt.service_name}`,
+        icon: "/logo192.png",
+        data: {
+          url: `/dashboard/appointments/${newApt.id}`,
+          appointmentId: newApt.id
+        }
+      }, true);
+    } catch (pushError) {
+      console.error("❌ Erreur web push staff:", pushError.message);
+    }
+
+    // Expo Push (appareils mobiles)
+    try {
+      await expoPushService.sendToTenant(tenantId, {
+        title: "Nouveau rendez-vous !",
+        body: `${newApt.client_first_name} ${newApt.client_last_name} a réservé : ${newApt.service_name}`,
+        data: {
+          type: "new_appointment",
+          appointmentId: newApt.id,
+        },
+      });
+    } catch (expoPushError) {
+      console.error("❌ Erreur expo push staff:", expoPushError.message);
     }
     // === FIN MODIFICATION PHASE 3 ===
 
