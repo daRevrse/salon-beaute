@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import FilterButton from '../components/FilterButton';
 import ActionButton from '../components/ActionButton';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
+import { useSocket } from '../contexts/SocketContext';
 
 // Configuration du calendrier en français
 LocaleConfig.locales['fr'] = {
@@ -32,6 +33,7 @@ LocaleConfig.locales['fr'] = {
 LocaleConfig.defaultLocale = 'fr';
 
 const AppointmentsScreen = ({ navigation }) => {
+  const socket = useSocket();
   const [appointments, setAppointments] = useState([]);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +46,23 @@ const AppointmentsScreen = ({ navigation }) => {
   useEffect(() => {
     loadAppointments();
   }, []);
+
+  // Écouter les événements socket en temps réel
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRefresh = () => {
+      loadAppointments();
+    };
+
+    socket.on('new_appointment', handleRefresh);
+    socket.on('appointment_updated', handleRefresh);
+
+    return () => {
+      socket.off('new_appointment', handleRefresh);
+      socket.off('appointment_updated', handleRefresh);
+    };
+  }, [socket]);
 
   useEffect(() => {
     filterAppointments();
@@ -528,6 +547,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
+    paddingTop: 48,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',

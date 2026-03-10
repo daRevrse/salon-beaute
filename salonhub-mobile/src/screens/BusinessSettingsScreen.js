@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
   urlPreviewText: {
     flex: 1,
     fontSize: 13,
-    color: "#4F46E5",
+    color: "#6366F1",
     fontWeight: "500",
   },
   imageUploadContainer: {
@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: "#4F46E5",
+    color: "#6366F1",
     lineHeight: 18,
   },
   footer: {

@@ -48,7 +48,7 @@ const SettingsScreen = ({ navigation }) => {
           icon: 'business-outline',
           title: 'Général',
           subtitle: 'Logo, nom du salon, URL de réservation',
-          color: '#8B5CF6',
+          color: '#6366F1',
           onPress: () => navigation.navigate('BusinessSettings'),
         },
         {
@@ -88,7 +88,7 @@ const SettingsScreen = ({ navigation }) => {
           icon: 'pricetag-outline',
           title: 'Promotions',
           subtitle: 'Codes promo et réductions',
-          color: '#8B5CF6',
+          color: '#6366F1',
           onPress: () => navigation.navigate('Promotions'),
         },
       ],
@@ -195,6 +195,7 @@ const styles = StyleSheet.create({
   },
   profileSection: {
     backgroundColor: '#fff',
+    paddingTop: 48,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },

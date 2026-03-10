@@ -10,6 +10,9 @@ import { CurrencyProvider } from "./contexts/CurrencyContext";
 import { PermissionProvider } from "./contexts/PermissionContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import UpdateBanner from "./components/common/UpdateBanner";
+import PWAInstallPrompt from "./components/common/PWAInstallPrompt";
+import PushSoftPrompt from "./components/common/PushSoftPrompt";
+import pwaService from "./services/pwaService";
 
 // Auth
 import Login from "./components/auth/Login";
@@ -27,11 +30,42 @@ import Billing from "./pages/Billing";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 
+// Pages Restaurant
+import RestaurantTables from "./pages/restaurant/Tables";
+import RestaurantMenus from "./pages/restaurant/Menus";
+import RestaurantOrders from "./pages/restaurant/Orders";
+import RestaurantKitchen from "./pages/restaurant/Kitchen";
+
+// Pages Training
+import TrainingCourses from "./pages/training/Courses";
+import TrainingSessions from "./pages/training/Sessions";
+import TrainingEnrollments from "./pages/training/Enrollments";
+import TrainingCertificates from "./pages/training/Certificates";
+
+// Pages Medical
+import MedicalPatients from "./pages/medical/Patients";
+import MedicalRecords from "./pages/medical/Records";
+import MedicalPrescriptions from "./pages/medical/Prescriptions";
+
+// Pages publiques Restaurant
+import RestaurantLanding from "./pages/public/restaurant/RestaurantLanding";
+import RestaurantReservation from "./pages/public/restaurant/RestaurantReservation";
+import RestaurantOrder from "./pages/public/restaurant/RestaurantOrder";
+import RestaurantQRCode from "./pages/public/restaurant/RestaurantQRCode";
+
 // Pages publiques (Booking)
+import PublicRouter from "./pages/public/PublicRouter";
+import PublicBookingLayout from "./pages/public/PublicBookingLayout";
 import BookingLanding from "./pages/public/BookingLanding";
 import BookingDateTime from "./pages/public/BookingDateTime";
 import BookingClientInfo from "./pages/public/BookingClientInfo";
 import BookingConfirmation from "./pages/public/BookingConfirmation";
+
+// Pages publiques Training
+import TrainingLanding from "./pages/public/training/TrainingLanding";
+
+// Pages publiques Medical
+import MedicalLanding from "./pages/public/medical/MedicalLanding";
 
 // Pages SuperAdmin
 import SuperAdminLogin from "./pages/admin/SuperAdminLogin";
@@ -44,11 +78,21 @@ import PasswordResetManagement from "./pages/admin/PasswordResetManagement";
 import BillingDashboard from "./pages/admin/BillingDashboard";
 import ImpersonationManager from "./pages/admin/ImpersonationManager";
 import AdvancedAnalytics from "./pages/admin/AdvancedAnalytics";
+import AnnouncementsManager from "./pages/admin/AnnouncementsManager";
+import MessagesManager from "./pages/admin/MessagesManager";
 import { SocketProvider } from "./contexts/SocketContext";
 import ImpersonationBanner from "./components/common/ImpersonationBanner";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
 function App() {
-  return (
+  React.useEffect(() => {
+    // Tenter de ré-abonner l'utilisateur aux notifications push silencieusement
+    pwaService.autoSubscribe();
+  }, []);
+
+  const content = (
     <BrowserRouter>
       <AuthProvider>
         <PermissionProvider>
@@ -104,21 +148,43 @@ function App() {
                   path="/superadmin/analytics"
                   element={<AdvancedAnalytics />}
                 />
+                <Route
+                  path="/superadmin/announcements"
+                  element={<AnnouncementsManager />}
+                />
+                <Route
+                  path="/superadmin/messages"
+                  element={<MessagesManager />}
+                />
 
-                {/* Routes publiques - Booking (Réservation client) */}
-                <Route path="/book/:slug" element={<BookingLanding />} />
-                <Route
-                  path="/book/:slug/datetime"
-                  element={<BookingDateTime />}
-                />
-                <Route
-                  path="/book/:slug/info"
-                  element={<BookingClientInfo />}
-                />
-                <Route
-                  path="/book/:slug/confirmation"
-                  element={<BookingConfirmation />}
-                />
+                {/* Routes publiques - Restaurant */}
+                <Route path="/r/:slug" element={<RestaurantLanding />} />
+                <Route path="/r/:slug/reserve" element={<RestaurantReservation />} />
+                <Route path="/r/:slug/order" element={<RestaurantOrder />} />
+                <Route path="/r/:slug/qr" element={<RestaurantQRCode />} />
+
+                {/* Routes publiques - Booking (Router dynamique selon secteur) */}
+                <Route element={<PublicBookingLayout />}>
+                  <Route path="/book/:slug" element={<PublicRouter />} />
+                  <Route
+                    path="/book/:slug/datetime"
+                    element={<BookingDateTime />}
+                  />
+                  <Route
+                    path="/book/:slug/info"
+                    element={<BookingClientInfo />}
+                  />
+                  <Route
+                    path="/book/:slug/confirmation"
+                    element={<BookingConfirmation />}
+                  />
+                </Route>
+
+                {/* Routes publiques - Training */}
+                <Route path="/t/:slug" element={<TrainingLanding />} />
+
+                {/* Routes publiques - Medical */}
+                <Route path="/m/:slug" element={<MedicalLanding />} />
 
                 {/* Routes protégées - Admin */}
                 <Route
@@ -193,6 +259,100 @@ function App() {
                   }
                 />
 
+                {/* Routes Restaurant */}
+                <Route
+                  path="/restaurant/tables"
+                  element={
+                    <ProtectedRoute>
+                      <RestaurantTables />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/restaurant/menus"
+                  element={
+                    <ProtectedRoute>
+                      <RestaurantMenus />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/restaurant/orders"
+                  element={
+                    <ProtectedRoute>
+                      <RestaurantOrders />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/restaurant/kitchen"
+                  element={
+                    <ProtectedRoute>
+                      <RestaurantKitchen />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Routes Training */}
+                <Route
+                  path="/training/courses"
+                  element={
+                    <ProtectedRoute>
+                      <TrainingCourses />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/training/sessions"
+                  element={
+                    <ProtectedRoute>
+                      <TrainingSessions />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/training/enrollments"
+                  element={
+                    <ProtectedRoute>
+                      <TrainingEnrollments />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/training/certificates"
+                  element={
+                    <ProtectedRoute>
+                      <TrainingCertificates />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Routes Medical */}
+                <Route
+                  path="/medical/patients"
+                  element={
+                    <ProtectedRoute>
+                      <MedicalPatients />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/medical/records"
+                  element={
+                    <ProtectedRoute>
+                      <MedicalRecords />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/medical/prescriptions"
+                  element={
+                    <ProtectedRoute>
+                      <MedicalPrescriptions />
+                    </ProtectedRoute>
+                  }
+                />
+
                 {/* Redirect root vers dashboard */}
                 <Route
                   path="/"
@@ -208,12 +368,24 @@ function App() {
 
               {/* Bannière de mise à jour PWA */}
               <UpdateBanner />
+              
+              {/* Prompt d'installation PWA */}
+              <PWAInstallPrompt />
+              
+              {/* Prompt d'activation des notifications */}
+              <PushSoftPrompt />
             </SocketProvider>
           </CurrencyProvider>
         </PermissionProvider>
       </AuthProvider>
     </BrowserRouter>
   );
+
+  if (GOOGLE_CLIENT_ID) {
+    return <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>{content}</GoogleOAuthProvider>;
+  }
+
+  return content;
 }
 
 export default App;

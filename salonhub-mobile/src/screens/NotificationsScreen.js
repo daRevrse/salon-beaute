@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../services/api';
+import * as SecureStore from 'expo-secure-store';
 
 const NotificationsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
@@ -40,16 +40,12 @@ const NotificationsScreen = ({ navigation }) => {
 
   const loadNotificationSettings = async () => {
     try {
-      const response = await api.get('/notifications/settings');
-      if (response.data.success && response.data.data) {
-        setSettings(prev => ({ ...prev, ...response.data.data }));
+      const stored = await SecureStore.getItemAsync('notificationSettings');
+      if (stored) {
+        setSettings(prev => ({ ...prev, ...JSON.parse(stored) }));
       }
     } catch (error) {
-      if (error.response?.status === 404) {
-        console.log('Paramètres de notification non trouvés, utilisation des valeurs par défaut');
-      } else {
-        console.error('Erreur chargement paramètres:', error);
-      }
+      console.error('Erreur chargement paramètres:', error);
     } finally {
       setLoading(false);
     }
@@ -62,12 +58,11 @@ const NotificationsScreen = ({ navigation }) => {
   const handleSave = async () => {
     setSubmitting(true);
     try {
-      await api.put('/notifications/settings', settings);
+      await SecureStore.setItemAsync('notificationSettings', JSON.stringify(settings));
       Alert.alert('Succès', 'Paramètres de notifications enregistrés avec succès');
     } catch (error) {
       console.error('Erreur sauvegarde paramètres:', error);
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Impossible de sauvegarder les paramètres';
-      Alert.alert('Erreur', errorMessage);
+      Alert.alert('Erreur', 'Impossible de sauvegarder les paramètres');
     } finally {
       setSubmitting(false);
     }
@@ -362,7 +357,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#4F46E5',
+    color: '#6366F1',
     lineHeight: 18,
   },
   section: {

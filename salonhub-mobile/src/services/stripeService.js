@@ -7,7 +7,7 @@ import api from './api';
 // Récupérer le PaymentIntent depuis le backend
 export const createPaymentIntent = async (planId) => {
   try {
-    const response = await api.post('/payments/create-payment-intent', {
+    const response = await api.post('/stripe/create-checkout-session', {
       plan: planId,
     });
 
@@ -35,7 +35,7 @@ export const createPaymentIntent = async (planId) => {
 // Confirmer le paiement après l'inscription
 export const confirmSubscription = async (planId, paymentMethodId) => {
   try {
-    const response = await api.post('/payments/confirm-subscription', {
+    const response = await api.post('/stripe/verify-session', {
       plan: planId,
       paymentMethodId,
     });
@@ -63,7 +63,7 @@ export const confirmSubscription = async (planId, paymentMethodId) => {
 // Récupérer la clé publique Stripe
 export const getStripePublishableKey = async () => {
   try {
-    const response = await api.get('/payments/config');
+    const response = await api.get('/stripe/plans');
 
     if (response.data.success) {
       return {
@@ -91,25 +91,42 @@ export const getPlanDetails = (planId) => {
     essential: {
       id: 'essential',
       name: 'Essential',
-      price: 9.99,
-      priceId: 'price_essential', // À remplacer par le vrai Price ID de Stripe
-      features: ['100 clients max', 'Réservations en ligne', 'Gestion agenda'],
+      price: 3.99,
+      priceId: 'price_essential',
+      features: ['Rendez-vous illimités', '1 utilisateur', 'Page de réservation', 'Support email'],
     },
+    pro: {
+      id: 'pro',
+      name: 'Pro',
+      price: 9.99,
+      priceId: 'price_pro',
+      features: ['3 utilisateurs', 'Statistiques avancées', 'Paiement en ligne', 'Rappels automatiques'],
+    },
+    custom: {
+      id: 'custom',
+      name: 'Sur mesure',
+      price: null,
+      priceId: null,
+      isCustom: true,
+      features: ['Utilisateurs illimités', 'Multi-salons', 'Support prioritaire', 'API & intégrations'],
+    },
+    // Legacy fallbacks
     professional: {
-      id: 'professional',
-      name: 'Professional',
-      price: 29.99,
-      priceId: 'price_professional', // À remplacer par le vrai Price ID de Stripe
-      features: ['Clients illimités', 'Personnel illimité', 'Statistiques avancées'],
+      id: 'pro',
+      name: 'Pro',
+      price: 9.99,
+      priceId: 'price_pro',
+      features: ['3 utilisateurs', 'Statistiques avancées', 'Paiement en ligne', 'Rappels automatiques'],
     },
     enterprise: {
-      id: 'enterprise',
-      name: 'Enterprise',
-      price: 69.99,
-      priceId: 'price_enterprise', // À remplacer par le vrai Price ID de Stripe
-      features: ['Multi-établissements', 'API & intégrations', 'Support prioritaire'],
+      id: 'custom',
+      name: 'Sur mesure',
+      price: null,
+      priceId: null,
+      isCustom: true,
+      features: ['Utilisateurs illimités', 'Multi-salons', 'Support prioritaire', 'API & intégrations'],
     },
   };
 
-  return plans[planId] || plans.professional;
+  return plans[planId] || plans.pro;
 };

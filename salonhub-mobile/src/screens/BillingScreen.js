@@ -22,16 +22,10 @@ const BillingScreen = ({ navigation }) => {
 
   const loadBillingInfo = async () => {
     try {
-      // Load subscription info
-      const subResponse = await api.get('/billing/subscription');
+      // Load subscription info from settings
+      const subResponse = await api.get('/settings/subscription');
       if (subResponse.data.success) {
         setSubscription(subResponse.data.data);
-      }
-
-      // Load invoices
-      const invResponse = await api.get('/billing/invoices');
-      if (invResponse.data.success) {
-        setInvoices(invResponse.data.data || []);
       }
     } catch (error) {
       if (error.response?.status === 404) {
@@ -46,14 +40,25 @@ const BillingScreen = ({ navigation }) => {
 
   const getPlanName = (plan) => {
     switch (plan) {
+      case 'essential':
+        return 'Essential';
+      case 'pro':
+        return 'Pro';
+      case 'custom':
+        return 'Sur mesure';
+      // Legacy fallbacks
+      case 'starter':
+        return 'Essential';
+      case 'professional':
+        return 'Pro';
+      case 'enterprise':
+        return 'Sur mesure';
       case 'free':
         return 'Gratuit';
       case 'basic':
-        return 'Basique';
+        return 'Essential';
       case 'premium':
-        return 'Premium';
-      case 'enterprise':
-        return 'Entreprise';
+        return 'Pro';
       default:
         return plan;
     }
@@ -61,14 +66,19 @@ const BillingScreen = ({ navigation }) => {
 
   const getPlanColor = (plan) => {
     switch (plan) {
-      case 'free':
-        return '#6B7280';
+      case 'essential':
+      case 'starter':
       case 'basic':
         return '#3B82F6';
+      case 'pro':
+      case 'professional':
       case 'premium':
-        return '#8B5CF6';
+        return '#6366F1';
+      case 'custom':
       case 'enterprise':
         return '#6366F1';
+      case 'free':
+        return '#6B7280';
       default:
         return '#6B7280';
     }

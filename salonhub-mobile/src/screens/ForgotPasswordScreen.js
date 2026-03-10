@@ -16,12 +16,12 @@ import { Ionicons } from "@expo/vector-icons";
 import api from "../services/api";
 
 const ForgotPasswordScreen = ({ navigation }) => {
-  const [salonName, setSalonName] = useState("");
+  const [tenantSlug, setTenantSlug] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSendResetLink = async () => {
-    if (!salonName || !email) {
+    if (!tenantSlug || !email) {
       Alert.alert("Erreur", "Veuillez remplir tous les champs");
       return;
     }
@@ -34,15 +34,15 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-      const response = await api.post("/auth/forgot-password", {
-        salonName,
+      const response = await api.post("/password/forgot", {
+        tenant_slug: tenantSlug.toLowerCase().trim(),
         email,
       });
 
       setLoading(false);
 
       if (response.data.success) {
-        navigation.navigate("PasswordResetSuccess", { email });
+        navigation.navigate("PasswordResetSuccess", { email, tenantSlug: tenantSlug.toLowerCase().trim() });
       }
     } catch (error) {
       setLoading(false);
@@ -77,9 +77,9 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
         {/* Form */}
         <View style={styles.formContainer}>
-          {/* Nom du salon */}
+          {/* Identifiant du salon */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nom du salon</Text>
+            <Text style={styles.label}>Identifiant du salon (slug)</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="business-outline"
@@ -89,10 +89,12 @@ const ForgotPasswordScreen = ({ navigation }) => {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Nom de votre salon"
+                placeholder="mon-salon"
                 placeholderTextColor="#9CA3AF"
-                value={salonName}
-                onChangeText={setSalonName}
+                value={tenantSlug}
+                onChangeText={setTenantSlug}
+                autoCapitalize="none"
+                autoCorrect={false}
                 editable={!loading}
               />
             </View>

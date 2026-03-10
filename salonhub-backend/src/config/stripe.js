@@ -9,30 +9,53 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const PLANS = {
   essential: {
     name: "Essential",
-    price: 9.99,
-    priceId: process.env.STRIPE_PRICE_ESSENTIAL, // À créer dans Stripe Dashboard
-    features: ["100 clients maximum", "Gestion rendez-vous", "Réservations en ligne", "Support email"],
-  },
-  professional: {
-    name: "Professional",
-    price: 29.99,
-    priceId: process.env.STRIPE_PRICE_PROFESSIONAL,
+    price: 3.99,
+    priceId: process.env.STRIPE_PRICE_ESSENTIAL,
     features: [
-      "Clients illimités",
-      "Personnel illimité",
-      "Statistiques avancées",
-      "Support prioritaire",
+      "Rendez-vous illimités",
+      "1 utilisateur",
+      "Page de réservation",
+      "Support email",
     ],
   },
-  enterprise: {
-    name: "Enterprise",
-    price: 69.99,
-    priceId: process.env.STRIPE_PRICE_ENTERPRISE,
+  pro: {
+    name: "Pro",
+    price: 9.99,
+    priceId: process.env.STRIPE_PRICE_PRO,
     features: [
-      "Multi-établissements",
-      "API & intégrations",
+      "Rendez-vous illimités",
+      "3 utilisateurs",
+      "Statistiques avancées",
       "Paiement en ligne",
-      "Support dédié 24/7",
+      "Rappels automatiques SMS/Email",
+      "Campagnes Marketing",
+    ],
+  },
+  developer: {
+    name: "Developer",
+    price: 14.99,
+    priceId: process.env.STRIPE_PRICE_DEVELOPER,
+    features: [
+      "Tout du plan Pro",
+      "API & webhooks",
+      "Clés API (sk_live_)",
+      "Intégrations tierces",
+      "5 000 requêtes API/jour",
+      "Support technique prioritaire",
+    ],
+  },
+  custom: {
+    name: "Sur mesure",
+    price: null,
+    priceId: null,
+    isCustom: true,
+    features: [
+      "Tout du plan Pro",
+      "Utilisateurs illimités",
+      "Multi-salons",
+      "Support prioritaire",
+      "API & intégrations",
+      "Gestionnaire dédié",
     ],
   },
 };
@@ -40,6 +63,17 @@ const PLANS = {
 // Helper: Créer une session de paiement
 const createCheckoutSession = async (tenantId, plan, successUrl, cancelUrl) => {
   try {
+    if (!PLANS[plan]) {
+      return { success: false, error: "Plan invalide" };
+    }
+
+    if (PLANS[plan].isCustom) {
+      return {
+        success: false,
+        error: "Plan sur mesure - contactez-nous à info@flowkraftagency.com pour un devis personnalisé",
+      };
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],

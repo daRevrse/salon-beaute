@@ -96,7 +96,7 @@ const PromotionsScreen = ({ navigation }) => {
       >
         <View style={styles.promoHeader}>
           <View style={styles.promoIcon}>
-            <Ionicons name="pricetag" size={24} color="#8B5CF6" />
+            <Ionicons name="pricetag" size={24} color="#6366F1" />
           </View>
           <View style={styles.promoInfo}>
             <Text style={styles.promoCode}>{promo.code}</Text>
@@ -144,7 +144,7 @@ const PromotionsScreen = ({ navigation }) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color="#6366F1" />
       </View>
     );
   }
@@ -161,7 +161,7 @@ const PromotionsScreen = ({ navigation }) => {
           style={styles.addButton}
           onPress={() => navigation.navigate('PromotionForm')}
         >
-          <Ionicons name="add" size={24} color="#8B5CF6" />
+          <Ionicons name="add" size={24} color="#6366F1" />
         </TouchableOpacity>
       </View>
 
@@ -172,7 +172,7 @@ const PromotionsScreen = ({ navigation }) => {
       >
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
-          <View style={[styles.statCard, { backgroundColor: '#8B5CF6' }]}>
+          <View style={[styles.statCard, { backgroundColor: '#6366F1' }]}>
             <Ionicons name="pricetag" size={32} color="#fff" />
             <Text style={styles.statValue}>{stats.total}</Text>
             <Text style={styles.statLabel}>Total Promotions</Text>
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   filterTabActive: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#6366F1',
   },
   filterTabText: {
     fontSize: 14,
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   promoCode: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#8B5CF6',
+    color: '#6366F1',
     marginBottom: 2,
   },
   promoName: {
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#6366F1',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 10,
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#6366F1',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 5,

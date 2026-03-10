@@ -5,718 +5,953 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
-        content="SalonHub — la solution SaaS de gestion complète pour salons de beauté. Réservations en ligne, gestion clients, paiements et statistiques.">
-    <meta name="keywords" content="salon de beauté, gestion salon, réservation en ligne, SaaS, FlowKraft">
+        content="SalonHub — la plateforme de gestion tout-en-un pour salons de beaute, restaurants, centres de formation et cabinets medicaux.">
+    <meta name="keywords"
+        content="salon de beaute, gestion salon, reservation en ligne, SaaS, restaurant, formation, medical, FlowKraft">
     <meta name="author" content="FlowKraft Agency">
+    <title>SalonHub — Gerez votre activite simplement</title>
 
-    <title>SalonHub by FlowKraft — Simplifiez la gestion de votre salon</title>
+    <link rel="icon" type="image/png" href="logo.png">
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="logo_fk_black.png">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
 
-    <!-- Font Awesome pour les icônes -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Font Awesome -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Styles CSS -->
     <link rel="stylesheet" href="styles.css">
 </head>
 
-<body>
+<body class="page-home">
 
-    <!-- ===================================
-         HEADER / NAVIGATION
-         =================================== -->
-    <header>
-        <nav class="nav-container">
-            <a href="https://flowkraftagency.com" class="logo">
-                <img src="logo_fk_black.png" alt="FlowKraft Logo">
-                SalonHub
+    <!-- ========== NAVBAR ========== -->
+    <header class="header" id="header">
+        <nav class="nav container">
+            <a href="#" class="nav-logo">
+                <img src="logo.png" alt="SalonHub" width="34" height="34">
+                <span>SalonHub</span>
             </a>
-            <div class="nav-menu">
-                <div class="nav-buttons">
-                    <a href="#features">Fonctionnalités</a>
-                    <a href="#how-it-works">Comment ça fonctionne</a>
-                    <a href="#pricing">Tarifs</a>
-                    <a href="#contact">Contact</a>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="#features" class="nav-link" data-i18n="nav_features">Fonctionnalités</a></li>
+                <li><a href="#pricing" class="nav-link" data-i18n="nav_pricing">Tarifs</a></li>
+                <li><a href="#api" class="nav-link" data-i18n="nav_api">API</a></li>
+                <li><a href="#faq" class="nav-link" data-i18n="nav_faq">FAQ</a></li>
+            </ul>
+            <div class="nav-actions">
+                <div class="lang-switch" id="langSwitch">
+                    <button class="lang-switch__btn active" data-lang="fr">FR</button>
+                    <button class="lang-switch__btn" data-lang="en">EN</button>
                 </div>
+                <a href="https://app.salonhub.flowkraftagency.com/login" class="nav-btn nav-btn--ghost"
+                    data-i18n="nav_login">Connexion</a>
+                <a href="https://app.salonhub.flowkraftagency.com/register" class="nav-btn nav-btn--fill"
+                    data-i18n="nav_cta">Essai
+                    gratuit</a>
             </div>
-            <button class="hamburger" aria-label="Ouvrir le menu">
-                <span></span>
-                <span></span>
-                <span></span>
+            <button class="nav-toggle" id="navToggle" aria-label="Menu">
+                <span></span><span></span><span></span>
             </button>
         </nav>
     </header>
 
-    <!-- ===================================
-         HERO SECTION
-         =================================== -->
-    <section class="hero" id="hero-form">
-        <div class="hero-content">
-            <h1>Gérez votre salon en toute simplicité</h1>
-            <p>Planification, réservations, paiements et statistiques — tout ce qu'il faut pour faire briller votre
-                salon.</p>
-            <form class="cta-form" action="#" method="POST">
-                <input type="email" id="hero-email-input" placeholder="Votre email" required
-                    aria-label="Email professionnel">
-                <button type="submit">Obtenez 14 jours gratuits</button>
-            </form>
-            <p class="trial-subtext">14 jours d'essai gratuit. Sans engagement.</p>
+    <!-- ========== HERO ========== -->
+    <section class="hero">
+        <div class="hero-bg">
+            <div class="hero-glow hero-glow--1"></div>
+            <div class="hero-glow hero-glow--2"></div>
+            <div class="hero-glow hero-glow--3"></div>
+            <div class="hero-grid-pattern"></div>
         </div>
-        <img src="salon.jpeg" alt="Capture d'écran du tableau de bord SalonHub">
+        <div class="container hero-split">
+            <div class="hero-content" data-anim="hero">
+                <div class="hero-pill">
+                    <span data-i18n="hero_pill">+500 professionnels nous font confiance</span>
+                </div>
+                <h1 class="hero-title" data-i18n="hero_title">
+                    Votre activite,<br>
+                    <span class="gradient-text">sous controle.</span>
+                </h1>
+                <p class="hero-desc" data-i18n="hero_desc">
+                    Rendez-vous, clients, paiements et analyses — la plateforme tout-en-un
+                    qui libere votre temps et booste votre chiffre d'affaires.
+                </p>
+                <div class="hero-ctas">
+                    <a href="https://app.salonhub.flowkraftagency.com/register" class="btn btn-primary btn-lg">
+                        <span data-i18n="hero_cta1">Demarrer gratuitement</span>
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                    </a>
+                    <a href="#showcase" class="btn btn-outline btn-lg">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <polygon points="5 3 19 12 5 21 5 3" />
+                        </svg>
+                        <span data-i18n="hero_cta2">Demander une démo</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="hero-visual" data-anim="hero-img">
+                <div class="hero-collage">
+                    <div class="hero-collage__main">
+                        <img src="coiffure.jpeg" alt="Salon de coiffure" loading="eager">
+                    </div>
+                    <div class="hero-collage__secondary">
+                        <img src="restaurant.jpeg" alt="Restaurant" loading="eager">
+                    </div>
+                    <div class="hero-collage__tertiary">
+                        <img src="medical.jpeg" alt="Cabinet medical" loading="lazy">
+                    </div>
+                    <div class="hero-collage__fourth">
+                        <img src="formation.jpeg" alt="Centre de formation" loading="lazy">
+                    </div>
+                </div>
+
+                <!-- Floating Metric Cards -->
+                <div class="hero-float hero-float--1 glass-card">
+                    <div class="hero-float__icon hero-float__icon--green">
+                        <i data-lucide="line-chart"></i>
+                    </div>
+                    <div>
+                        <span class="hero-float__num">+32%</span>
+                        <span class="hero-float__label" data-i18n="float_revenue">de revenus</span>
+                    </div>
+                </div>
+                <div class="hero-float hero-float--2 glass-card">
+                    <div class="hero-float__icon hero-float__icon--blue">
+                        <i data-lucide="calendar-check"></i>
+                    </div>
+                    <div>
+                        <span class="hero-float__num">-70%</span>
+                        <span class="hero-float__label" data-i18n="float_absence">d'absences</span>
+                    </div>
+                </div>
+                <div class="hero-float hero-float--3 glass-card">
+                    <div class="hero-float__icon hero-float__icon--amber">
+                        <i data-lucide="clock"></i>
+                    </div>
+                    <div>
+                        <span class="hero-float__num">5h</span>
+                        <span class="hero-float__label" data-i18n="float_time">gagnees / semaine</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
 
-    <!-- ===================================
-         FEATURES SECTION
-         =================================== -->
+    <!-- ========== FEATURES (Bento Grid) ========== -->
     <section class="features" id="features">
-        <h2 class="section-title">Des outils puissants pour simplifier votre quotidien</h2>
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-calendar-alt"></i>
+        <div class="container">
+            <div class="section-header section-header--left" data-anim="fade">
+                <p class="section-tag"><span data-i18n="feat_tag">Fonctionnalites</span></p>
+                <div class="section-header__row">
+                    <h2 class="section-title" data-i18n="feat_title">Tout ce dont vous avez besoin, <span
+                            class="gradient-text">rien de
+                            superflu</span></h2>
+                    <p class="section-desc section-desc--right" data-i18n="feat_desc">Des outils puissants et intuitifs
+                        concus pour simplifier
+                        la gestion quotidienne de votre salon.</p>
                 </div>
-                <h3>Réservation en ligne</h3>
-                <p>Vos clients prennent rendez-vous 24h/24 depuis votre page personnalisée.</p>
             </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-users"></i>
+            <div class="bento-grid">
+                <!-- Large card — Reservation -->
+                <div class="bento-card bento-card--lg">
+                    <div class="bento-card__top">
+                        <div class="bento-card__icon"><i data-lucide="calendar-check"></i></div>
+                        <div class="bento-card__stat">
+                            <span class="bento-stat">24/7</span>
+                            <span class="bento-stat-label" data-i18n="bento_1_stat">Disponible</span>
+                        </div>
+                    </div>
+                    <h3 data-i18n="bento_1_title">Reservation en ligne</h3>
+                    <p data-i18n="bento_1_desc">Vos clients prennent rendez-vous 24h/24 depuis votre page personnalisee.
+                        Fini les appels manques.</p>
+                    <div class="bento-card__deco">
+                        <svg width="180" height="120" viewBox="0 0 180 120" fill="none">
+                            <rect x="10" y="10" width="60" height="80" rx="8" fill="rgba(99,102,241,.06)"
+                                stroke="rgba(99,102,241,.12)" stroke-width="1.5" />
+                            <rect x="80" y="30" width="60" height="60" rx="8" fill="rgba(99,102,241,.04)"
+                                stroke="rgba(99,102,241,.08)" stroke-width="1.5" />
+                            <path d="M110 55l-10 10 20-5z" fill="rgba(99,102,241,.15)" />
+                            <circle cx="40" cy="50" r="4" fill="var(--primary)" opacity=".3" />
+                            <path d="M35 70h10M55 70h10" stroke="rgba(99,102,241,.15)" stroke-width="2"
+                                stroke-linecap="round" />
+                            <polyline points="85,75 100,60 115,65 130,50" fill="none" stroke="var(--primary)"
+                                stroke-width="2" stroke-linecap="round" opacity=".25" />
+                        </svg>
+                    </div>
                 </div>
-                <h3>Gestion client</h3>
-                <p>Accédez à l'historique et fidélisez vos clients facilement.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-chart-line"></i>
+                <!-- Dark card — Gestion client -->
+                <div class="bento-card bento-card--dark">
+                    <div class="bento-card__top">
+                        <div class="bento-card__icon bento-card__icon--dark"><i data-lucide="users"></i></div>
+                        <div class="bento-card__stat">
+                            <span class="bento-stat">100%</span>
+                        </div>
+                    </div>
+                    <h3 data-i18n="bento_2_title">Gestion client</h3>
+                    <p data-i18n="bento_2_desc">Historique complet, preferences et fidelisation de chaque client en un
+                        clic.</p>
                 </div>
-                <h3>Statistiques & Rapports</h3>
-                <p>Analysez vos performances et optimisez vos revenus.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-share-alt"></i>
+                <!-- Statistiques -->
+                <div class="bento-card">
+                    <div class="bento-card__top">
+                        <div class="bento-card__icon"><i data-lucide="line-chart"></i></div>
+                        <div class="bento-card__stat">
+                            <span class="bento-stat">+35%</span>
+                        </div>
+                    </div>
+                    <h3 data-i18n="bento_3_title">Statistiques</h3>
+                    <p data-i18n="bento_3_desc">Analysez vos performances et optimisez vos revenus en temps reel.</p>
                 </div>
-                <h3>Intégration réseaux sociaux</h3>
-                <p>Intégrez votre lien de réservation personnalisé sur vos pages Facebook et Instagram pour permettre à
-                    vos clients de réserver en un clic.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-bell"></i>
+                <!-- Rappels -->
+                <div class="bento-card">
+                    <div class="bento-card__top">
+                        <div class="bento-card__icon"><i data-lucide="bell"></i></div>
+                        <div class="bento-card__stat">
+                            <span class="bento-stat">-60%</span>
+                        </div>
+                    </div>
+                    <h3 data-i18n="bento_4_title">Rappels automatiques</h3>
+                    <p data-i18n="bento_4_desc">SMS et emails automatiques pour reduire les absences et no-shows.</p>
                 </div>
-                <h3>Rappels automatiques</h3>
-                <p>Réduisez les absences avec des SMS et emails automatiques envoyés à vos clients.</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <i class="fas fa-bullhorn"></i>
+                <!-- Reseaux sociaux -->
+                <div class="bento-card">
+                    <div class="bento-card__top">
+                        <div class="bento-card__icon"><i data-lucide="share-2"></i></div>
+                        <div class="bento-card__stat">
+                            <span class="bento-stat">+60%</span>
+                        </div>
+                    </div>
+                    <h3 data-i18n="bento_5_title">Reseaux sociaux</h3>
+                    <p data-i18n="bento_5_desc">Integrez votre lien de reservation sur Facebook et Instagram.</p>
                 </div>
-                <h3>Campagnes Marketing</h3>
-                <p>Boostez votre chiffre d'affaires en envoyant des codes promo et des offres spéciales par SMS et
-                    email.</p>
+                <!-- Campagnes Marketing — dark -->
+                <div class="bento-card bento-card--dark">
+                    <div class="bento-card__top">
+                        <div class="bento-card__icon bento-card__icon--dark"><i data-lucide="megaphone"></i></div>
+                        <div class="bento-card__stat">
+                            <span class="bento-stat">+45%</span>
+                        </div>
+                    </div>
+                    <h3 data-i18n="bento_6_title">Campagnes Marketing</h3>
+                    <p data-i18n="bento_6_desc">Envoyez des codes promo et offres speciales pour booster votre CA.</p>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- ===================================
-    HOW IT WORKS SECTION
-    =================================== -->
-
-    <section class="how-it-works" id="how-it-works">
-        <h2 class="section-title">Comment ça marche ?</h2>
-        <div class="features-grid">
-            <div class="how-it-works-card">
-                <div class="step-number">1</div>
-                <div class="how-it-works-icon">
-                    <i class="fas fa-user-plus"></i>
-                </div>
-                <h3>Inscrivez votre salon</h3>
-                <p>Créez votre compte en 2 minutes et accédez immédiatement à votre tableau de bord personnel.</p>
+    <!-- ========== INTERFACE SHOWCASE ========== -->
+    <section class="interface" id="showcase">
+        <div class="container">
+            <div class="section-header" data-anim="fade">
+                <p class="section-tag" data-i18n="intf_tag">Interface</p>
+                <h2 class="section-title" data-i18n="intf_title">Interface <span class="gradient-text">intuitive</span>
+                </h2>
+                <p class="section-desc" data-i18n="intf_desc">Un tableau de bord clair et efficace, concu pour vous
+                    faire gagner du temps au
+                    quotidien.</p>
             </div>
-
-            <div class="how-it-works-card">
-                <div class="step-number">2</div>
-                <div class="how-it-works-icon">
-                    <i class="fas fa-cogs"></i>
+            <div class="interface-visual" data-anim="fade">
+                <div class="interface-glow"></div>
+                <div class="interface-frame">
+                    <div class="interface-frame__bar">
+                        <span class="dot dot--red"></span>
+                        <span class="dot dot--yellow"></span>
+                        <span class="dot dot--green"></span>
+                    </div>
+                    <div class="interface-slider" id="interfaceSlider">
+                        <div class="interface-slide active"><img src="1.jfif" alt="Gestion des rendez-vous"
+                                loading="lazy"></div>
+                        <div class="interface-slide"><img src="3.jfif" alt="Clients" loading="lazy"></div>
+                        <div class="interface-slide"><img src="4.png" alt="Dashboard" loading="lazy"></div>
+                    </div>
                 </div>
-                <h3>Configurez vos services</h3>
-                <p>Ajoutez vos prestations, prix, durées et définissez vos horaires d'ouverture en quelques clics.</p>
-            </div>
-
-            <div class="how-it-works-card">
-                <div class="step-number">3</div>
-                <div class="how-it-works-icon">
-                    <i class="fas fa-calendar-check"></i>
+                <div class="interface-dots" id="interfaceDots">
+                    <button class="idot active" data-i="0" aria-label="Slide 1"></button>
+                    <button class="idot" data-i="2" aria-label="Slide 3"></button>
+                    <button class="idot" data-i="3" aria-label="Slide 4"></button>
                 </div>
-                <h3>Recevez des réservations</h3>
-                <p>Partagez votre lien de réservation et laissez vos clients prendre rendez-vous en ligne, 24/7.</p>
+                <div class="interface-captions">
+                    <span class="interface-caption active" data-i="0" data-i18n="intf_cap1">Rendez-vous</span>
+                    <span class="interface-caption" data-i="2" data-i18n="intf_cap3">Clients</span>
+                    <span class="interface-caption" data-i="3" data-i18n="intf_cap4">Dashboard</span>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- ===================================
-         USE CASES SECTION
-         =================================== -->
-    <section class="use-cases" id="use-cases">
-        <h2 class="section-title">Adapté à tous les secteurs d'activité</h2>
-        <p class="section-subtitle">Découvrez comment SalonHub peut transformer la gestion de votre établissement.</p>
-        <div class="features-grid">
-            <div class="feature-card use-case-beaute featured">
-                <div class="popular-badge">Populaire</div>
-                <h3>Salon de Beauté</h3>
-                <div class="feature-icon"><i class="fa-solid fa-scissors"></i></div>
-                <p>Outils complets pour la gestion des rendez-vous, des clients et des services esthétiques.</p>
-                <a href="salon-de-beaute.html" class="btn-secondary">Découvrir</a>
-            </div>
-            <div class="feature-card use-case-formation">
-                <h3>Centres de Formation</h3>
-                <div class="feature-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-                <p>Planifiez vos sessions, gérez les inscriptions et communiquez facilement avec vos participants.</p>
-                <a href="centre-de-formation.html" class="btn-secondary">Découvrir</a>
-            </div>
-            <div class="feature-card use-case-restaurant">
-                <h3>Restaurants & Cafés</h3>
-                <div class="feature-icon"><i class="fas fa-utensils"></i></div>
-                <p>Gérez les réservations de tables, organisez des événements et optimisez le service en salle.</p>
-                <a href="restaurant.html" class="btn-secondary">Découvrir</a>
-            </div>
-            <div class="feature-card use-case-medical">
-                <h3>Cabinets Médicaux</h3>
-                <div class="feature-icon"><i class="fas fa-heartbeat"></i></div>
-                <p>Simplifiez la prise de rendez-vous pour vos patients et réduisez les absences grâce aux rappels
-                    automatiques.</p>
-                <a href="cabinet-medical.html" class="btn-secondary">Découvrir</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===================================
-         IMAGE SHOWCASE SECTION (SLIDER)
-         =================================== -->
-    <section class="image-showcase">
-        <h2 class="section-title">Un aperçu de votre futur tableau de bord</h2>
-
-        <div class="slider-container">
-            <!-- Bouton précédent -->
-            <button class="slider-btn slider-btn-prev" aria-label="Image précédente">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-
-            <!-- Images du slider -->
-            <div class="slider-wrapper">
-                <div class="slider-track">
-                    <div class="slider-slide active">
-                        <img src="1.png" alt="Tableau de bord principal SalonHub avec statistiques et graphiques">
-                    </div>
-                    <div class="slider-slide">
-                        <img src="2.png" alt="Capture d'écran du tableau de bord SalonHub">
-                    </div>
-                    <div class="slider-slide">
-                        <img src="3.png" alt="Interface de planification et calendrier SalonHub">
-                    </div>
-                    <div class="slider-slide">
-                        <img src="4.png" alt="Interface de gestion des clients SalonHub">
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- Bouton suivant -->
-            <button class="slider-btn slider-btn-next" aria-label="Image suivante">
-                <i class="fas fa-chevron-right"></i>
-            </button>
-        </div>
-
-        <!-- Indicateurs (dots) -->
-        <div class="slider-dots">
-            <button class="slider-dot active" data-slide="0" aria-label="Aller à l'image 1"></button>
-            <button class="slider-dot" data-slide="1" aria-label="Aller à l'image 2"></button>
-            <button class="slider-dot" data-slide="2" aria-label="Aller à l'image 3"></button>
-            <button class="slider-dot" data-slide="3" aria-label="Aller à l'image 4"></button>
-        </div>
-    </section>
-
-    <!-- ===================================
-         PRICING SECTION
-         =================================== -->
+    <!-- ========== PRICING ========== -->
     <section class="pricing" id="pricing">
-        <h2 class="section-title">Des offres flexibles pour votre croissance</h2>
-
-        <!-- Toggle de facturation -->
-        <div class="billing-toggle-container">
-            <span>Mensuel</span>
-            <label class="billing-toggle">
-                <input type="checkbox" id="billing-cycle-checkbox">
-                <span class="slider"></span>
-            </label>
-            <span>
-                Annuel
-                <span class="savings-badge">-15%</span>
-            </span>
-        </div>
-
-        <div class="pricing-grid">
-            <!-- Plan Starter -->
-            <div class="pricing-card">
-                <div class="plan-header">
-                    <h3>Starter</h3>
-                    <p class="plan-description">Idéal pour les indépendants et les petits salons.</p>
-                </div>
-                <div class="price-container">
-                    <span class="price" data-monthly="9.99" data-yearly="90.99">9.99€</span>
-                    <span class="billing-period">/ mois</span>
-                </div>
-                <ul class="plan-features">
-                    <li><i class="fas fa-check"></i> Rendez-vous illimités</li>
-                    <li><i class="fas fa-check"></i> 1 utilisateur</li>
-                    <li><i class="fas fa-check"></i> Page de réservation</li>
-                    <li><i class="fas fa-check"></i> Support email</li>
-                    <li class="disabled"><i class="fas fa-times"></i> Statistiques avancées</li>
-                    <li class="disabled"><i class="fas fa-times"></i> Paiement en ligne</li>
-                </ul>
-                <button class="btn-pricing">Essayer gratuitement</button>
+        <div class="container">
+            <div class="section-header" data-anim="fade">
+                <p class="section-tag" data-i18n="price_tag">Tarifs</p>
+                <h2 class="section-title" data-i18n="price_title">Tarifs simples et <span
+                        class="gradient-text">transparents</span></h2>
+                <p class="section-desc" data-i18n="price_desc">14 jours d'essai gratuit. Sans carte bancaire. Sans
+                    engagement.</p>
             </div>
 
-            <!-- Plan Pro (Featured) -->
-            <div class="pricing-card featured">
-                <span class="featured-badge">Le plus populaire</span>
-                <div class="plan-header">
-                    <h3>Pro</h3>
-                    <p class="plan-description">Parfait pour les équipes et les salons en croissance.</p>
-                </div>
-                <div class="price-container">
-                    <span class="price" data-monthly="29.99" data-yearly="290.99">29.99€</span>
-                    <span class="billing-period">/ mois</span>
-                </div>
-                <ul class="plan-features">
-                    <li><i class="fas fa-check"></i> Rendez-vous illimités</li>
-                    <li><i class="fas fa-check"></i> 3 utilisateurs</li>
-                    <li><i class="fas fa-check"></i> Page de réservation</li>
-                    <li><i class="fas fa-check"></i> Statistiques avancées</li>
-                    <li><i class="fas fa-check"></i> Paiement en ligne</li>
-                    <li><i class="fas fa-check"></i> Rappels automatiques SMS/Email</li>
-                    <li><i class="fas fa-check"></i> Campagnes Marketing</li>
-                </ul>
-                <button class="btn-pricing">Essayer gratuitement</button>
-            </div>
-
-            <!-- Plan Business -->
-            <div class="pricing-card">
-                <div class="plan-header">
-                    <h3>Business</h3>
-                    <p class="plan-description">La solution complète pour les multi-salons et franchises.</p>
-                </div>
-                <div class="price-container">
-                    <span class="price" data-monthly="69.99" data-yearly="690.99">69.99€</span>
-                    <span class="billing-period">/ mois</span>
-                </div>
-                <ul class="plan-features">
-                    <li><i class="fas fa-check"></i> Tout du plan Pro</li>
-                    <li><i class="fas fa-check"></i> Utilisateurs illimités</li>
-                    <li><i class="fas fa-check"></i> Multi-salons</li>
-                    <li><i class="fas fa-check"></i> Support prioritaire</li>
-                    <li><i class="fas fa-check"></i> API & intégrations</li>
-                    <li><i class="fas fa-check"></i> Gestionnaire dédié</li>
-                </ul>
-                <button class="btn-pricing">Contactez-nous</button>
-            </div>
-        </div>
-
-        <!-- Tableau de comparaison des fonctionnalités -->
-        <div class="feature-comparison-container">
-            <h3 class="comparison-title">Comparez les fonctionnalités</h3>
-            <table class="feature-table">
-                <thead>
-                    <tr>
-                        <th>Fonctionnalité</th>
-                        <th>Starter</th>
-                        <th>Pro</th>
-                        <th>Business</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Rendez-vous</td>
-                        <td>Illimités</td>
-                        <td>Illimités</td>
-                        <td>Illimités</td>
-                    </tr>
-                    <tr>
-                        <td>Utilisateurs</td>
-                        <td>1</td>
-                        <td>3</td>
-                        <td>Illimités</td>
-                    </tr>
-                    <tr>
-                        <td>Page de réservation</td>
-                        <td><i class="fas fa-check"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                    </tr>
-                    <tr>
-                        <td>Support email</td>
-                        <td><i class="fas fa-check"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                    </tr>
-                    <tr>
-                        <td>Statistiques avancées</td>
-                        <td><i class="fas fa-times"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                    </tr>
-                    <tr>
-                        <td>Paiement en ligne</td>
-                        <td><i class="fas fa-times"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                    </tr>
-                    <tr>
-                        <td>Rappels automatiques SMS/Email</td>
-                        <td><i class="fas fa-times"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                    </tr>
-                    <tr>
-                        <td>Campagnes Marketing (Promo)</td>
-                        <td><i class="fas fa-times"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                    </tr>
-                    <tr>
-                        <td>Multi-salons</td>
-                        <td><i class="fas fa-times"></i></td>
-                        <td><i class="fas fa-times"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                    </tr>
-                    <tr>
-                        <td>Support prioritaire</td>
-                        <td><i class="fas fa-times"></i></td>
-                        <td><i class="fas fa-times"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                    </tr>
-                    <tr>
-                        <td>API & intégrations</td>
-                        <td><i class="fas fa-times"></i></td>
-                        <td><i class="fas fa-times"></i></td>
-                        <td><i class="fas fa-check"></i></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- ===================================
-         CTA SECTION
-         =================================== -->
-    <section class="cta-section">
-        <div class="cta-content">
-            <h2>Prêt à transformer votre salon?</h2>
-            <p>Rejoignez des centaines de salons qui ont déjà fait confiance à SalonHub pour moderniser leur gestion.
-            </p>
-            <div class="cta-buttons">
-                <a href="#hero-form" class="btn-cta-primary scroll-to-form">Commencer maintenant</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===================================
-         FOOTER
-         =================================== -->
-    <footer id="contact">
-        <div class="footer-container">
-            <!-- Section principale du footer -->
-            <div class="footer-main">
-                <!-- Colonne Logo et description -->
-                <div class="footer-col footer-about">
-                    <div class="footer-logo">
-                        <img src="logo_fk.png" alt="FlowKraft Logo">
-                        <span>SalonHub</span>
+            <div class="pricing-grid">
+                <div class="price-card">
+                    <div class="price-card__head">
+                        <h3 data-i18n="price_plan1">Essentiel</h3>
+                        <p data-i18n="price_plan1_desc">Ideal pour les independants</p>
                     </div>
-                    <p class="footer-description">
-                        La solution SaaS complète pour moderniser et optimiser la gestion de votre salon.
-                        Simplifiez votre quotidien avec nos outils innovants.
-                    </p>
-                    <div class="social-links">
-                        <a href="#" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer">
-                            <i class="fab fa-linkedin-in"></i>
-                        </a>
-                        <a href="#" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
-                            <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a href="#" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                        <!-- <a href="#" aria-label="X (Twitter)" target="_blank" rel="noopener noreferrer">
-                            <i class="fab fa-x-twitter"></i>
-                        </a> -->
+                    <div class="price-card__price">
+                        <span class="price-amount" data-price-monthly="3.99" data-price-annual="3.29" data-price="3.99"
+                            data-currency="EUR">3,99&euro;</span>
+                        <span class="price-period" data-i18n="price_period">/mois</span>
                     </div>
-                </div>
-
-                <!-- Colonne Navigation -->
-                <div class="footer-col">
-                    <h3>Navigation</h3>
-                    <ul class="footer-links">
-                        <li><a href="#features"><i class="fas fa-chevron-right"></i>Fonctionnalités</a></li>
-                        <li><a href="#how-it-works"><i class="fas fa-chevron-right"></i>Comment ça fonctionne</a></li>
-                        <li><a href="#pricing"><i class="fas fa-chevron-right"></i>Tarifs</a></li>
-                        <li><a href="https://flowkraftagency.com"><i class="fas fa-chevron-right"></i>FK Agency</a></li>
-                        <!-- <li><a href="#"><i class="fas fa-chevron-right"></i>Blog</a></li>
-                        <li><a href="#"><i class="fas fa-chevron-right"></i>FAQ</a></li> -->
-                    </ul>
-                </div>
-
-                <!-- Colonne Solutions -->
-                <div class="footer-col">
-                    <h3>Solutions</h3>
-                    <ul class="footer-links">
-                        <li><a href="salon-de-beaute.html"><i class="fas fa-chevron-right"></i>Salons de Beauté</a></li>
-                        <li><a href="centre-de-formation.html"><i class="fas fa-chevron-right"></i>Centres de
-                                Formation</a></li>
-                        <li><a href="restaurant.html"><i class="fas fa-chevron-right"></i>Restaurants</a></li>
-                        <li><a href="cabinet-medical.html"><i class="fas fa-chevron-right"></i>Cabinets Médicaux</a>
+                    <ul class="price-card__list">
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_rdv">Rendez-vous
+                                illimites</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_1user">1 utilisateur</span>
                         </li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_page">Page de
+                                reservation</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_support">Support
+                                email</span></li>
+                        <li class="no"><i class="fas fa-minus"></i> <span data-i18n="price_f_stats">Statistiques
+                                avancees</span></li>
+                        <li class="no"><i class="fas fa-minus"></i> <span data-i18n="price_f_pay">Paiement en
+                                ligne</span></li>
                     </ul>
+                    <a href="https://app.salonhub.flowkraftagency.com/register" class="btn btn-primary btn-full"
+                        data-i18n="price_cta">Commencer</a>
                 </div>
 
-                <!-- Colonne Contact -->
-                <div class="footer-col">
-                    <h3>Contact</h3>
-                    <div class="contact-info">
-                        <div class="contact-item">
-                            <i class="fas fa-envelope"></i>
-                            <div>
-                                <span>Email</span>
-                                <a href="mailto:info@flowkraftagency.com">info@flowkraftagency.com</a>
-                            </div>
+                <div class="price-card price-card--pop">
+                    <div class="price-card__badge" data-i18n="price_badge">Le plus populaire</div>
+                    <div class="price-card__head">
+                        <h3>Pro</h3>
+                        <p data-i18n="price_plan2_desc">Pour les equipes en croissance</p>
+                    </div>
+                    <div class="price-card__price">
+                        <span class="price-amount" data-price-monthly="9.99" data-price-annual="8.29" data-price="9.99"
+                            data-currency="EUR">9,99&euro;</span>
+                        <span class="price-period" data-i18n="price_period">/mois</span>
+                    </div>
+                    <ul class="price-card__list">
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_rdv">Rendez-vous
+                                illimites</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_3user">3
+                                utilisateurs</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_page">Page de
+                                reservation</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_stats">Statistiques
+                                avancees</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_pay">Paiement en
+                                ligne</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_sms">Rappels
+                                SMS/Email</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_marketing">Campagnes
+                                marketing</span></li>
+                    </ul>
+                    <a href="https://app.salonhub.flowkraftagency.com/register" class="btn btn-white-fill btn-full"
+                        data-i18n="price_cta">Commencer</a>
+                </div>
+
+                <div class="price-card">
+                    <div class="price-card__head">
+                        <h3>Developer</h3>
+                        <p data-i18n="price_plan_dev_desc">Pour les integrateurs & devs</p>
+                    </div>
+                    <div class="price-card__price">
+                        <span class="price-amount" data-price-monthly="14.99" data-price-annual="12.49"
+                            data-price="14.99" data-currency="EUR">14,99&euro;</span>
+                        <span class="price-period" data-i18n="price_period">/mois</span>
+                    </div>
+                    <ul class="price-card__list">
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_allpro">Tout du plan
+                                Pro</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_apikeys">Cles API
+                                (sk_live_)</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_webhooks">API &
+                                webhooks</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_integrations">Integrations
+                                tierces</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_ratelimit">5 000
+                                requetes/jour</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_techsupport">Support
+                                technique prioritaire</span></li>
+                    </ul>
+                    <a href="https://app.salonhub.flowkraftagency.com/register" class="btn btn-primary btn-full"
+                        data-i18n="price_cta">Commencer</a>
+                </div>
+
+                <div class="price-card">
+                    <div class="price-card__head">
+                        <h3 data-i18n="price_plan3">Sur mesure</h3>
+                        <p data-i18n="price_plan3_desc">Multi-salons et franchises</p>
+                    </div>
+                    <div class="price-card__price">
+                        <span class="price-amount price-amount--custom" data-i18n="price_custom">Sur devis</span>
+                    </div>
+                    <ul class="price-card__list">
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_allpro">Tout du plan
+                                Pro</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_unlimited">Utilisateurs
+                                illimites</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_multi">Multi-salons</span>
+                        </li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_priority">Support
+                                prioritaire</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_api">API &
+                                integrations</span></li>
+                        <li class="yes"><i data-lucide="check"></i> <span data-i18n="price_f_manager">Gestionnaire
+                                dedie</span></li>
+                    </ul>
+                    <button onclick="openContactModal()" class="btn btn-outline btn-full" data-i18n="price_contact">Nous
+                        contacter</button>
+                </div>
+            </div>
+
+            <!-- Pricing trust badges -->
+            <div class="pricing-trust" data-anim="fade">
+                <div class="trust-badge glass-card">
+                    <i data-lucide="shield-check"></i>
+                    <span data-i18n="trust_secure">Paiement securise</span>
+                </div>
+                <div class="trust-badge glass-card">
+                    <i data-lucide="clock"></i>
+                    <span data-i18n="trust_trial">Essai 14 jours</span>
+                </div>
+                <div class="trust-badge glass-card">
+                    <i data-lucide="x-circle"></i>
+                    <span data-i18n="trust_nocommit">Sans engagement</span>
+                </div>
+                <div class="trust-badge glass-card">
+                    <i data-lucide="headphones"></i>
+                    <span data-i18n="trust_support">Support reactif</span>
+                </div>
+            </div>
+
+            <!-- Comparison table -->
+            <div class="compare" data-anim="fade">
+                <h3 class="compare__title"><i data-lucide="table"></i> <span data-i18n="compare_title">Comparez les
+                        fonctionnalites</span></h3>
+                <div class="compare__wrap">
+                    <table class="compare__table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="compare_feature">Fonctionnalite</th>
+                                <th data-i18n="price_plan1">Essentiel</th>
+                                <th>Pro</th>
+                                <th>Developer</th>
+                                <th data-i18n="price_plan3">Sur mesure</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td data-i18n="compare_rdv">Rendez-vous</td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="compare_users">Utilisateurs</td>
+                                <td>1</td>
+                                <td>3</td>
+                                <td>5</td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_page">Page de reservation</td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_stats">Statistiques avancees</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_pay">Paiement en ligne</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_sms">Rappels SMS/Email</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_marketing">Campagnes Marketing</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_apikeys">Cles API (sk_live_)</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_webhooks">API & webhooks</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_ratelimit">5 000 requetes/jour</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td data-i18n="compare_unlimited">Illimites</td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_multi">Multi-salons</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_priority">Support prioritaire</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="price_f_manager">Gestionnaire dedie</td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="x" class="c-no"></i></td>
+                                <td><i data-lucide="check" class="c-yes"></i></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== TESTIMONIALS ========== -->
+    <section class="testimonials">
+        <div class="container">
+            <div class="section-header" data-anim="fade">
+                <p class="section-tag" data-i18n="testi_tag">Temoignages</p>
+                <h2 class="section-title" data-i18n="testi_title">Ils nous font <span
+                        class="gradient-text">confiance</span></h2>
+            </div>
+
+            <!-- 2-Column Slider Layout -->
+            <div class="testi-slider" data-anim="fade">
+                <!-- Left: Dark stat card -->
+                <div class="testi-stat-card">
+                    <div>
+                        <div class="testi-stat-card__stars"><i data-lucide="star"></i><i data-lucide="star"></i><i
+                                data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star-half"></i></div>
+                        <span class="testi-stat-card__big" id="testiStat">+45%</span>
+                        <p class="testi-stat-card__label" data-i18n="testi_stat_label">d'augmentation du chiffre
+                            d'affaires en moyenne</p>
+                    </div>
+                    <span class="testi-stat-card__quote">&ldquo;</span>
+                </div>
+
+                <!-- Right: Testimonial slides -->
+                <div class="testi-content" id="testiContent">
+                    <div class="testi-slide active" data-stat="+45%">
+                        <div class="testi-slide__stars"><i data-lucide="star"></i><i data-lucide="star"></i><i
+                                data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i></div>
+                        <p class="testi-slide__text" data-i18n="testi_text1">"SalonHub a transforme la gestion de mon
+                            salon. Les clients adorent
+                            reserver en ligne, et moi je ne perds plus de temps au telephone. Mon CA a augmente de 45%
+                            en 6 mois."</p>
+                        <div class="testi-slide__author">
+                            <span class="testi-avatar"
+                                style="background:linear-gradient(135deg,#EC4899,#F472B6)">S</span>
+                            <div><strong>Sophie M.</strong><small data-i18n="testi_role1">Salon de beaute</small></div>
                         </div>
-                        <div class="contact-item">
-                            <i class="fas fa-phone"></i>
-                            <div>
-                                <span>Téléphone</span>
-                                <a href="tel:+33652794562">+33 (0)6 52 79 45 62</a>
-                            </div>
+                    </div>
+                    <div class="testi-slide" data-stat="+32%">
+                        <div class="testi-slide__stars"><i data-lucide="star"></i><i data-lucide="star"></i><i
+                                data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i></div>
+                        <p class="testi-slide__text" data-i18n="testi_text2">"Le QR Code pour les commandes est genial.
+                            Mes clients scannent,
+                            commandent et le service est deux fois plus fluide. Un gain de temps incroyable pour toute
+                            l'equipe."</p>
+                        <div class="testi-slide__author">
+                            <span class="testi-avatar"
+                                style="background:linear-gradient(135deg,#F59E0B,#FBBF24)">K</span>
+                            <div><strong>Karim A.</strong><small data-i18n="testi_role2">Restaurant</small></div>
                         </div>
-                        <div class="contact-item">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <div>
-                                <span>Adresse</span>
-                                <span>France, Toulouse</span>
+                    </div>
+                    <div class="testi-slide" data-stat="-50%">
+                        <div class="testi-slide__stars"><i data-lucide="star"></i><i data-lucide="star"></i><i
+                                data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star-half"></i></div>
+                        <p class="testi-slide__text" data-i18n="testi_text3">"Les rappels automatiques ont divise par
+                            deux les absences. Le
+                            tableau de bord me permet de tout suivre d'un coup d'oeil. Je recommande sans hesitation."
+                        </p>
+                        <div class="testi-slide__author">
+                            <span class="testi-avatar"
+                                style="background:linear-gradient(135deg,#10B981,#34D399)">M</span>
+                            <div><strong>Dr. Martin L.</strong><small data-i18n="testi_role3">Cabinet medical</small>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Colonne Newsletter -->
-                <div class="footer-col newsletter-col">
-                    <h3>Newsletter</h3>
-                    <p>Recevez nos conseils et actualités pour votre salon</p>
-                    <form class="newsletter-form">
-                        <div class="input-group">
-                            <input type="email" placeholder="Votre email" required aria-label="Email newsletter">
-                            <button type="submit" aria-label="S'abonner à la newsletter">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </div>
-                    </form>
-                    <!-- <div class="app-badges">
-                        <a href="#" class="app-badge" target="_blank" rel="noopener noreferrer">
-                            <i class="fab fa-apple"></i>
+            <!-- Navigation arrows + dots -->
+            <div class="testi-nav" data-anim="fade">
+                <button class="testi-arrow" id="testiPrev" aria-label="Temoignage precedent"><i
+                        data-lucide="arrow-left"></i></button>
+                <div class="testi-dots" id="testiDots">
+                    <button class="testi-dot active" data-i="0" aria-label="Temoignage 1"></button>
+                    <button class="testi-dot" data-i="1" aria-label="Temoignage 2"></button>
+                    <button class="testi-dot" data-i="2" aria-label="Temoignage 3"></button>
+                </div>
+                <button class="testi-arrow" id="testiNext" aria-label="Temoignage suivant"><i
+                        data-lucide="arrow-right"></i></button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== MOBILE APP ========== -->
+    <section class="mobile-app" id="app">
+        <div class="container">
+            <div class="mobile-app__layout">
+                <div class="mobile-app__content" data-anim="fade">
+                    <p class="section-tag" data-i18n="app_tag">Application Mobile</p>
+                    <h2 class="section-title" data-i18n="app_title">Bientot sur <span
+                            class="gradient-text">mobile</span></h2>
+                    <p class="section-desc" data-i18n="app_desc">Gerez votre activite ou que vous soyez. L'application
+                        SalonHub arrive bientot sur iOS et Android.</p>
+                    <div class="mobile-app__stores">
+                        <a href="#" class="store-badge store-badge--apple" aria-label="App Store">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+                            </svg>
                             <div>
-                                <span>Télécharger sur</span>
+                                <span data-i18n="app_store_soon">Bientot sur</span>
                                 <strong>App Store</strong>
                             </div>
                         </a>
-                        <a href="#" class="app-badge" target="_blank" rel="noopener noreferrer">
-                            <i class="fab fa-google-play"></i>
+                        <a href="#" class="store-badge store-badge--google" aria-label="Google Play">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.199l2.302 2.302a1 1 0 010 1.38l-2.302 2.302L15.09 12l2.608-2.492zM5.864 2.658L16.8 9.49l-2.302 2.302L5.864 2.658z" />
+                            </svg>
                             <div>
-                                <span>Disponible sur</span>
+                                <span data-i18n="app_store_soon">Bientot sur</span>
                                 <strong>Google Play</strong>
                             </div>
                         </a>
-                    </div> -->
+                    </div>
+
+                    <!-- PWA Installation Mention -->
+                    <div class="mobile-app__pwa glass-card" id="pwaCard">
+                        <div class="pwa-badge">
+                            <i data-lucide="monitor-smartphone"></i>
+                            <div>
+                                <strong data-i18n="app_pwa_title">Installer la Web App</strong>
+                                <p data-i18n="app_pwa_desc">Ajoutez SalonHub à votre écran d'accueil dès maintenant.</p>
+                            </div>
+                        </div>
+                        <a href="https://app.salonhub.flowkraftagency.com/login" class="btn btn-primary"
+                            style="padding: 8px 16px; font-size: 13px;" data-i18n="app_pwa_install">Ouvrir l'App</a>
+                    </div>
+
+                    <form class="mobile-app__notify" id="appNotifyForm">
+                        <input type="email" name="email" placeholder="Votre email pour etre notifie" required
+                            data-i18n-placeholder="app_email_placeholder">
+                        <button type="submit" class="btn btn-primary" data-i18n="app_notify_btn">Me prevenir</button>
+                    </form>
+                </div>
+                <div class="mobile-app__visual" data-anim="fade" data-delay="2">
+                    <div class="phone-mockup">
+                        <div class="phone-mockup__frame">
+                            <div class="phone-mockup__notch"></div>
+                            <img src="dash.png" alt="SalonHub Mobile App" class="phone-mockup__img">
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+    </section>
 
-            <!-- Section inférieure du footer -->
+    <!-- ========== DEVELOPER API ========== -->
+    <section class="developer-api" id="api">
+        <div class="container">
+            <div class="developer-api__layout">
+                <div class="developer-api__content" data-anim="fade">
+                    <p class="section-tag" data-i18n="api_tag">Developpeurs</p>
+                    <h2 class="section-title" data-i18n="api_title">API <span class="gradient-text">ouverte</span></h2>
+                    <p class="section-desc" data-i18n="api_desc">Integrez SalonHub dans vos outils avec notre API
+                        RESTful. Documentation complete, webhooks et SDKs disponibles.</p>
+                    <ul class="api-features">
+                        <li><i data-lucide="key"></i> <span data-i18n="api_f1">Authentification OAuth 2.0</span></li>
+                        <li><i data-lucide="webhook"></i> <span data-i18n="api_f2">Webhooks en temps reel</span></li>
+                        <li><i data-lucide="file-json"></i> <span data-i18n="api_f3">Reponses JSON structurees</span>
+                        </li>
+                        <li><i data-lucide="book-open"></i> <span data-i18n="api_f4">Documentation interactive</span>
+                        </li>
+                    </ul>
+                    <a href="docs.html" class="btn btn-outline" data-i18n="api_cta">Explorer la documentation</a>
+                </div>
+                <div class="developer-api__code" data-anim="fade" data-delay="2">
+                    <div class="code-block glass-card">
+                        <div class="code-block__header">
+                            <span class="code-block__dot" style="background:#FF5F57"></span>
+                            <span class="code-block__dot" style="background:#FEBC2E"></span>
+                            <span class="code-block__dot" style="background:#28C840"></span>
+                            <span class="code-block__lang">cURL</span>
+                        </div>
+                        <pre class="code-block__body"><code>curl -X GET \
+  https://api.salonhub.flowkraftagency.com/v1/appointments \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json"</code></pre>
+                    </div>
+                    <div class="code-block glass-card" style="margin-top:16px;">
+                        <div class="code-block__header">
+                            <span class="code-block__dot" style="background:#FF5F57"></span>
+                            <span class="code-block__dot" style="background:#FEBC2E"></span>
+                            <span class="code-block__dot" style="background:#28C840"></span>
+                            <span class="code-block__lang">JSON Response</span>
+                        </div>
+                        <pre class="code-block__body"><code>{
+  "status": "success",
+  "data": [{
+    "id": "apt_1234",
+    "client": "Marie D.",
+    "service": "Coupe + Brushing",
+    "date": "2025-03-15T10:00:00Z"
+  }]
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== FAQ ========== -->
+    <section class="faq" id="faq">
+        <div class="container">
+            <div class="section-header" data-anim="fade">
+                <p class="section-tag" data-i18n="faq_tag">FAQ</p>
+                <h2 class="section-title" data-i18n="faq_title">Une question ?<br><span class="gradient-text">On a la
+                        reponse</span></h2>
+            </div>
+            <div class="faq-list" data-anim="fade">
+                <div class="faq-item">
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q1">Puis-je essayer SalonHub
+                            gratuitement ?</span><i data-lucide="chevron-down"></i></button>
+                    <div class="faq-a">
+                        <p data-i18n="faq_a1">Oui ! 14 jours d'essai gratuit sur tous les plans, sans carte bancaire.
+                            Explorez toutes les
+                            fonctionnalites avant de vous engager.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q2">SalonHub fonctionne-t-il pour
+                            mon secteur ?</span><i data-lucide="chevron-down"></i></button>
+                    <div class="faq-a">
+                        <p data-i18n="faq_a2">SalonHub est multi-secteur : salons de beaute, restaurants, centres de
+                            formation et cabinets
+                            medicaux. Chaque secteur dispose d'outils adaptes.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q3">Mes clients doivent-ils creer
+                            un compte ?</span><i data-lucide="chevron-down"></i></button>
+                    <div class="faq-a">
+                        <p data-i18n="faq_a3">Non ! Vos clients reservent directement depuis votre page publique sans
+                            creer de compte. Nom,
+                            email, telephone suffisent.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q4">Comment fonctionne le paiement
+                            en ligne ?</span><i data-lucide="chevron-down"></i></button>
+                    <div class="faq-a">
+                        <p data-i18n="faq_a4">Avec le plan Pro, vos clients paient lors de la reservation. Paiements
+                            securises, fonds
+                            verses automatiquement sur votre compte.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q5">Puis-je gerer plusieurs
+                            etablissements ?</span><i data-lucide="chevron-down"></i></button>
+                    <div class="faq-a">
+                        <p data-i18n="faq_a5">Oui, le plan Sur mesure permet de gerer plusieurs etablissements depuis un
+                            seul compte. Ideal
+                            pour les franchises.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <button class="faq-q" aria-expanded="false"><span data-i18n="faq_q6">Y a-t-il un engagement de duree
+                            ?</span><i data-lucide="chevron-down"></i></button>
+                    <div class="faq-a">
+                        <p data-i18n="faq_a6">Aucun engagement. Resiliez a tout moment depuis vos parametres. Votre
+                            abonnement reste actif
+                            jusqu'a la fin de la periode payee.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="faq-support" data-i18n="faq_support">
+                Vous ne trouvez pas votre reponse ? <a href="mailto:info@flowkraftagency.com">Contactez le support</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== FINAL CTA ========== -->
+    <section class="cta-final">
+        <div class="cta-final__bg">
+            <div class="cta-final__orb cta-final__orb--1"></div>
+            <div class="cta-final__orb cta-final__orb--2"></div>
+            <div class="cta-final__particles" id="ctaParticles"></div>
+        </div>
+        <div class="container">
+            <div class="cta-final__inner" data-anim="fade">
+                <h2 data-i18n="cta_title">Pret a transformer<br><span class="gradient-text-white">votre quotidien
+                        ?</span></h2>
+                <p data-i18n="cta_desc">Rejoignez les professionnels qui gagnent 5h par semaine avec SalonHub.</p>
+                <div class="cta-final__actions">
+                    <a href="https://app.salonhub.flowkraftagency.com/register" class="btn btn-white btn-lg">
+                        <span data-i18n="hero_cta1">Demarrer gratuitement</span>
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                    </a>
+                    <a href="#showcase" class="btn btn-outline btn-lg"
+                        style="border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.8)">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <polygon points="5 3 19 12 5 21 5 3" />
+                        </svg>
+                        <span data-i18n="hero_cta2">Demander une démo</span>
+                    </a>
+                </div>
+                <span class="cta-final__sub" data-i18n="cta_sub">14 jours gratuits &middot; Sans carte bancaire &middot;
+                    Sans engagement</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="footer" id="contact">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="#" class="footer-logo"><img src="logo.png" alt="SalonHub" width="36"
+                            height="36"><span>SalonHub</span></a>
+                    <p data-i18n="footer_desc">La plateforme de gestion tout-en-un pour professionnels.</p>
+                    <!-- <div class="footer-social">
+                        <a href="#" aria-label="LinkedIn"><i data-lucide="linkedin"></i></a>
+                        <a href="#" aria-label="Facebook"><i data-lucide="facebook"></i></a>
+                        <a href="#" aria-label="Instagram"><i data-lucide="instagram"></i></a>
+                    </div> -->
+                </div>
+                <div class="footer-col">
+                    <h4 data-i18n="footer_nav">Navigation</h4>
+                    <ul>
+                        <li><a href="#features" data-i18n="nav_features">Fonctionnalités</a></li>
+                        <li><a href="#pricing" data-i18n="nav_pricing">Tarifs</a></li>
+                        <li><a href="#api" data-i18n="nav_api">API</a></li>
+                        <li><a href="#faq" data-i18n="nav_faq">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4 data-i18n="footer_contact">Contact</h4>
+                    <div class="footer-contact">
+                        <p><i data-lucide="mail"></i> <a
+                                href="mailto:info@flowkraftagency.com">info@flowkraftagency.com</a></p>
+                        <p><i data-lucide="phone"></i> <a href="tel:+33652794562">+33 (0)6 52 79 45 62</a></p>
+                        <p><i data-lucide="map-pin"></i> <span data-i18n="footer_location">Toulose, France</span></p>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h4 data-i18n="footer_newsletter_title">Newsletter</h4>
+                    <p data-i18n="footer_newsletter_desc">Recevez nos conseils et actualites</p>
+                    <form class="footer-newsletter" id="newsletterForm">
+                        <input type="email" placeholder="Votre email" required data-i18n-placeholder="footer_email_ph">
+                        <button type="submit"><i data-lucide="send"></i></button>
+                    </form>
+                </div>
+            </div>
             <div class="footer-bottom">
-                <div class="footer-bottom-content">
-                    <div class="copyright">
-                        <p>&copy; 2025 <strong>FlowKraft Agency</strong>. Tous droits réservés.</p>
-                    </div>
-                    <div class="legal-links">
-                        <a href="confidentialite.html">Confidentialité</a>
-                        <a href="mentions-legales.html">Mentions légales</a>
-                        <a href="cookies.html">Cookies</a>
-                        <a href="cgu.html">CGU</a>
-                    </div>
+                <p data-i18n="footer_copy">&copy; 2025 <strong>FlowKraft Agency</strong>. Tous droits reserves.</p>
+                <div class="footer-legal">
+                    <a href="confidentialite.html" data-i18n="footer_privacy">Confidentialite</a>
+                    <a href="mentions-legales.html" data-i18n="footer_legal">Mentions legales</a>
+                    <a href="cookies.html">Cookies</a>
+                    <a href="cgu.html" data-i18n="footer_terms">CGU</a>
                 </div>
             </div>
         </div>
     </footer>
 
-    <!-- EmailJS -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    <script type="text/javascript">
-        (function () {
-            emailjs.init("bWDKhC9so5aLgrYO5"); // Remplacer par votre clé publique EmailJS
-        })();
-    </script>
+    <!-- ========== CONTACT MODAL ========== -->
+    <div class="modal-overlay" id="contactModal">
+        <div class="modal glass-card">
+            <button class="modal__close" id="closeContactModal">&times;</button>
+            <h3 data-i18n="modal_title">Contactez-nous</h3>
+            <p class="modal__desc" data-i18n="modal_desc">Decrivez votre besoin et nous reviendrons vers vous
+                rapidement.</p>
+            <form class="contact-form" id="contactForm">
+                <input type="text" name="name" placeholder="Votre nom" required data-i18n-placeholder="modal_name">
+                <input type="email" name="email" placeholder="Votre email" required data-i18n-placeholder="modal_email">
+                <input type="text" name="company" placeholder="Nom de l'etablissement"
+                    data-i18n-placeholder="modal_company">
+                <textarea name="message" placeholder="Votre message" rows="4" required
+                    data-i18n-placeholder="modal_message"></textarea>
+                <button type="submit" class="btn btn-primary btn-full" data-i18n="modal_submit">Envoyer</button>
+            </form>
+            <div class="contact-form__success" id="contactSuccess" style="display:none">
+                <i data-lucide="check-circle"></i>
+                <p data-i18n="modal_success">Message envoye ! Nous reviendrons vers vous sous 24h.</p>
+            </div>
+        </div>
+    </div>
 
-    <!-- JavaScript -->
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script>(function () { emailjs.init("bWDKhC9so5aLgrYO5") })();</script>
     <script src="script.js"></script>
 
-    <!-- Script de conversion de devises -->
+    <!-- Currency -->
     <script>
         (function () {
-            // Configuration des devises supportées
-            const CURRENCIES = {
-                EUR: { symbol: '€', name: 'Euro', locale: 'fr-FR' },
-                USD: { symbol: '$', name: 'US Dollar', locale: 'en-US' },
-                GBP: { symbol: '£', name: 'British Pound', locale: 'en-GB' },
-                CAD: { symbol: 'CA$', name: 'Canadian Dollar', locale: 'en-CA' },
-                CHF: { symbol: 'CHF', name: 'Swiss Franc', locale: 'de-CH' },
-                MAD: { symbol: 'MAD', name: 'Moroccan Dirham', locale: 'ar-MA' },
-                XOF: { symbol: 'CFA', name: 'West African CFA Franc', locale: 'fr-FR' },
-                XAF: { symbol: 'FCFA', name: 'Central African CFA Franc', locale: 'fr-FR' }
-            };
-
-            // Mapping pays -> devise
-            const COUNTRY_TO_CURRENCY = {
-                FR: 'EUR', BE: 'EUR', LU: 'EUR', MC: 'EUR',
-                CH: 'CHF',
-                US: 'USD',
-                CA: 'CAD',
-                GB: 'GBP',
-                MA: 'MAD', DZ: 'MAD', TN: 'MAD',
-                SN: 'XOF', CI: 'XOF',
-                CM: 'XAF', GA: 'XAF', CG: 'XAF'
-            };
-
-            let exchangeRates = null;
-            let userCurrency = 'EUR';
-
-            // Détecter le pays de l'utilisateur avec plusieurs fallbacks
-            async function detectUserCountry() {
-                // Méthode 1 : Utiliser la locale du navigateur (le plus fiable et rapide)
-                try {
-                    const locale = navigator.language || navigator.userLanguage;
-                    console.log('Locale navigateur:', locale);
-
-                    // Détection basée sur la langue du navigateur
-                    if (locale.includes('en-US')) return 'US';
-                    if (locale.includes('en-GB')) return 'GB';
-                    if (locale.includes('fr-CA')) return 'CA';
-                    if (locale.includes('de-CH') || locale.includes('fr-CH')) return 'CH';
-                    if (locale.includes('ar-MA') || locale.includes('fr-MA')) return 'MA';
-                    if (locale.startsWith('fr')) return 'FR';
-                    if (locale.startsWith('en')) return 'GB'; // Anglais par défaut
-                    if (locale.startsWith('de')) return 'CH';
-                } catch (error) {
-                    console.log('Impossible de détecter la locale');
-                }
-
-                // Fallback : EUR par défaut
-                console.log('Utilisation de EUR par défaut');
-                return 'FR';
-            }
-
-            // Charger les taux de change depuis l'API
-            async function loadExchangeRates() {
-                try {
-                    const API_URL = 'http://localhost:5000'; // Changez en production
-                    const response = await fetch(`${API_URL}/api/currency/rates`);
-                    const data = await response.json();
-
-                    if (data.success) {
-                        exchangeRates = data.data.rates;
-                        return true;
-                    }
-                } catch (error) {
-                    console.log('Impossible de charger les taux de change, affichage en EUR');
-                    return false;
-                }
-            }
-
-            // Convertir un prix
-            function convertPrice(amount, fromCurrency, toCurrency) {
-                if (fromCurrency === toCurrency || !exchangeRates) {
-                    return amount;
-                }
-
-                try {
-                    const fromRate = exchangeRates[fromCurrency] || 1;
-                    const toRate = exchangeRates[toCurrency] || 1;
-                    const converted = amount * (toRate / fromRate);
-                    return Math.round(converted * 100) / 100;
-                } catch (error) {
-                    return amount;
-                }
-            }
-
-            // Formater un prix
-            function formatPrice(amount, currency) {
-                const currencyInfo = CURRENCIES[currency] || CURRENCIES['EUR'];
-
-                try {
-                    return new Intl.NumberFormat(currencyInfo.locale, {
-                        style: 'currency',
-                        currency: currency,
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                    }).format(amount);
-                } catch (error) {
-                    return `${currencyInfo.symbol}${amount}`;
-                }
-            }
-
-            // Mettre à jour tous les prix sur la page
-            function updatePrices() {
-                const priceElements = document.querySelectorAll('[data-price]');
-
-                priceElements.forEach(element => {
-                    const originalPrice = parseFloat(element.getAttribute('data-price'));
-                    const originalCurrency = element.getAttribute('data-currency') || 'EUR';
-
-                    // Convertir le prix
-                    const convertedPrice = convertPrice(originalPrice, originalCurrency, userCurrency);
-
-                    // Formater et afficher
-                    const formattedPrice = formatPrice(convertedPrice, userCurrency);
-                    element.innerHTML = `${formattedPrice}<span style="font-size: 18px; font-weight: 400;"> / mois</span>`;
-                });
-            }
-
-            // Initialiser le système de conversion
-            async function init() {
-                // 1. Détecter le pays
-                const country = await detectUserCountry();
-                userCurrency = COUNTRY_TO_CURRENCY[country] || 'EUR';
-
-                // 2. Charger les taux de change
-                const ratesLoaded = await loadExchangeRates();
-
-                // 3. Mettre à jour les prix
-                if (ratesLoaded && userCurrency !== 'EUR') {
-                    updatePrices();
-                }
-            }
-
-            // Démarrer quand le DOM est prêt
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else {
-                init();
-            }
+            const CURRENCIES = { EUR: { symbol: '\u20ac', locale: 'fr-FR' }, USD: { symbol: '$', locale: 'en-US' }, GBP: { symbol: '\u00a3', locale: 'en-GB' }, CAD: { symbol: 'CA$', locale: 'en-CA' }, CHF: { symbol: 'CHF', locale: 'de-CH' }, MAD: { symbol: 'MAD', locale: 'ar-MA' }, XOF: { symbol: 'CFA', locale: 'fr-FR' }, XAF: { symbol: 'FCFA', locale: 'fr-FR' } };
+            const C2C = { FR: 'EUR', BE: 'EUR', LU: 'EUR', MC: 'EUR', CH: 'CHF', US: 'USD', CA: 'CAD', GB: 'GBP', MA: 'MAD', DZ: 'MAD', TN: 'MAD', SN: 'XOF', CI: 'XOF', CM: 'XAF', GA: 'XAF', CG: 'XAF' };
+            let rates = null, cur = 'EUR';
+            async function detect() { try { const l = navigator.language || ''; if (l.includes('en-US')) return 'US'; if (l.includes('en-GB')) return 'GB'; if (l.includes('fr-CA')) return 'CA'; if (l.includes('de-CH') || l.includes('fr-CH')) return 'CH'; if (l.includes('ar-MA') || l.includes('fr-MA')) return 'MA'; if (l.startsWith('fr')) return 'FR'; if (l.startsWith('en')) return 'GB'; if (l.startsWith('de')) return 'CH' } catch (e) { } return 'FR' }
+            async function load() { try { const r = await fetch('https://api.salonhub.flowkraftagency.com/api/currency/rates'); const d = await r.json(); if (d.success) { rates = d.data.rates; return true } } catch (e) { } return false }
+            function convert(a, f, t) { if (f === t || !rates) return a; try { return Math.round(a * (rates[t] || 1) / (rates[f] || 1) * 100) / 100 } catch (e) { return a } }
+            function fmt(a, c) { const i = CURRENCIES[c] || CURRENCIES.EUR; try { return new Intl.NumberFormat(i.locale, { style: 'currency', currency: c, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(a) } catch (e) { return i.symbol + a } }
+            function update() { document.querySelectorAll('[data-price]').forEach(el => { const o = parseFloat(el.getAttribute('data-price')); const f = el.getAttribute('data-currency') || 'EUR'; const c = convert(o, f, cur); el.innerHTML = fmt(c, cur) + '<span class="price-period"> /mois</span>' }) }
+            async function init() { const co = await detect(); cur = C2C[co] || 'EUR'; const ok = await load(); if (ok && cur !== 'EUR') update() }
+            document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init()
         })();
     </script>
-
 </body>
 
 </html>

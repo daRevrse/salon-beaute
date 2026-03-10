@@ -7,6 +7,7 @@ const router = express.Router();
 const db = require("../config/database");
 const { authMiddleware } = require("../middleware/auth");
 const { tenantMiddleware } = require("../middleware/tenant");
+const { checkScope } = require("../middleware/checkScope");
 
 // Toutes les routes sont protégées
 router.use(authMiddleware);
@@ -16,7 +17,7 @@ router.use(tenantMiddleware);
  * GET /api/settings
  * Récupérer tous les paramètres du salon
  */
-router.get("/", async (req, res) => {
+router.get("/", checkScope("settings:read"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
 
@@ -76,12 +77,13 @@ router.get("/", async (req, res) => {
  * GET /api/settings/salon
  * Récupérer les informations du salon
  */
-router.get("/salon", async (req, res) => {
+router.get("/salon", checkScope("settings:read"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
 
     const tenant = await db.query(
-      `SELECT id, name, slug, phone, email, address, city, postal_code, logo_url, banner_url, currency
+      `SELECT id, name, slug, phone, email, address, city, postal_code, logo_url, banner_url, slogan, currency, business_type,
+              subscription_status, subscription_plan, trial_ends_at, onboarding_status
        FROM tenants
        WHERE id = ?`,
       [tenantId]
@@ -94,9 +96,20 @@ router.get("/salon", async (req, res) => {
       });
     }
 
+    // Vérifier si le trial est expiré et mettre à jour le statut
+    const tenantData = tenant[0];
+    if (tenantData.subscription_status === 'trial' && tenantData.trial_ends_at) {
+      const trialEnd = new Date(tenantData.trial_ends_at);
+      if (trialEnd < new Date()) {
+        tenantData.subscription_status = 'expired';
+        // Mettre à jour dans la BDD
+        await db.query("UPDATE tenants SET subscription_status = 'expired' WHERE id = ?", [tenantId]);
+      }
+    }
+
     res.json({
       success: true,
-      data: tenant[0],
+      data: tenantData,
     });
   } catch (error) {
     console.error("Erreur lors de la récupération du salon:", error);
@@ -108,13 +121,80 @@ router.get("/salon", async (req, res) => {
 });
 
 /**
+ * GET /api/settings/subscription
+ * Récupérer les informations d'abonnement du tenant
+ */
+router.get("/subscription", checkScope("settings:read"), async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+
+    const tenant = await db.query(
+      `SELECT subscription_status, subscription_plan, trial_ends_at,
+              subscription_started_at, stripe_customer_id, stripe_subscription_id
+       FROM tenants
+       WHERE id = ?`,
+      [tenantId]
+    );
+
+    if (tenant.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Tenant introuvable",
+      });
+    }
+
+    const tenantData = tenant[0];
+
+    // Vérifier si le trial est expiré et mettre à jour le statut
+    let effectiveStatus = tenantData.subscription_status;
+    let isTrialExpired = false;
+    let daysRemaining = null;
+
+    if (tenantData.subscription_status === 'trial' && tenantData.trial_ends_at) {
+      const trialEnd = new Date(tenantData.trial_ends_at);
+      const now = new Date();
+
+      if (trialEnd < now) {
+        effectiveStatus = 'expired';
+        isTrialExpired = true;
+        // Mettre à jour dans la BDD
+        await db.query("UPDATE tenants SET subscription_status = 'expired' WHERE id = ?", [tenantId]);
+      } else {
+        // Calculer les jours restants
+        const diffTime = trialEnd.getTime() - now.getTime();
+        daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        status: effectiveStatus,
+        plan: tenantData.subscription_plan,
+        trial_ends_at: tenantData.trial_ends_at,
+        subscription_started_at: tenantData.subscription_started_at,
+        has_stripe_subscription: !!tenantData.stripe_subscription_id,
+        is_trial_expired: isTrialExpired,
+        days_remaining: daysRemaining,
+      },
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération de l'abonnement:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur",
+    });
+  }
+});
+
+/**
  * PUT /api/settings/salon
  * Mettre à jour les informations du salon (nom, logo, etc.)
  */
-router.put("/salon", async (req, res) => {
+router.put("/salon", checkScope("settings:write"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { name, slug, phone, email, address, city, postal_code, logo_url, banner_url } = req.body;
+    const { name, slug, phone, email, address, city, postal_code, logo_url, banner_url, slogan } = req.body;
 
     // Construire la requête de mise à jour dynamiquement
     const updates = [];
@@ -156,6 +236,10 @@ router.put("/salon", async (req, res) => {
       updates.push("banner_url = ?");
       params.push(banner_url);
     }
+    if (slogan !== undefined) {
+      updates.push("slogan = ?");
+      params.push(slogan);
+    }
 
     if (updates.length === 0) {
       return res.status(400).json({
@@ -188,10 +272,10 @@ router.put("/salon", async (req, res) => {
  * PUT /api/settings
  * Mettre à jour les paramètres du salon
  */
-router.put("/", async (req, res) => {
+router.put("/", checkScope("settings:write"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { business_hours, slot_duration, currency } = req.body;
+    const { business_hours, slot_duration, currency, theme_settings } = req.body;
 
     // Mettre à jour business_hours
     if (business_hours) {
@@ -274,6 +358,29 @@ router.put("/", async (req, res) => {
       }
     }
 
+    // Mettre à jour theme_settings
+    if (theme_settings) {
+      const existing = await db.query(
+        "SELECT id FROM settings WHERE tenant_id = ? AND setting_key = ?",
+        [tenantId, "theme_settings"]
+      );
+
+      if (existing.length > 0) {
+        await db.query(
+          `UPDATE settings
+           SET setting_value = ?, setting_type = 'json', updated_at = NOW()
+           WHERE tenant_id = ? AND setting_key = ?`,
+          [JSON.stringify(theme_settings), tenantId, "theme_settings"]
+        );
+      } else {
+        await db.query(
+          `INSERT INTO settings (tenant_id, setting_key, setting_value, setting_type)
+           VALUES (?, 'theme_settings', ?, 'json')`,
+          [tenantId, JSON.stringify(theme_settings)]
+        );
+      }
+    }
+
     res.json({
       success: true,
       message: "Paramètres mis à jour avec succès",
@@ -288,7 +395,7 @@ router.put("/", async (req, res) => {
  * GET /api/settings/currency
  * Récupérer la devise du tenant
  */
-router.get("/currency", async (req, res) => {
+router.get("/currency", checkScope("settings:read"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
 
@@ -312,7 +419,7 @@ router.get("/currency", async (req, res) => {
  * GET /api/settings/:key
  * Récupérer un paramètre spécifique
  */
-router.get("/:key", async (req, res) => {
+router.get("/:key", checkScope("settings:read"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
     const { key } = req.params;
@@ -346,6 +453,31 @@ router.get("/:key", async (req, res) => {
     res.json({ [key]: value });
   } catch (error) {
     console.error("Erreur lors de la récupération du paramètre:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+/**
+ * PUT /api/settings/onboarding/complete
+ * Marquer le tutoriel/onboarding comme terminé
+ */
+router.put("/onboarding/complete", checkScope("settings:write"), async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+
+    await db.query(
+      `UPDATE tenants
+       SET onboarding_status = 'completed', onboarding_completed_at = NOW()
+       WHERE id = ?`,
+      [tenantId]
+    );
+
+    res.json({
+      success: true,
+      message: "Onboarding marqué comme terminé",
+    });
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour du statut onboarding:", error);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });

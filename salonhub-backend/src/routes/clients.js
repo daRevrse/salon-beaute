@@ -8,6 +8,8 @@ const router = express.Router();
 const { query } = require("../config/database");
 const { authMiddleware } = require("../middleware/auth");
 const { tenantMiddleware } = require("../middleware/tenant");
+const { checkScope } = require("../middleware/checkScope");
+const webhookService = require("../services/webhookService");
 
 // Appliquer les middlewares sur toutes les routes
 router.use(authMiddleware);
@@ -16,7 +18,7 @@ router.use(tenantMiddleware);
 // ==========================================
 // GET - Liste des clients
 // ==========================================
-router.get("/", async (req, res) => {
+router.get("/", checkScope("clients:read"), async (req, res) => {
   try {
     const { search, limit = 50, offset = 0 } = req.query;
 
@@ -71,7 +73,7 @@ router.get("/", async (req, res) => {
 // ==========================================
 // GET - Un client par ID
 // ==========================================
-router.get("/:id", async (req, res) => {
+router.get("/:id", checkScope("clients:read"), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -118,7 +120,7 @@ router.get("/:id", async (req, res) => {
 // ==========================================
 // POST - Créer un client
 // ==========================================
-router.post("/", async (req, res) => {
+router.post("/", checkScope("clients:write"), async (req, res) => {
   try {
     const {
       first_name,
@@ -176,6 +178,15 @@ router.post("/", async (req, res) => {
       ]
     );
 
+    // Webhook: client.created
+    webhookService.dispatch(req.tenantId, "client.created", {
+      client_id: result.insertId,
+      first_name,
+      last_name,
+      email: email || null,
+      phone: phone || null,
+    });
+
     res.status(201).json({
       success: true,
       message: "Client créé avec succès",
@@ -195,7 +206,7 @@ router.post("/", async (req, res) => {
 // ==========================================
 // PUT - Modifier un client
 // ==========================================
-router.put("/:id", async (req, res) => {
+router.put("/:id", checkScope("clients:write"), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -266,6 +277,14 @@ router.put("/:id", async (req, res) => {
       ]
     );
 
+    // Webhook: client.updated
+    webhookService.dispatch(req.tenantId, "client.updated", {
+      client_id: parseInt(id),
+      first_name,
+      last_name,
+      email: email || null,
+    });
+
     res.json({
       success: true,
       message: "Client modifié avec succès",
@@ -282,7 +301,7 @@ router.put("/:id", async (req, res) => {
 // ==========================================
 // DELETE - Supprimer un client
 // ==========================================
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", checkScope("clients:write"), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -316,6 +335,11 @@ router.delete("/:id", async (req, res) => {
       });
     }
 
+    // Webhook: client.deleted
+    webhookService.dispatch(req.tenantId, "client.deleted", {
+      client_id: parseInt(id),
+    });
+
     res.json({
       success: true,
       message: "Client supprimé avec succès",
@@ -332,7 +356,7 @@ router.delete("/:id", async (req, res) => {
 // ==========================================
 // GET - Historique RDV d'un client
 // ==========================================
-router.get("/:id/appointments", async (req, res) => {
+router.get("/:id/appointments", checkScope("clients:read"), async (req, res) => {
   try {
     const { id } = req.params;
 

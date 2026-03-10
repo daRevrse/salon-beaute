@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
     // Déterminer le dossier selon le type
     if (target === "tenant-logo" || target === "tenant-banner") {
       uploadPath += "tenants";
-    } else if (target === "service-image") {
+    } else if (target === "service-image" || target === "service-gallery") {
       uploadPath += "services";
     } else if (target === "user-avatar") {
       uploadPath += "users";

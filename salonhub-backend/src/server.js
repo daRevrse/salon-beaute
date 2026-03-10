@@ -20,10 +20,22 @@ const app = express();
 const server = http.createServer(app);
 
 // Initialiser Socket.io
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:3000",
+  "http://localhost:8081",
+  "http://192.168.1.77:8081",
+];
+
 const io = new Server(server, {
-  // <--- AJOUT 4
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // Allow mobile apps (no origin) and listed origins
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow all origins for socket (mobile needs it)
+      }
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -65,10 +77,24 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS - Autoriser frontend
+// CORS - Autoriser frontend + landing page
+const corsAllowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:3000",
+  process.env.LANDING_URL || "http://localhost:8080",
+  "http://localhost:8081",
+  "http://192.168.1.77:8081",
+];
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin || corsAllowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
@@ -133,10 +159,16 @@ app.get("/", (req, res) => {
 // ==========================================
 
 // Routes auth (PUBLIQUES pour register/login)
+app.use("/api/auth/google", require("./routes/google-auth"));
 app.use("/api/auth", require("./routes/auth"));
 
 // Routes Stripe (partiellement publiques - webhook)
 app.use("/api/stripe", require("./routes/stripe"));
+
+// Routes publiques sectorielles (plus spécifiques - doivent être avant /api/public)
+app.use("/api/public/restaurant", require("./routes/restaurant/public"));
+app.use("/api/public/training", require("./routes/training/public"));
+app.use("/api/public/medical", require("./routes/medical/public"));
 
 // Routes publiques pour le booking (sans authentification)
 app.use("/api/public", require("./routes/public"));
@@ -161,6 +193,24 @@ app.use("/api/settings", require("./routes/settings"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/promotions", require("./routes/promotions"));
 app.use("/api/scheduler", require("./routes/scheduler"));
+
+// Routes API Keys (Developer/Custom plans)
+app.use("/api/api-keys", require("./routes/api-keys"));
+
+// Routes Webhooks (Developer/Custom plans)
+app.use("/api/webhooks", require("./routes/webhooks"));
+
+// Routes Salons (Multi-Salon)
+app.use("/api/salons", require("./routes/salons"));
+
+// Routes Restaurant (multi-secteur)
+app.use("/api/restaurant", require("./routes/restaurant"));
+
+// Routes Training (multi-secteur)
+app.use("/api/training", require("./routes/training"));
+
+// Routes Medical (multi-secteur)
+app.use("/api/medical", require("./routes/medical"));
 
 // Routes SuperAdmin (système SaaS)
 // IMPORTANT: Plus spécifiques d'abord, générales ensuite

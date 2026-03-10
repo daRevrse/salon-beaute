@@ -42,10 +42,26 @@ self.addEventListener('activate', (event) => {
 });
 
 // Stratégie de cache: Network First, puis Cache
+// Only cache GET requests - POST/PUT/DELETE cannot be cached
 self.addEventListener('fetch', (event) => {
+  // Skip non-GET requests - they cannot be cached
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Skip API requests from caching (they should always be fresh)
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
+        // Don't cache if not a valid response
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
+
         // Clone la réponse
         const responseToCache = response.clone();
 
@@ -103,19 +119,35 @@ self.addEventListener('notificationclick', (event) => {
 
   event.notification.close();
 
+  // Gérer les actions si présentes
+  if (event.action) {
+    console.log('🎬 Action cliquée:', event.action);
+    // On pourrait ajouter des traitements spécifiques ici (ex: /api/appointments/confirm)
+  }
+
   const urlToOpen = event.notification.data?.url || '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((windowClients) => {
-        // Vérifie si une fenêtre est déjà ouverte
+        // 1. Chercher si une fenêtre avec cette URL exacte est déjà ouverte
         for (let i = 0; i < windowClients.length; i++) {
           const client = windowClients[i];
           if (client.url === urlToOpen && 'focus' in client) {
             return client.focus();
           }
         }
-        // Sinon, ouvre une nouvelle fenêtre
+
+        // 2. Si non, chercher une fenêtre sur le même domaine et naviguer
+        if (windowClients.length > 0) {
+          const client = windowClients[0];
+          if ('focus' in client && 'navigate' in client) {
+            client.focus();
+            return client.navigate(urlToOpen);
+          }
+        }
+
+        // 3. Sinon, ouvrir une nouvelle fenêtre
         if (clients.openWindow) {
           return clients.openWindow(urlToOpen);
         }

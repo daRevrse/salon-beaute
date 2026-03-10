@@ -1,17 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import * as SecureStore from 'expo-secure-store';
 
 import { useAuth } from '../contexts/AuthContext';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import PasswordResetSuccessScreen from '../screens/PasswordResetSuccessScreen';
-import PaymentScreen from '../screens/PaymentScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import AppointmentsScreen from '../screens/AppointmentsScreen';
 import AppointmentFormScreen from '../screens/AppointmentFormScreen';
@@ -31,6 +31,7 @@ import BillingScreen from '../screens/BillingScreen';
 import PromotionsScreen from '../screens/PromotionsScreen';
 import PromotionFormScreen from '../screens/PromotionFormScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import NotificationListScreen from '../screens/NotificationListScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -57,7 +58,7 @@ const TabNavigator = () => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#4F46E5',
+        tabBarActiveTintColor: '#6366F1',
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarStyle: {
           borderTopWidth: 1,
@@ -66,19 +67,13 @@ const TabNavigator = () => {
           paddingTop: 5,
           height: 60,
         },
-        headerStyle: {
-          backgroundColor: '#4F46E5',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: '600',
-        },
+        headerShown: false,
       })}
     >
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{ title: 'Tableau de bord', headerShown: false }}
+        options={{ title: 'Tableau de bord' }}
       />
       <Tab.Screen
         name="Appointments"
@@ -107,9 +102,23 @@ const TabNavigator = () => {
 // Navigation principale
 const AppNavigator = () => {
   const { user, loading } = useAuth();
+  const [onboardingSeen, setOnboardingSeen] = useState(null);
 
-  if (loading) {
-    return null; // ou un écran de chargement
+  useEffect(() => {
+    checkOnboarding();
+  }, []);
+
+  const checkOnboarding = async () => {
+    try {
+      const seen = await SecureStore.getItemAsync('onboardingSeen');
+      setOnboardingSeen(seen === 'true');
+    } catch {
+      setOnboardingSeen(false);
+    }
+  };
+
+  if (loading || onboardingSeen === null) {
+    return null;
   }
 
   return (
@@ -118,82 +127,29 @@ const AppNavigator = () => {
         {user ? (
           <>
             <Stack.Screen name="Main" component={TabNavigator} />
-            <Stack.Screen
-              name="AppointmentForm"
-              component={AppointmentFormScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="AppointmentDetail"
-              component={AppointmentDetailScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ClientForm"
-              component={ClientFormScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ClientHistory"
-              component={ClientHistoryScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ServiceForm"
-              component={ServiceFormScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Profile"
-              component={ProfileScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="BusinessHours"
-              component={BusinessHoursScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="BusinessSettings"
-              component={BusinessSettingsScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Staff"
-              component={StaffScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Billing"
-              component={BillingScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="StaffForm"
-              component={StaffFormScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Promotions"
-              component={PromotionsScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="PromotionForm"
-              component={PromotionFormScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Notifications"
-              component={NotificationsScreen}
-              options={{ headerShown: false }}
-            />
+            <Stack.Screen name="AppointmentForm" component={AppointmentFormScreen} />
+            <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} />
+            <Stack.Screen name="ClientForm" component={ClientFormScreen} />
+            <Stack.Screen name="ClientHistory" component={ClientHistoryScreen} />
+            <Stack.Screen name="ServiceForm" component={ServiceFormScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="BusinessHours" component={BusinessHoursScreen} />
+            <Stack.Screen name="BusinessSettings" component={BusinessSettingsScreen} />
+            <Stack.Screen name="Staff" component={StaffScreen} />
+            <Stack.Screen name="Billing" component={BillingScreen} />
+            <Stack.Screen name="StaffForm" component={StaffFormScreen} />
+            <Stack.Screen name="Promotions" component={PromotionsScreen} />
+            <Stack.Screen name="PromotionForm" component={PromotionFormScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="NotificationList" component={NotificationListScreen} />
           </>
         ) : (
           <>
+            {!onboardingSeen ? (
+              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+            ) : null}
             <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Register" component={RegisterScreen} />
-            <Stack.Screen name="Payment" component={PaymentScreen} />
+            <Stack.Screen name="Register" component={OnboardingScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="PasswordResetSuccess" component={PasswordResetSuccessScreen} />
           </>

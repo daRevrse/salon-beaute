@@ -258,7 +258,7 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
         {/* Service Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="cut" size={24} color="#8B5CF6" />
+            <Ionicons name="cut" size={24} color="#6366F1" />
             <Text style={styles.sectionTitle}>Service</Text>
           </View>
           <View style={styles.infoCard}>
@@ -269,7 +269,7 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
             <View style={styles.divider} />
             <View style={styles.serviceDetails}>
               <View style={styles.serviceDetailItem}>
-                <Ionicons name="pricetag-outline" size={18} color="#8B5CF6" />
+                <Ionicons name="pricetag-outline" size={18} color="#6366F1" />
                 <Text style={styles.servicePrice}>{appointment.total_price || appointment.service?.price} F CFA</Text>
               </View>
               <View style={styles.serviceDetailItem}>
@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
   servicePrice: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#8B5CF6',
+    color: '#6366F1',
   },
   serviceDuration: {
     fontSize: 15,

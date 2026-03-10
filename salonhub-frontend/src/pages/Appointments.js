@@ -1,25 +1,41 @@
 /**
- * Page Appointments
- * Gestion des rendez-vous
+ * Page Appointments - Purple Dynasty Theme
+ * Multi-Sector Adaptive Appointment Management
  */
 
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import DashboardLayout from "../components/common/DashboardLayout";
 import AppointmentDetails from "../components/appointments/AppointmentDetails";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { useAuth } from "../contexts/AuthContext";
 import { useAppointments } from "../hooks/useAppointments";
 import AppointmentCalendar from "../components/appointments/AppointmentCalendar";
 import { useClients } from "../hooks/useClients";
 import { useServices } from "../hooks/useServices";
 import api from "../services/api";
-
-// --- NOUVEAUX IMPORTS ---
+import { getBusinessTypeConfig } from "../utils/businessTypeConfig";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/common/Toast";
 import ConfirmModal from "../components/common/ConfirmModal";
+import {
+  CalendarDaysIcon,
+  PlusIcon,
+  ListBulletIcon,
+  CalendarIcon,
+  FunnelIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 
 const Appointments = () => {
+  const [searchParams] = useSearchParams();
+  const { tenant } = useAuth();
   const { formatPrice } = useCurrency();
+  const businessType = tenant?.business_type || "beauty";
+  const config = getBusinessTypeConfig(businessType);
+  const BusinessIcon = config.icon;
+  const term = config.terminology;
+
   const {
     appointments,
     loading,
@@ -30,23 +46,16 @@ const Appointments = () => {
   } = useAppointments();
   const { clients } = useClients();
   const { services } = useServices();
-
-  // --- HOOK TOAST ---
   const { toast, success, error, hideToast } = useToast();
 
   const [view, setView] = useState("list");
   const [showModal, setShowModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-  const [filterDate, setFilterDate] = useState("");
+  const [filterDate, setFilterDate] = useState(searchParams.get("date") || "");
   const [filterStatus, setFilterStatus] = useState("");
   const [staff, setStaff] = useState([]);
-
-  // --- NOUVEAUX ÉTATS POUR LES MODALES ---
-  // État pour la suppression
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState(null);
-
-  // État pour l'annulation (remplace le prompt)
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -60,7 +69,6 @@ const Appointments = () => {
     notes: "",
   });
 
-  // Charger le staff
   useEffect(() => {
     const loadStaff = async () => {
       try {
@@ -68,11 +76,19 @@ const Appointments = () => {
         setStaff(response.data.data);
       } catch (err) {
         console.error("Erreur chargement staff:", err);
-        // On évite d'afficher une erreur toast au chargement initial pour ne pas spammer
       }
     };
     loadStaff();
   }, []);
+
+  // Si on arrive avec ?date= depuis une notification, filtrer sur cette date
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      setFilterDate(dateParam);
+      fetchAppointments({ date: dateParam });
+    }
+  }, [searchParams]);
 
   const handleOpenModal = () => {
     setFormData({
@@ -86,18 +102,12 @@ const Appointments = () => {
     setShowModal(true);
   };
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-  };
+  const handleCloseModal = () => setShowModal(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setFormData({ ...formData, [name]: value });
 
-    // Logique de calcul automatique de l'heure de fin (inchangée)
     if (name === "service_id" && value) {
       const selectedService = services.find((s) => s.id === parseInt(value));
       if (selectedService && formData.start_time) {
@@ -106,9 +116,7 @@ const Appointments = () => {
     }
 
     if (name === "start_time" && value && formData.service_id) {
-      const selectedService = services.find(
-        (s) => s.id === parseInt(formData.service_id)
-      );
+      const selectedService = services.find((s) => s.id === parseInt(formData.service_id));
       if (selectedService) {
         updateEndTime(value, selectedService.duration);
       }
@@ -120,61 +128,40 @@ const Appointments = () => {
     const startDate = new Date();
     startDate.setHours(parseInt(hours), parseInt(minutes));
     startDate.setMinutes(startDate.getMinutes() + duration);
-
-    const endTime = `${String(startDate.getHours()).padStart(2, "0")}:${String(
-      startDate.getMinutes()
-    ).padStart(2, "0")}`;
-    setFormData((prev) => ({
-      ...prev,
-      end_time: endTime,
-    }));
+    const endTime = `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`;
+    setFormData((prev) => ({ ...prev, end_time: endTime }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Calculer end_time si manquant
     let appointmentData = { ...formData };
-    if (
-      !appointmentData.end_time &&
-      appointmentData.service_id &&
-      appointmentData.start_time
-    ) {
-      const selectedService = services.find(
-        (s) => s.id === parseInt(appointmentData.service_id)
-      );
+
+    if (!appointmentData.end_time && appointmentData.service_id && appointmentData.start_time) {
+      const selectedService = services.find((s) => s.id === parseInt(appointmentData.service_id));
       if (selectedService) {
         const [hours, minutes] = appointmentData.start_time.split(":");
         const startDate = new Date();
         startDate.setHours(parseInt(hours), parseInt(minutes));
         startDate.setMinutes(startDate.getMinutes() + selectedService.duration);
-        appointmentData.end_time = `${String(startDate.getHours()).padStart(
-          2,
-          "0"
-        )}:${String(startDate.getMinutes()).padStart(2, "0")}`;
+        appointmentData.end_time = `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`;
       }
     }
 
     const result = await createAppointment(appointmentData);
-
     if (result.success) {
-      success("Rendez-vous créé avec succès !"); // Toast succès
+      success(`${term.appointment} créé avec succès !`);
       handleCloseModal();
     } else {
-      error(result.error || "Erreur lors de la création"); // Toast erreur
+      error(result.error || "Erreur lors de la création");
     }
   };
 
-  // --- GESTION STATUTS ---
-
   const initiateStatusChange = (id, newStatus) => {
     if (newStatus === "cancelled") {
-      // Ouvrir la modale d'annulation personnalisée
       setAppointmentToCancel(id);
       setCancelReason("");
       setShowCancelModal(true);
     } else {
-      // Changement direct pour les autres status
       handleStatusChange(id, newStatus);
     }
   };
@@ -183,7 +170,6 @@ const Appointments = () => {
     const result = await updateStatus(id, newStatus, reason);
     if (result.success) {
       success(`Statut mis à jour : ${newStatus}`);
-      // Fermer la modale d'annulation si elle était ouverte
       if (showCancelModal) setShowCancelModal(false);
     } else {
       error(result.error || "Impossible de mettre à jour le statut");
@@ -196,8 +182,6 @@ const Appointments = () => {
     }
   };
 
-  // --- GESTION SUPPRESSION ---
-
   const initiateDelete = (id) => {
     setAppointmentToDelete(id);
     setShowDeleteConfirm(true);
@@ -207,7 +191,7 @@ const Appointments = () => {
     if (appointmentToDelete) {
       const result = await deleteAppointment(appointmentToDelete);
       if (result.success) {
-        success("Rendez-vous supprimé");
+        success(`${term.appointment} supprimé`);
         setShowDeleteConfirm(false);
         setAppointmentToDelete(null);
       } else {
@@ -216,7 +200,6 @@ const Appointments = () => {
     }
   };
 
-  // --- FILTRES ET DETAILS ---
   const handleFilterDate = (e) => {
     setFilterDate(e.target.value);
     fetchAppointments({ date: e.target.value, status: filterStatus });
@@ -227,27 +210,18 @@ const Appointments = () => {
     fetchAppointments({ date: filterDate, status: status || undefined });
   };
 
-  const handleOpenDetails = (appointment) => {
-    setSelectedAppointment(appointment);
-  };
-
-  const handleCloseDetails = () => {
-    setSelectedAppointment(null);
-  };
-
-  const handleUpdateAfterDetails = () => {
-    fetchAppointments({ date: filterDate, status: filterStatus || undefined });
-  };
+  const handleOpenDetails = (appointment) => setSelectedAppointment(appointment);
+  const handleCloseDetails = () => setSelectedAppointment(null);
+  const handleUpdateAfterDetails = () => fetchAppointments({ date: filterDate, status: filterStatus || undefined });
 
   const getStatusBadge = (status) => {
     const styles = {
-      pending: "bg-yellow-100 text-yellow-800 border border-yellow-200",
-      confirmed: "bg-green-100 text-green-800 border border-green-200",
+      pending: "bg-amber-100 text-amber-800 border border-amber-200",
+      confirmed: "bg-emerald-100 text-emerald-800 border border-emerald-200",
       cancelled: "bg-red-100 text-red-800 border border-red-200",
-      completed: "bg-indigo-100 text-indigo-800 border border-indigo-200",
-      no_show: "bg-gray-100 text-gray-800 border border-gray-200",
+      completed: "bg-violet-100 text-violet-800 border border-violet-200",
+      no_show: "bg-slate-100 text-slate-800 border border-slate-200",
     };
-
     const labels = {
       pending: "En attente",
       confirmed: "Confirmé",
@@ -255,11 +229,8 @@ const Appointments = () => {
       completed: "Terminé",
       no_show: "Absent",
     };
-
     return (
-      <span
-        className={`px-3 py-1 text-xs font-medium rounded-full ${styles[status]}`}
-      >
+      <span className={`px-3 py-1 text-xs font-medium rounded-full ${styles[status]}`}>
         {labels[status]}
       </span>
     );
@@ -267,50 +238,37 @@ const Appointments = () => {
 
   const getStatusActions = (appointment) => {
     const actions = [];
-
     if (appointment.status === "pending") {
       actions.push(
         <button
           key="confirm"
-          onClick={(e) => {
-            e.stopPropagation();
-            initiateStatusChange(appointment.id, "confirmed");
-          }}
-          className="text-green-600 hover:text-green-900 text-sm"
+          onClick={(e) => { e.stopPropagation(); initiateStatusChange(appointment.id, "confirmed"); }}
+          className="text-emerald-600 hover:text-emerald-800 text-sm font-medium transition-colors"
         >
           Confirmer
         </button>
       );
     }
-
     if (["pending", "confirmed"].includes(appointment.status)) {
       actions.push(
         <button
           key="cancel"
-          onClick={(e) => {
-            e.stopPropagation();
-            initiateStatusChange(appointment.id, "cancelled");
-          }}
-          className="text-red-600 hover:text-red-900 text-sm"
+          onClick={(e) => { e.stopPropagation(); initiateStatusChange(appointment.id, "cancelled"); }}
+          className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
         >
           Annuler
         </button>
       );
-
       actions.push(
         <button
           key="complete"
-          onClick={(e) => {
-            e.stopPropagation();
-            initiateStatusChange(appointment.id, "completed");
-          }}
-          className="text-indigo-600 hover:text-indigo-900 text-sm"
+          onClick={(e) => { e.stopPropagation(); initiateStatusChange(appointment.id, "completed"); }}
+          className={`${config.textColor} hover:opacity-80 text-sm font-medium transition-colors`}
         >
           Terminer
         </button>
       );
     }
-
     return actions;
   };
 
@@ -322,94 +280,79 @@ const Appointments = () => {
 
   return (
     <DashboardLayout>
-      {/* AFFICHER LE COMPOSANT TOAST */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={hideToast}
-          duration={toast.duration}
-        />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} duration={toast.duration} />}
 
-      {/* MODALE DE CONFIRMATION SUPPRESSION */}
       <ConfirmModal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleConfirmDelete}
-        title="Supprimer le rendez-vous"
-        message="Êtes-vous sûr de vouloir supprimer ce rendez-vous ? Cette action est irréversible."
+        title={`Supprimer ${term.appointment.toLowerCase()}`}
+        message={`Êtes-vous sûr de vouloir supprimer ce ${term.appointment.toLowerCase()} ? Cette action est irréversible.`}
         confirmText="Supprimer"
         type="danger"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
+        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Rendez-vous</h1>
-            <p className="mt-2 text-gray-600">
-              Gérez votre planning et vos réservations
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`p-2 rounded-xl bg-gradient-to-br ${config.gradient}`}>
+                <CalendarDaysIcon className="h-6 w-6 text-white" />
+              </div>
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-800">
+                {term.appointments}
+              </h1>
+            </div>
+            <p className="text-slate-500">
+              Gérez votre planning et vos {term.appointments.toLowerCase()}
             </p>
           </div>
           <button
             onClick={handleOpenModal}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+            className={`inline-flex items-center px-5 py-2.5 bg-gradient-to-r ${config.gradient} text-white text-sm font-medium rounded-xl shadow-soft hover:shadow-glow transition-all duration-300`}
           >
-            + Nouveau rendez-vous
+            <PlusIcon className="h-5 w-5 mr-2" />
+            {term.appointmentNew}
           </button>
         </div>
 
-        {/* Filtres */}
-        <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+        {/* Filters */}
+        <div className="mb-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">
+          <div className="flex items-center gap-2 mb-4">
+            <FunnelIcon className={`h-5 w-5 ${config.textColor}`} />
+            <span className="font-medium text-slate-700">Filtres</span>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Filtrer par date
-              </label>
+              <label className="block text-sm font-medium text-slate-600 mb-2">Par date</label>
               <input
                 type="date"
                 value={filterDate}
                 onChange={handleFilterDate}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="input-premium"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Filtrer par statut
-              </label>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleFilterStatus("")}
-                  className={`px-3 py-2 text-sm rounded-md border transition-colors ${
-                    !filterStatus
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  Tous
-                </button>
-                <button
-                  onClick={() => handleFilterStatus("pending")}
-                  className={`px-3 py-2 text-sm rounded-md border transition-colors ${
-                    filterStatus === "pending"
-                      ? "bg-yellow-600 text-white border-yellow-600"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  En attente
-                </button>
-                <button
-                  onClick={() => handleFilterStatus("confirmed")}
-                  className={`px-3 py-2 text-sm rounded-md border transition-colors ${
-                    filterStatus === "confirmed"
-                      ? "bg-green-600 text-white border-green-600"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  Confirmés
-                </button>
+              <label className="block text-sm font-medium text-slate-600 mb-2">Par statut</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: "", label: "Tous", style: `bg-gradient-to-r ${config.gradient} text-white` },
+                  { value: "pending", label: "En attente", style: "bg-amber-500 text-white" },
+                  { value: "confirmed", label: "Confirmés", style: "bg-emerald-500 text-white" },
+                ].map((btn) => (
+                  <button
+                    key={btn.value}
+                    onClick={() => handleFilterStatus(btn.value)}
+                    className={`px-4 py-2 text-sm font-medium rounded-xl border transition-all duration-300 ${
+                      filterStatus === btn.value
+                        ? btn.style
+                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -417,117 +360,102 @@ const Appointments = () => {
 
         {/* View Switcher */}
         <div className="mb-6 flex justify-end">
-          <div className="flex rounded-md border border-gray-300 shadow-sm">
+          <div className="flex rounded-xl border border-slate-200 shadow-soft overflow-hidden">
             <button
               onClick={() => setView("list")}
-              className={`px-4 py-2 text-sm font-medium rounded-l-md transition-colors ${
+              className={`flex items-center px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
                 view === "list"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
+                  ? `bg-gradient-to-r ${config.gradient} text-white`
+                  : "bg-white text-slate-600 hover:bg-slate-50"
               }`}
             >
+              <ListBulletIcon className="h-5 w-5 mr-2" />
               Liste
             </button>
             <button
               onClick={() => setView("calendar")}
-              className={`px-4 py-2 text-sm font-medium rounded-r-md transition-colors ${
+              className={`flex items-center px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
                 view === "calendar"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
+                  ? `bg-gradient-to-r ${config.gradient} text-white`
+                  : "bg-white text-slate-600 hover:bg-slate-50"
               }`}
             >
+              <CalendarIcon className="h-5 w-5 mr-2" />
               Calendrier
             </button>
           </div>
         </div>
 
-        {/* Content */}
+        {/* List View */}
         {view === "list" && (
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-soft">
             {loading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+              <div className="p-12 text-center">
+                <div className={`w-10 h-10 rounded-xl border-2 border-slate-200 border-t-violet-600 animate-elegant-spin mx-auto`}></div>
+                <p className="mt-4 text-slate-500">Chargement...</p>
               </div>
             ) : sortedAppointments.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                Aucun rendez-vous trouvé
+              <div className="p-12 text-center">
+                <CalendarDaysIcon className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">{term.noAppointments}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date & Heure
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Client
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Service
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Employé
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Statut
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date & Heure</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{term.client}</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{term.service}</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{term.staffMember}</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Statut</th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-slate-100">
                     {sortedAppointments.map((apt) => (
                       <tr
                         key={apt.id}
-                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        className="hover:bg-slate-50 cursor-pointer transition-colors"
                         onClick={() => handleOpenDetails(apt)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {new Date(apt.appointment_date).toLocaleDateString(
-                              "fr-FR"
-                            )}
+                          <div className="text-sm font-medium text-slate-800">
+                            {new Date(apt.appointment_date).toLocaleDateString("fr-FR")}
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {apt.start_time.substring(0, 5)} -{" "}
-                            {apt.end_time.substring(0, 5)}
+                          <div className="text-sm text-slate-500">
+                            {apt.start_time.substring(0, 5)} - {apt.end_time.substring(0, 5)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {apt.client_first_name} {apt.client_last_name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {apt.client_phone}
+                          <div className="flex items-center">
+                            <div className={`h-9 w-9 rounded-lg ${config.lightBg} flex items-center justify-center mr-3`}>
+                              <span className={`${config.textColor} font-semibold text-sm`}>
+                                {apt.client_first_name?.charAt(0)}{apt.client_last_name?.charAt(0)}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-slate-800">
+                                {apt.client_first_name} {apt.client_last_name}
+                              </div>
+                              <div className="text-xs text-slate-400">{apt.client_phone}</div>
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {apt.service_name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {apt.service_duration} min
-                          </div>
+                          <div className="text-sm font-medium text-slate-800">{apt.service_name}</div>
+                          <div className="text-xs text-slate-400">{apt.service_duration} min</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {apt.staff_first_name
-                            ? `${apt.staff_first_name} ${apt.staff_last_name}`
-                            : "-"}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                          {apt.staff_first_name ? `${apt.staff_first_name} ${apt.staff_last_name}` : "-"}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(apt.status)}
-                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(apt.status)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                          <div
-                            className="flex justify-end space-x-3"
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                          <div className="flex justify-end space-x-3" onClick={(e) => e.stopPropagation()}>
                             {getStatusActions(apt)}
                             <button
                               onClick={() => initiateDelete(apt.id)}
-                              className="text-red-600 hover:text-red-900 font-medium"
+                              className="text-red-600 hover:text-red-800 font-medium transition-colors"
                             >
                               Supprimer
                             </button>
@@ -543,137 +471,101 @@ const Appointments = () => {
         )}
 
         {view === "calendar" && (
-          <AppointmentCalendar
-            appointments={appointments}
-            onSelectEvent={handleOpenDetails}
-          />
+          <AppointmentCalendar appointments={appointments} onSelectEvent={handleOpenDetails} />
         )}
 
-        {/* MODALE DE CRÉATION (inchangée sauf style mineur) */}
+        {/* Create Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white animate-scale-in">
-              <div className="mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Nouveau rendez-vous
-                </h3>
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+            <div className="relative bg-white rounded-2xl shadow-soft-xl max-w-md w-full animate-scale-in">
+              <div className={`px-6 py-4 border-b border-slate-100 flex items-center justify-between`}>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl bg-gradient-to-br ${config.gradient}`}>
+                    <PlusIcon className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="font-display text-lg font-semibold text-slate-800">{term.appointmentNew}</h3>
+                </div>
+                <button onClick={handleCloseModal} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                  <XMarkIcon className="h-5 w-5 text-slate-400" />
+                </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Form fields - inchangés */}
+              <form onSubmit={handleSubmit} className="p-6 space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Client *
-                  </label>
-                  <select
-                    name="client_id"
-                    required
-                    value={formData.client_id}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">Sélectionner un client</option>
+                  <label className="label-premium">{term.client} *</label>
+                  <select name="client_id" required value={formData.client_id} onChange={handleChange} className="input-premium">
+                    <option value="">Sélectionner un {term.client.toLowerCase()}</option>
                     {clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.first_name} {client.last_name}
+                      <option key={client.id} value={client.id}>{client.first_name} {client.last_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="label-premium">{term.service} *</label>
+                  <select name="service_id" required value={formData.service_id} onChange={handleChange} className="input-premium">
+                    <option value="">Sélectionner un {term.service.toLowerCase()}</option>
+                    {services.filter((s) => s.is_active).map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name} ({service.duration} min - {formatPrice(service.price)})
                       </option>
                     ))}
                   </select>
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Service *
-                  </label>
-                  <select
-                    name="service_id"
-                    required
-                    value={formData.service_id}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">Sélectionner un service</option>
-                    {services
-                      .filter((s) => s.is_active)
-                      .map((service) => (
-                        <option key={service.id} value={service.id}>
-                          {service.name} ({service.duration} min -{" "}
-                          {formatPrice(service.price)})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Employé
-                  </label>
-                  <select
-                    name="staff_id"
-                    value={formData.staff_id}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  >
+                  <label className="label-premium">{term.staffMember}</label>
+                  <select name="staff_id" value={formData.staff_id} onChange={handleChange} className="input-premium">
                     <option value="">Non assigné</option>
                     {staff.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.first_name} {member.last_name}
-                      </option>
+                      <option key={member.id} value={member.id}>{member.first_name} {member.last_name}</option>
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Date *
-                  </label>
-                  <input
-                    type="date"
-                    name="appointment_date"
-                    required
-                    value={formData.appointment_date}
-                    onChange={handleChange}
-                    min={new Date().toISOString().split("T")[0]}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label-premium">Date *</label>
+                    <input
+                      type="date"
+                      name="appointment_date"
+                      required
+                      value={formData.appointment_date}
+                      onChange={handleChange}
+                      min={new Date().toISOString().split("T")[0]}
+                      className="input-premium"
+                    />
+                  </div>
+                  <div>
+                    <label className="label-premium">Heure *</label>
+                    <input
+                      type="time"
+                      name="start_time"
+                      required
+                      value={formData.start_time}
+                      onChange={handleChange}
+                      className="input-premium"
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Heure de début *
-                  </label>
-                  <input
-                    type="time"
-                    name="start_time"
-                    required
-                    value={formData.start_time}
-                    onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Notes
-                  </label>
+                  <label className="label-premium">Notes</label>
                   <textarea
                     name="notes"
                     rows="2"
                     value={formData.notes}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="input-premium"
                     placeholder="Demandes spéciales..."
-                  ></textarea>
+                  />
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
+                <div className="flex justify-end gap-3 pt-4">
+                  <button type="button" onClick={handleCloseModal} className="btn-premium-secondary">
                     Annuler
                   </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-                  >
+                  <button type="submit" disabled={loading} className="btn-premium">
                     {loading ? "Création..." : "Créer"}
                   </button>
                 </div>
@@ -682,42 +574,35 @@ const Appointments = () => {
           </div>
         )}
 
-        {/* MODALE D'ANNULATION (Remplace le prompt) */}
+        {/* Cancel Modal */}
         {showCancelModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-            <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full animate-scale-in">
-              <div className="mb-4">
-                <h3 className="text-lg font-bold text-red-600 flex items-center">
-                  <span className="mr-2">⚠️</span> Annuler le rendez-vous
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-soft-xl max-w-md w-full animate-scale-in">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <h3 className="font-display text-lg font-semibold text-red-600 flex items-center gap-2">
+                  <span>⚠️</span> {term.appointmentCancel}
                 </h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-slate-500 mt-1">
                   Voulez-vous indiquer une raison pour l'annulation ?
                 </p>
               </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Raison de l'annulation (Optionnel)
-                </label>
+              <div className="p-6">
+                <label className="label-premium">Raison (optionnel)</label>
                 <textarea
                   rows="3"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
+                  className="input-premium"
                   placeholder="Ex: Client malade, imprévu..."
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
                 />
               </div>
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowCancelModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
+              <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+                <button onClick={() => setShowCancelModal(false)} className="btn-premium-secondary">
                   Retour
                 </button>
                 <button
                   onClick={handleConfirmCancel}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+                  className="px-5 py-2.5 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-colors"
                 >
                   Confirmer l'annulation
                 </button>
@@ -726,7 +611,6 @@ const Appointments = () => {
           </div>
         )}
 
-        {/* MODALE DETAILS (inchangée) */}
         {selectedAppointment && (
           <AppointmentDetails
             appointment={selectedAppointment}

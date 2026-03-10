@@ -24,6 +24,7 @@ const ProfileScreen = ({ navigation }) => {
   const [submitting, setSubmitting] = useState(false);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [profileImageUri, setProfileImageUri] = useState(null);
+  const [salonInfo, setSalonInfo] = useState(null);
 
   const [formData, setFormData] = useState({
     first_name: "",
@@ -40,13 +41,13 @@ const ProfileScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadProfile();
+    loadSalonInfo();
   }, []);
 
   const loadProfile = async () => {
     setLoading(true);
     try {
       const response = await api.get("/auth/me");
-      console.log("Profil chargé:", response.data);
       if (response.data.success && response.data.data) {
         const userData = response.data.data;
         setFormData({
@@ -56,14 +57,12 @@ const ProfileScreen = ({ navigation }) => {
           phone: userData.phone || "",
         });
         setProfileImageUri(userData.avatar_url || null);
-        // Update context if needed
         if (updateUser) {
           updateUser(userData);
         }
       }
     } catch (error) {
       console.error("Erreur chargement profil:", error);
-      // Fallback to user from context
       if (user) {
         setFormData({
           first_name: user.first_name || "",
@@ -75,6 +74,28 @@ const ProfileScreen = ({ navigation }) => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSalonInfo = async () => {
+    try {
+      const [salonRes, subRes] = await Promise.all([
+        api.get("/settings/salon"),
+        api.get("/settings/subscription"),
+      ]);
+      const salon = salonRes.data?.data;
+      const sub = subRes.data?.data;
+      if (salon) {
+        setSalonInfo({
+          name: salon.name,
+          plan: sub?.plan || salon.subscription_plan || "free",
+          status: sub?.status || salon.subscription_status || "trial",
+          daysRemaining: sub?.days_remaining,
+          memberSince: salon.created_at || salon.trial_ends_at,
+        });
+      }
+    } catch (error) {
+      console.error("Erreur chargement salon:", error);
     }
   };
 
@@ -99,6 +120,7 @@ const ProfileScreen = ({ navigation }) => {
 
     if (!result.canceled && result.assets[0]) {
       const imageUri = result.assets[0].uri;
+      const previousImageUri = profileImageUri;
 
       // Afficher l'image localement immédiatement
       setProfileImageUri(imageUri);
@@ -134,7 +156,7 @@ const ProfileScreen = ({ navigation }) => {
         Alert.alert("Erreur", errorMessage);
 
         // Restaurer l'ancienne image en cas d'erreur
-        setProfileImageUri(formData.avatar_url || null);
+        setProfileImageUri(previousImageUri);
       } finally {
         setSubmitting(false);
       }
@@ -258,25 +280,31 @@ const ProfileScreen = ({ navigation }) => {
         {/* Profile Avatar */}
         <View style={styles.avatarSection}>
           <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8}>
-            <View style={styles.avatar}>
-              {profileImageUri ? (
-                <Image
-                  source={{
-                    uri: API_URL.replace("/api", "") + profileImageUri,
-                  }}
-                  style={styles.avatarImage}
-                />
-              ) : (
-                <Text style={styles.avatarText}>
-                  {formData.first_name?.charAt(0)}
-                  {formData.last_name?.charAt(0)}
-                </Text>
-              )}
+            <View style={styles.avatarWrapper}>
+              <View style={styles.avatar}>
+                {profileImageUri ? (
+                  <Image
+                    source={{
+                      uri: API_URL.replace("/api", "") + profileImageUri,
+                    }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {formData.first_name?.charAt(0)}
+                    {formData.last_name?.charAt(0)}
+                  </Text>
+                )}
+              </View>
               <View style={styles.avatarEditBadge}>
                 <Ionicons name="camera" size={16} color="#fff" />
               </View>
             </View>
           </TouchableOpacity>
+          <Text style={styles.profileName}>
+            {formData.first_name} {formData.last_name}
+          </Text>
+          <Text style={styles.profileEmail}>{formData.email}</Text>
           <View style={styles.roleBadge}>
             <Ionicons name="shield-checkmark" size={14} color="#6366F1" />
             <Text style={styles.roleText}>
@@ -284,6 +312,28 @@ const ProfileScreen = ({ navigation }) => {
             </Text>
           </View>
         </View>
+
+        {/* Salon Info Section */}
+        {salonInfo && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Mon salon</Text>
+            <View style={styles.salonInfoRow}>
+              <Ionicons name="business-outline" size={18} color="#6B7280" />
+              <Text style={styles.salonInfoLabel}>Salon</Text>
+              <Text style={styles.salonInfoValue}>{salonInfo.name}</Text>
+            </View>
+            <View style={styles.salonInfoRow}>
+              <Ionicons name="ribbon-outline" size={18} color="#6B7280" />
+              <Text style={styles.salonInfoLabel}>Plan</Text>
+              <View style={[styles.planBadge, salonInfo.status === 'active' ? styles.planBadgeActive : styles.planBadgeTrial]}>
+                <Text style={[styles.planBadgeText, salonInfo.status === 'active' ? styles.planBadgeTextActive : styles.planBadgeTextTrial]}>
+                  {salonInfo.plan === 'pro' ? 'Pro' : salonInfo.plan === 'enterprise' ? 'Enterprise' : 'Starter'}
+                  {salonInfo.status === 'trial' && salonInfo.daysRemaining ? ` (${salonInfo.daysRemaining}j restants)` : ''}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Personal Information Section */}
         <View style={styles.section}>
@@ -567,16 +617,20 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  avatarWrapper: {
+    position: "relative",
+    marginBottom: 12,
+  },
   avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: "#6366F1",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
-    position: "relative",
     overflow: "hidden",
+    borderWidth: 4,
+    borderColor: "#E0E7FF",
   },
   avatarImage: {
     width: "100%",
@@ -584,21 +638,32 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: "#fff",
-    fontSize: 36,
+    fontSize: 42,
     fontWeight: "600",
   },
   avatarEditBadge: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    bottom: 4,
+    right: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#6366F1",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
     borderColor: "#fff",
+  },
+  profileName: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 2,
+  },
+  profileEmail: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginBottom: 12,
   },
   roleBadge: {
     flexDirection: "row",
@@ -707,6 +772,45 @@ const styles = StyleSheet.create({
   },
   submitButtonTextSecondary: {
     color: "#6366F1",
+  },
+  salonInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    gap: 10,
+  },
+  salonInfoLabel: {
+    fontSize: 14,
+    color: "#6B7280",
+    flex: 1,
+  },
+  salonInfoValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  planBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  planBadgeActive: {
+    backgroundColor: "#D1FAE5",
+  },
+  planBadgeTrial: {
+    backgroundColor: "#FEF3C7",
+  },
+  planBadgeText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  planBadgeTextActive: {
+    color: "#059669",
+  },
+  planBadgeTextTrial: {
+    color: "#D97706",
   },
 });
 

@@ -2,7 +2,10 @@ import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 
 // URL de l'API backend
-export const API_URL = "http://192.168.1.97:5000/api";
+export const API_URL = "http://192.168.1.68:5000/api";
+
+// URL du frontend (page publique de réservation)
+export const FRONTEND_URL = "https://app.salonhub.flowkraftagency.com";
 
 // Instance Axios
 const api = axios.create({
@@ -23,7 +26,7 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Intercepteur pour gérer les réponses
@@ -36,7 +39,7 @@ api.interceptors.response.use(
       await SecureStore.deleteItemAsync("userData");
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

@@ -1,28 +1,187 @@
 /**
  * Routes publiques pour le système de réservation
  * Ces routes sont accessibles sans authentification
+ * MAIS vérifient que l'abonnement du tenant est actif
  */
 
 const express = require("express");
 const router = express.Router();
 const db = require("../config/database");
 const emailService = require("../services/emailService");
+const pushService = require("../services/pushService");
+const expoPushService = require("../services/expoPushService");
+const { checkPublicSubscription } = require("../middleware/tenant");
+
+// ===== RECHERCHE PUBLIQUE =====
+
+/**
+ * GET /api/public/search?q=...&type=...&limit=...&offset=...
+ * Recherche publique de salons/établissements
+ * Pas de vérification d'abonnement côté chercheur
+ */
+router.get("/search", async (req, res) => {
+  try {
+    const { q, type, limit = 20, offset = 0 } = req.query;
+
+    if (!q || q.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: "Le terme de recherche doit contenir au moins 2 caractères",
+      });
+    }
+
+    const searchTerm = `%${q.trim()}%`;
+    const params = [searchTerm, searchTerm, searchTerm];
+
+    let query = `
+      SELECT t.name, t.slug, t.city, t.business_type, t.logo_url, t.slogan
+      FROM tenants t
+      WHERE t.is_active = TRUE
+        AND t.subscription_status IN ('active', 'trial')
+        AND (t.name LIKE ? OR t.city LIKE ? OR t.business_type LIKE ?)
+    `;
+
+    if (type) {
+      query += ` AND t.business_type = ?`;
+      params.push(type);
+    }
+
+    query += ` ORDER BY t.name ASC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), parseInt(offset));
+
+    const results = await db.query(query, params);
+
+    // Compter le total
+    let countQuery = `
+      SELECT COUNT(*) as total FROM tenants t
+      WHERE t.is_active = TRUE
+        AND t.subscription_status IN ('active', 'trial')
+        AND (t.name LIKE ? OR t.city LIKE ? OR t.business_type LIKE ?)
+    `;
+    const countParams = [searchTerm, searchTerm, searchTerm];
+    if (type) {
+      countQuery += ` AND t.business_type = ?`;
+      countParams.push(type);
+    }
+
+    const countResult = await db.query(countQuery, countParams);
+    const total = countResult[0]?.total || 0;
+
+    res.json({
+      success: true,
+      data: results,
+      query: q,
+      pagination: {
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        has_more: parseInt(offset) + results.length < total,
+      },
+    });
+  } catch (error) {
+    console.error("Erreur recherche publique:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
 
 // ===== ROUTES PUBLIQUES (BOOKING CLIENT) =====
 
 /**
+ * GET /api/public/tenant/:slug
+ * Récupérer les infos de base d'un tenant (avec business_type)
+ * Utilisé par PublicRouter pour rediriger vers la bonne page
+ * Vérifie que l'abonnement est actif
+ */
+router.get("/tenant/:slug", checkPublicSubscription('slug'), async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const tenant = await db.query(
+      `SELECT id, name, slug, phone, email, address, city, postal_code,
+              logo_url, banner_url, slogan, currency, business_type
+       FROM tenants
+       WHERE slug = ? AND is_active = TRUE`,
+      [slug]
+    );
+
+    if (tenant.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Établissement non trouvé ou inactif"
+      });
+    }
+
+    res.json({
+      success: true,
+      data: tenant[0]
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération du tenant:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur"
+    });
+  }
+});
+
+/**
+ * GET /api/public/services/:slug
+ * Récupérer les services d'un tenant par son slug (route générique)
+ * Vérifie que l'abonnement est actif
+ */
+router.get("/services/:slug", checkPublicSubscription('slug'), async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const tenant = await db.query(
+      "SELECT id FROM tenants WHERE slug = ? AND is_active = TRUE",
+      [slug]
+    );
+
+    if (tenant.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Établissement non trouvé"
+      });
+    }
+
+    const tenantId = tenant[0].id;
+
+    const services = await db.query(
+      `SELECT id, name, description, duration, price, category, image_url
+       FROM services
+       WHERE tenant_id = ? AND is_active = TRUE AND available_for_online_booking = TRUE
+       ORDER BY category, name`,
+      [tenantId]
+    );
+
+    res.json({
+      success: true,
+      data: services
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des services:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur"
+    });
+  }
+});
+
+/**
  * GET /api/public/salon/:slug
  * Obtenir les informations d'un salon par son slug
+ * Vérifie que l'abonnement est actif
  */
-router.get("/salon/:slug", async (req, res) => {
+router.get("/salon/:slug", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
 
     const tenant = await db.query(
       `SELECT id, name, slug, phone, address, city, postal_code,
-              subscription_status, logo_url, banner_url, currency
+              subscription_status, logo_url, banner_url, slogan, currency
        FROM tenants
-       WHERE slug = ? AND subscription_status IN ('trial', 'active')`,
+       WHERE slug = ? `,
       [slug]
     );
 
@@ -59,14 +218,15 @@ router.get("/salon/:slug", async (req, res) => {
 /**
  * GET /api/public/salon/:slug/services
  * Obtenir tous les services actifs d'un salon
+ * Vérifie que l'abonnement est actif
  */
-router.get("/salon/:slug/services", async (req, res) => {
+router.get("/salon/:slug/services", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
 
     // Récupérer le tenant_id à partir du slug
     const tenant = await db.query(
-      "SELECT id FROM tenants WHERE slug = ? AND subscription_status IN ('trial', 'active')",
+      "SELECT id FROM tenants WHERE slug = ? ",
       [slug]
     );
 
@@ -78,7 +238,7 @@ router.get("/salon/:slug/services", async (req, res) => {
 
     // Récupérer les services actifs et disponibles pour réservation en ligne
     const services = await db.query(
-      `SELECT id, name, description, duration, price, category, image_url
+      `SELECT id, name, description, duration, slot_duration, price, category, image_url, gallery
        FROM services
        WHERE tenant_id = ?
          AND is_active = 1
@@ -97,13 +257,14 @@ router.get("/salon/:slug/services", async (req, res) => {
 /**
  * GET /api/public/salon/:slug/settings
  * Obtenir les paramètres publics du salon (horaires, etc.)
+ * Vérifie que l'abonnement est actif
  */
-router.get("/salon/:slug/settings", async (req, res) => {
+router.get("/salon/:slug/settings", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
 
     const tenant = await db.query(
-      "SELECT id FROM tenants WHERE slug = ? AND subscription_status IN ('trial', 'active')",
+      "SELECT id FROM tenants WHERE slug = ? ",
       [slug]
     );
 
@@ -113,12 +274,12 @@ router.get("/salon/:slug/settings", async (req, res) => {
 
     const tenantId = tenant[0].id;
 
-    // Récupérer les paramètres publics
+    // Récupérer les paramètres publics (inclut theme_settings pour le style de la page)
     const settings = await db.query(
       `SELECT setting_key, setting_value, setting_type
        FROM settings
        WHERE tenant_id = ?
-         AND setting_key IN ('business_hours', 'appointment_buffer', 'slot_duration')`,
+         AND setting_key IN ('business_hours', 'appointment_buffer', 'slot_duration', 'theme_settings')`,
       [tenantId]
     );
 
@@ -164,6 +325,19 @@ router.get("/salon/:slug/settings", async (req, res) => {
       formattedSettings.appointment_buffer = 0; // Pas de buffer par défaut
     }
 
+    // Valeurs par défaut pour le thème
+    const defaultTheme = {
+      primaryColor: "#8B5CF6",
+      secondaryColor: "#6366F1",
+      fontFamily: "Inter",
+      footerBgColor: "#1E293B",
+      footerTextColor: "#FFFFFF"
+    };
+    formattedSettings.theme_settings = {
+      ...defaultTheme,
+      ...(formattedSettings.theme_settings || {})
+    };
+
     res.json(formattedSettings);
   } catch (error) {
     console.error("Erreur lors de la récupération des paramètres:", error);
@@ -175,8 +349,9 @@ router.get("/salon/:slug/settings", async (req, res) => {
  * GET /api/public/salon/:slug/availability
  * Obtenir les créneaux disponibles pour un service et une date
  * Query params: service_id, date (YYYY-MM-DD)
+ * Vérifie que l'abonnement est actif
  */
-router.get("/salon/:slug/availability", async (req, res) => {
+router.get("/salon/:slug/availability", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
     const { service_id, date } = req.query;
@@ -187,7 +362,7 @@ router.get("/salon/:slug/availability", async (req, res) => {
 
     // Récupérer le tenant
     const tenant = await db.query(
-      "SELECT id FROM tenants WHERE slug = ? AND subscription_status IN ('trial', 'active')",
+      "SELECT id FROM tenants WHERE slug = ? ",
       [slug]
     );
 
@@ -217,15 +392,30 @@ router.get("/salon/:slug/availability", async (req, res) => {
       [tenantId]
     );
 
+    // Helper pour parser les horaires quel que soit le format
+    const parseDaySchedule = (daySchedule) => {
+      if (!daySchedule || daySchedule === "closed") return { closed: true };
+      if (typeof daySchedule === "string" && daySchedule.includes("-")) {
+        const [open, close] = daySchedule.split("-");
+        return { open, close, closed: false };
+      }
+      return daySchedule; // Suppose déjà au format { open, close, closed }
+    };
+
     let businessHours = null;
     let slotDuration = 30;
 
     settings.forEach((setting) => {
       if (setting.setting_key === "business_hours") {
         try {
-          businessHours = JSON.parse(setting.setting_value);
+          // Gérer le cas où c'est déjà un objet ou une chaîne JSON
+          businessHours =
+            typeof setting.setting_value === "string" && (setting.setting_value.startsWith("{") || setting.setting_value.startsWith("["))
+              ? JSON.parse(setting.setting_value)
+              : setting.setting_value;
         } catch (e) {
           console.error("Erreur parsing business_hours:", e);
+          businessHours = setting.setting_value;
         }
       } else if (setting.setting_key === "slot_duration") {
         slotDuration = parseInt(setting.setting_value);
@@ -258,13 +448,13 @@ router.get("/salon/:slug/availability", async (req, res) => {
     ];
     const dayName = dayNames[dateObj.getDay()];
 
-    console.log(
-      "Debug - businessHours:",
-      JSON.stringify(businessHours, null, 2)
-    );
-    console.log("Debug - dayName:", dayName);
+    console.log(`[Availability] Debug - Tenant: ${tenantId}, Slug: ${slug}, Date: ${date}, Day: ${dayName}`);
+    console.log("[Availability] Debug - raw businessHours:", JSON.stringify(businessHours));
 
-    const daySchedule = businessHours[dayName];
+    const rawDaySchedule = businessHours ? businessHours[dayName] : null;
+    const daySchedule = parseDaySchedule(rawDaySchedule);
+
+    console.log("[Availability] Debug - parsed daySchedule:", JSON.stringify(daySchedule));
 
     // Vérifier si le salon est fermé ce jour
     if (!daySchedule || daySchedule.closed) {
@@ -389,7 +579,7 @@ router.post("/appointments", async (req, res) => {
 
     // Récupérer le tenant
     const tenant = await db.query(
-      "SELECT id FROM tenants WHERE slug = ? AND subscription_status IN ('trial', 'active')",
+      "SELECT id FROM tenants WHERE slug = ? ",
       [salon_slug]
     );
 
@@ -552,6 +742,8 @@ router.post("/appointments", async (req, res) => {
     const createdAppointment = await db.query(
       `SELECT
          a.id,
+         a.tenant_id,
+         a.client_id,
          a.appointment_date,
          a.start_time,
          a.end_time,
@@ -620,6 +812,36 @@ router.post("/appointments", async (req, res) => {
     } catch (socketError) {
       console.error("❌ Erreur socket:", socketError);
     }
+
+    // Notifier le staff via Push (Web + Mobile)
+    try {
+      // Web Push (navigateurs/PWA)
+      await pushService.sendToTenant(tenantId, {
+        title: "Nouveau rendez-vous !",
+        body: `${newApt.client_first_name} ${newApt.client_last_name} a réservé : ${newApt.service_name}`,
+        icon: "/logo192.png",
+        data: {
+          url: `/dashboard/appointments/${newApt.id}`,
+          appointmentId: newApt.id
+        }
+      }, true);
+    } catch (pushError) {
+      console.error("❌ Erreur web push staff:", pushError.message);
+    }
+
+    // Expo Push (appareils mobiles)
+    try {
+      await expoPushService.sendToTenant(tenantId, {
+        title: "Nouveau rendez-vous !",
+        body: `${newApt.client_first_name} ${newApt.client_last_name} a réservé : ${newApt.service_name}`,
+        data: {
+          type: "new_appointment",
+          appointmentId: newApt.id,
+        },
+      });
+    } catch (expoPushError) {
+      console.error("❌ Erreur expo push staff:", expoPushError.message);
+    }
     // === FIN MODIFICATION PHASE 3 ===
 
     res.status(201).json({
@@ -652,7 +874,7 @@ router.post("/promotions/validate", async (req, res) => {
 
     // 1. Récupérer l'ID du salon (Tenant) via le slug
     const tenant = await db.query(
-      "SELECT id FROM tenants WHERE slug = ? AND subscription_status IN ('trial', 'active')",
+      "SELECT id FROM tenants WHERE slug = ? ",
       [salon_slug]
     );
 

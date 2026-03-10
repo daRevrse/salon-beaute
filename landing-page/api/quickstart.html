@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Start — SalonHub API</title>
+    <link rel="icon" type="image/png" href="../logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #6366F1; --dark: #1F2937; --gray: #6B7280; --bg: #F9FAFB;
+            --radius: 12px; --radius-xl: 20px;
+        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--dark); }
+        .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+
+        /* Header */
+        .qs-header {
+            background: rgba(255,255,255,.85); backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(0,0,0,.06); padding: 16px 0;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .qs-header .container { display: flex; align-items: center; justify-content: space-between; }
+        .qs-back { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--dark); font-weight: 600; font-size: 15px; }
+        .qs-back:hover { color: var(--primary); }
+        .qs-links { display: flex; gap: 16px; }
+        .qs-links a { color: var(--gray); text-decoration: none; font-size: 14px; font-weight: 500; }
+        .qs-links a:hover { color: var(--primary); }
+
+        /* Content */
+        .qs-hero { text-align: center; padding: 60px 0 48px; }
+        .qs-hero h1 { font-size: 36px; font-weight: 800; margin-bottom: 12px; }
+        .qs-hero h1 span { background: linear-gradient(135deg, var(--primary), #818CF8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .qs-hero p { color: var(--gray); font-size: 17px; }
+
+        .step { margin-bottom: 48px; }
+        .step__num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--primary); color: #fff; font-weight: 700; font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .step h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+        .step p { color: var(--gray); line-height: 1.7; margin-bottom: 16px; font-size: 15px; }
+        .step ul { color: var(--gray); line-height: 1.8; margin-bottom: 16px; padding-left: 20px; font-size: 15px; }
+
+        /* Code blocks */
+        .code-block {
+            background: #1E293B; border-radius: var(--radius); overflow: hidden; margin-bottom: 16px;
+        }
+        .code-block__bar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 16px; background: rgba(255,255,255,.05); border-bottom: 1px solid rgba(255,255,255,.08);
+        }
+        .code-block__lang { color: rgba(255,255,255,.5); font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .code-block__copy {
+            background: rgba(255,255,255,.1); border: none; color: rgba(255,255,255,.6);
+            padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;
+            transition: all .2s;
+        }
+        .code-block__copy:hover { background: rgba(255,255,255,.2); color: #fff; }
+        .code-block pre {
+            padding: 16px; overflow-x: auto; font-family: 'JetBrains Mono', monospace;
+            font-size: 13px; line-height: 1.6; color: #E2E8F0;
+        }
+        .code-block pre .comment { color: #64748B; }
+        .code-block pre .string { color: #86EFAC; }
+        .code-block pre .keyword { color: #C4B5FD; }
+        .code-block pre .url { color: #93C5FD; }
+
+        .tip {
+            background: rgba(99,102,241,.06); border: 1px solid rgba(99,102,241,.15);
+            border-radius: var(--radius); padding: 16px 20px; margin-bottom: 16px;
+            font-size: 14px; color: var(--dark); line-height: 1.6;
+        }
+        .tip strong { color: var(--primary); }
+
+        .qs-footer { border-top: 1px solid rgba(0,0,0,.06); padding: 24px 0; text-align: center; color: var(--gray); font-size: 13px; }
+        .qs-footer a { color: var(--primary); text-decoration: none; }
+
+        @media (max-width: 640px) {
+            .qs-hero h1 { font-size: 28px; }
+            .step h2 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="qs-header">
+        <div class="container">
+            <a href="../docs.html" class="qs-back">
+                <i data-lucide="arrow-left" style="width:18px;height:18px"></i>
+                <span data-i18n="qs_back">Documentation</span>
+            </a>
+            <div class="qs-links">
+                <a href="reference.html" data-i18n="qs_link_ref">Reference</a>
+                <a href="integrations.html" data-i18n="qs_link_int">Integrations</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="qs-hero">
+        <div class="container">
+            <h1 data-i18n="qs_title">Demarrage <span>rapide</span></h1>
+            <p data-i18n="qs_subtitle">De zero a votre premier appel API en 5 minutes.</p>
+        </div>
+    </section>
+
+    <main class="container" style="padding-bottom:80px;">
+
+        <!-- Step 1 -->
+        <div class="step">
+            <span class="step__num">1</span>
+            <h2 data-i18n="qs_s1_title">Creer un compte</h2>
+            <p data-i18n="qs_s1_desc">Inscrivez-vous sur SalonHub pour obtenir un compte. Vous beneficiez automatiquement de 14 jours d'essai gratuit avec acces complet a l'API.</p>
+            <div class="code-block">
+                <div class="code-block__bar">
+                    <span class="code-block__lang">cURL</span>
+                    <button class="code-block__copy" onclick="copyCode(this)">Copier</button>
+                </div>
+                <pre><code><span class="keyword">curl</span> -X POST <span class="url">https://api.salonhub.app/api/auth/register</span> \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{
+    "salon_name": "Mon Salon",
+    "salon_email": "contact@monsalon.fr",
+    "first_name": "Marie",
+    "last_name": "Dupont",
+    "email": "marie@monsalon.fr",
+    "password": "motdepasse123"
+  }'</span></code></pre>
+            </div>
+            <div class="tip">
+                <strong>Reponse :</strong> Vous recevrez un token JWT et les informations de votre salon (tenant).
+            </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step">
+            <span class="step__num">2</span>
+            <h2 data-i18n="qs_s2_title">Obtenir une cle API</h2>
+            <p data-i18n="qs_s2_desc">Les cles API sont disponibles pendant la periode d'essai (14 jours), puis necessitent un plan Developer (14,99/mois) ou Custom.</p>
+            <div class="code-block">
+                <div class="code-block__bar">
+                    <span class="code-block__lang">cURL</span>
+                    <button class="code-block__copy" onclick="copyCode(this)">Copier</button>
+                </div>
+                <pre><code><span class="comment"># Utilisez votre token JWT pour creer une cle API</span>
+<span class="keyword">curl</span> -X POST <span class="url">https://api.salonhub.app/api/api-keys</span> \
+  -H <span class="string">"Authorization: Bearer VOTRE_TOKEN_JWT"</span> \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{
+    "name": "Mon integration",
+    "scopes": ["clients:read", "appointments:read", "appointments:write"]
+  }'</span></code></pre>
+            </div>
+            <div class="tip">
+                <strong>Important :</strong> La cle complete (<code>sk_live_...</code>) n'est affichee qu'une seule fois. Copiez-la immediatement !
+            </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step">
+            <span class="step__num">3</span>
+            <h2 data-i18n="qs_s3_title">Premier appel API</h2>
+            <p data-i18n="qs_s3_desc">Utilisez votre cle API pour interroger l'API SalonHub.</p>
+            <div class="code-block">
+                <div class="code-block__bar">
+                    <span class="code-block__lang">cURL</span>
+                    <button class="code-block__copy" onclick="copyCode(this)">Copier</button>
+                </div>
+                <pre><code><span class="keyword">curl</span> <span class="url">https://api.salonhub.app/api/clients</span> \
+  -H <span class="string">"Authorization: Bearer sk_live_votre_cle_api"</span></code></pre>
+            </div>
+            <div class="code-block">
+                <div class="code-block__bar">
+                    <span class="code-block__lang">JSON Response</span>
+                </div>
+                <pre><code>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"data"</span>: [
+    {
+      <span class="string">"id"</span>: 1,
+      <span class="string">"first_name"</span>: <span class="string">"Sophie"</span>,
+      <span class="string">"last_name"</span>: <span class="string">"Martin"</span>,
+      <span class="string">"email"</span>: <span class="string">"sophie@email.com"</span>,
+      <span class="string">"phone"</span>: <span class="string">"+33612345678"</span>
+    }
+  ],
+  <span class="string">"pagination"</span>: {
+    <span class="string">"total"</span>: 42,
+    <span class="string">"limit"</span>: 50,
+    <span class="string">"offset"</span>: 0,
+    <span class="string">"hasMore"</span>: <span class="keyword">false</span>
+  }
+}</code></pre>
+            </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step">
+            <span class="step__num">4</span>
+            <h2 data-i18n="qs_s4_title">Authentification</h2>
+            <p data-i18n="qs_s4_desc">SalonHub supporte deux methodes d'authentification :</p>
+            <ul>
+                <li data-i18n="qs_s4_jwt"><strong>JWT Token</strong> — Pour les apps et dashboards. Obtenu via <code>POST /auth/login</code>, expire apres 7 jours.</li>
+                <li data-i18n="qs_s4_apikey"><strong>Cle API (sk_live_)</strong> — Pour les integrations. Permanente (jusqu'a revocation). Necessite le plan Developer ou Custom.</li>
+            </ul>
+            <div class="tip">
+                <strong>Header :</strong> Les deux methodes utilisent le meme header <code>Authorization: Bearer &lt;token&gt;</code>. Le backend detecte automatiquement le type.
+            </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="step">
+            <span class="step__num">5</span>
+            <h2 data-i18n="qs_s5_title">Concepts cles</h2>
+            <ul>
+                <li data-i18n="qs_s5_tenant"><strong>Multi-tenant :</strong> Chaque salon a ses propres donnees isolees. Votre cle API accede uniquement aux donnees de votre salon.</li>
+                <li data-i18n="qs_s5_pagination"><strong>Pagination :</strong> Utilisez <code>?limit=50&offset=0</code> pour paginer les resultats.</li>
+                <li data-i18n="qs_s5_errors"><strong>Erreurs :</strong> Toutes les erreurs retournent <code>{ "success": false, "error": "...", "message": "..." }</code></li>
+                <li data-i18n="qs_s5_rate"><strong>Rate limit :</strong> 5 000 requetes/jour par cle API. Header <code>X-RateLimit-Remaining</code> indique les requetes restantes.</li>
+                <li data-i18n="qs_s5_scopes"><strong>Scopes :</strong> Limitez l'acces de chaque cle avec des scopes : <code>clients:read</code>, <code>appointments:write</code>, etc.</li>
+            </ul>
+        </div>
+
+    </main>
+
+    <footer class="qs-footer">
+        <div class="container">
+            <p data-i18n="qs_footer">Besoin d'aide ? <a href="mailto:info@flowkraftagency.com">Contactez le support</a> — <a href="reference.html">Reference API complete</a></p>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+        function copyCode(btn) {
+            const code = btn.closest('.code-block').querySelector('code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                btn.textContent = 'Copie !';
+                setTimeout(() => btn.textContent = 'Copier', 2000);
+            });
+        }
+    </script>
+</body>
+</html>

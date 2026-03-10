@@ -4,10 +4,12 @@
  */
 
 const jwt = require("jsonwebtoken");
+const { isApiKey, apiKeyMiddleware } = require("./apiKey");
 
 /**
  * Middleware de vérification JWT
  * Extrait et vérifie le token dans le header Authorization
+ * Délègue automatiquement au middleware API Key si le token commence par sk_live_
  */
 const authMiddleware = (req, res, next) => {
   try {
@@ -35,7 +37,12 @@ const authMiddleware = (req, res, next) => {
 
     const token = parts[1];
 
-    // Vérification du token
+    // Délégation vers API Key middleware si le token est une clé API
+    if (isApiKey(token)) {
+      return apiKeyMiddleware(req, res, next);
+    }
+
+    // Vérification du token JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Injection des données utilisateur dans la requête
@@ -112,7 +119,7 @@ const roleMiddleware = (allowedRoles) => {
  * @param {Object} user - Données utilisateur
  * @returns {String} Token JWT
  */
-const generateToken = (user) => {
+const generateToken = (user, expiresIn = "7d") => {
   return jwt.sign(
     {
       id: user.id,
@@ -122,7 +129,7 @@ const generateToken = (user) => {
     },
     process.env.JWT_SECRET,
     {
-      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+      expiresIn: process.env.JWT_EXPIRES_IN || expiresIn,
     }
   );
 };

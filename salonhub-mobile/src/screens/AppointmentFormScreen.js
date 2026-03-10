@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
   servicePrice: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#6366F1',
   },
   serviceDuration: {
     fontSize: 13,
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
   summaryValuePrice: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#8B5CF6',
+    color: '#6366F1',
   },
   footer: {
     flexDirection: 'row',
@@ -835,7 +835,7 @@ const styles = StyleSheet.create({
   serviceMetaPrice: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#6366F1',
   },
   serviceMetaDuration: {
     fontSize: 14,

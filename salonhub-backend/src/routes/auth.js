@@ -33,6 +33,9 @@ router.post("/register", async (req, res) => {
 
       // Plan (optionnel)
       subscription_plan,
+
+      // Business type (multi-secteur)
+      business_type,
     } = req.body;
 
     // Validation
@@ -74,6 +77,12 @@ router.post("/register", async (req, res) => {
         error: "Le mot de passe doit contenir au moins 8 caractères",
       });
     }
+
+    // Validation business_type
+    const validBusinessTypes = ['beauty', 'restaurant', 'training', 'medical'];
+    const finalBusinessType = business_type && validBusinessTypes.includes(business_type)
+      ? business_type
+      : 'beauty'; // Default to beauty for backwards compatibility
 
     // Vérifier que l'email salon n'existe pas déjà
     const [existingTenant] = await query(
@@ -129,8 +138,8 @@ router.post("/register", async (req, res) => {
       const [tenantResult] = await connection.query(
         `INSERT INTO tenants (
           name, slug, email, phone, address, city, postal_code,
-          subscription_plan, subscription_status, trial_ends_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(NOW(), INTERVAL 14 DAY))`,
+          subscription_plan, subscription_status, trial_ends_at, business_type
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'trial', DATE_ADD(NOW(), INTERVAL 14 DAY), ?)`,
         [
           salon_name,
           finalSlug,
@@ -139,7 +148,8 @@ router.post("/register", async (req, res) => {
           salon_address || null,
           salon_city || null,
           salon_postal_code || null,
-          subscription_plan || "starter",
+          subscription_plan || "essential",
+          finalBusinessType,
         ]
       );
 
@@ -153,7 +163,14 @@ router.post("/register", async (req, res) => {
         [tenantId, email, passwordHash, first_name, last_name]
       );
 
-      // 3. Créer quelques paramètres par défaut
+      // 3. Entrée user_salons (multi-salon pivot)
+      await connection.query(
+        `INSERT INTO user_salons (user_id, tenant_id, role, is_primary, is_active)
+         VALUES (?, ?, 'owner', TRUE, TRUE)`,
+        [userResult.insertId, tenantId]
+      );
+
+      // 4. Créer quelques paramètres par défaut
       await connection.query(
         `INSERT INTO settings (tenant_id, setting_key, setting_value, setting_type) VALUES
         (?, 'business_hours', '{"monday":"09:00-18:00","tuesday":"09:00-18:00","wednesday":"09:00-18:00","thursday":"09:00-18:00","friday":"09:00-18:00","saturday":"09:00-17:00","sunday":"closed"}', 'json'),
@@ -188,6 +205,10 @@ router.post("/register", async (req, res) => {
         // Ne pas bloquer l'inscription si l'email échoue
       });
 
+    // Calculer la date de fin d'essai (14 jours à partir de maintenant)
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
     res.status(201).json({
       success: true,
       message: "Inscription réussie ! Bienvenue sur SalonHub",
@@ -204,6 +225,10 @@ router.post("/register", async (req, res) => {
           id: result.tenantId,
           name: salon_name,
           slug: finalSlug,
+          business_type: finalBusinessType,
+          subscription_status: "trial",
+          subscription_plan: subscription_plan || "essential",
+          trial_ends_at: trialEndsAt.toISOString(),
         },
       },
     });
@@ -221,7 +246,7 @@ router.post("/register", async (req, res) => {
 // ==========================================
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
 
     // Validation
     if (!email || !password) {
@@ -233,14 +258,16 @@ router.post("/login", async (req, res) => {
 
     // Récupérer l'utilisateur
     const [user] = await query(
-      `SELECT 
+      `SELECT
         u.*,
         t.id as tenant_id,
         t.name as tenant_name,
         t.slug as tenant_slug,
         t.subscription_status,
+        t.subscription_plan,
         t.trial_ends_at,
-        t.logo_url as logo_url
+        t.logo_url as logo_url,
+        t.business_type
       FROM users u
       JOIN tenants t ON u.tenant_id = t.id
       WHERE u.email = ?`,
@@ -263,6 +290,15 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    // Vérifier si c'est un compte Google-only (sans mot de passe)
+    if (!user.password_hash) {
+      return res.status(400).json({
+        success: false,
+        error: "google_only",
+        message: "Ce compte utilise la connexion Google. Veuillez vous connecter avec Google.",
+      });
+    }
+
     // Vérifier le password
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
@@ -273,36 +309,9 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Vérifier statut abonnement
-    if (user.subscription_status === "suspended") {
-      return res.status(403).json({
-        success: false,
-        error: "Abonnement suspendu",
-        message:
-          "Votre abonnement a été suspendu. Veuillez mettre à jour votre paiement.",
-      });
-    }
-
-    if (user.subscription_status === "cancelled") {
-      return res.status(403).json({
-        success: false,
-        error: "Abonnement annulé",
-        message: "Votre abonnement a été annulé.",
-      });
-    }
-
-    // Vérifier fin de période d'essai
-    if (user.subscription_status === "trial" && user.trial_ends_at) {
-      const trialEnd = new Date(user.trial_ends_at);
-      if (trialEnd < new Date()) {
-        return res.status(403).json({
-          success: false,
-          error: "Période d'essai expirée",
-          message:
-            "Votre période d'essai est terminée. Veuillez souscrire à un abonnement.",
-        });
-      }
-    }
+    // NOTE: On ne bloque PAS la connexion même si l'abonnement est expiré/suspendu/annulé
+    // Le tenant doit pouvoir accéder à son dashboard pour gérer son compte
+    // Les pages publiques (booking, menu, etc.) sont bloquées séparément via checkPublicSubscription
 
     // Mettre à jour last_login_at
     await query("UPDATE users SET last_login_at = NOW() WHERE id = ?", [
@@ -315,7 +324,31 @@ router.post("/login", async (req, res) => {
       tenant_id: user.tenant_id,
       email: user.email,
       role: user.role,
-    });
+    }, rememberMe ? "30d" : "7d");
+
+    // Calculer le statut effectif de l'abonnement
+    let effectiveStatus = user.subscription_status;
+    if (user.subscription_status === 'trial' && user.trial_ends_at) {
+      const trialEnd = new Date(user.trial_ends_at);
+      if (trialEnd < new Date()) {
+        effectiveStatus = 'expired';
+        // Mettre à jour le statut dans la BDD
+        await query("UPDATE tenants SET subscription_status = 'expired' WHERE id = ?", [user.tenant_id]);
+      }
+    }
+
+    // Récupérer la liste des salons de l'utilisateur
+    const salons = await query(
+      `SELECT
+        us.role, us.is_primary, us.is_active as membership_active,
+        t.id as tenant_id, t.name, t.slug, t.logo_url, t.business_type,
+        t.subscription_plan, t.subscription_status
+      FROM user_salons us
+      JOIN tenants t ON us.tenant_id = t.id
+      WHERE us.user_id = ? AND us.is_active = TRUE
+      ORDER BY us.is_primary DESC, t.name ASC`,
+      [user.id]
+    );
 
     res.json({
       success: true,
@@ -332,11 +365,16 @@ router.post("/login", async (req, res) => {
           avatar_url: user.avatar_url,
         },
         tenant: {
+          id: user.tenant_id,
           name: user.tenant_name,
           slug: user.tenant_slug,
-          subscription_status: user.subscription_status,
+          subscription_status: effectiveStatus,
+          subscription_plan: user.subscription_plan,
+          trial_ends_at: user.trial_ends_at,
           logo_url: user.logo_url,
+          business_type: user.business_type,
         },
+        salons,
       },
     });
   } catch (error) {
@@ -353,20 +391,24 @@ router.post("/login", async (req, res) => {
 // ==========================================
 router.get("/me", authMiddleware, async (req, res) => {
   try {
+    // Utiliser le tenant_id du JWT (qui peut changer après un switch)
+    const activeTenantId = req.user.tenant_id;
+
     const [user] = await query(
-      `SELECT 
-        u.id, u.email, u.first_name, u.last_name, u.phone, u.role, 
+      `SELECT
+        u.id, u.email, u.first_name, u.last_name, u.phone,
         u.is_active, u.last_login_at, u.created_at, u.avatar_url,
         t.id as tenant_id,
         t.name as tenant_name,
         t.slug as tenant_slug,
         t.subscription_plan,
         t.subscription_status,
-        t.trial_ends_at
+        t.trial_ends_at,
+        t.business_type
       FROM users u
-      JOIN tenants t ON u.tenant_id = t.id
+      JOIN tenants t ON t.id = ?
       WHERE u.id = ?`,
-      [req.user.id]
+      [activeTenantId, req.user.id]
     );
 
     if (!user) {
@@ -376,9 +418,32 @@ router.get("/me", authMiddleware, async (req, res) => {
       });
     }
 
+    // Récupérer le rôle dans le salon actif (depuis user_salons)
+    const [membership] = await query(
+      "SELECT role FROM user_salons WHERE user_id = ? AND tenant_id = ?",
+      [req.user.id, activeTenantId]
+    );
+    user.role = membership?.role || req.user.role;
+
+    // Récupérer la liste des salons
+    const salons = await query(
+      `SELECT
+        us.role, us.is_primary, us.is_active as membership_active,
+        t.id as tenant_id, t.name, t.slug, t.logo_url, t.business_type,
+        t.subscription_plan, t.subscription_status
+      FROM user_salons us
+      JOIN tenants t ON us.tenant_id = t.id
+      WHERE us.user_id = ? AND us.is_active = TRUE
+      ORDER BY us.is_primary DESC, t.name ASC`,
+      [req.user.id]
+    );
+
     res.json({
       success: true,
-      data: user,
+      data: {
+        ...user,
+        salons,
+      },
     });
   } catch (error) {
     console.error("Erreur récupération profil:", error);
@@ -556,6 +621,13 @@ router.post("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
         phone || null,
         role || "staff",
       ]
+    );
+
+    // Ajouter aussi dans user_salons (multi-salon pivot)
+    await query(
+      `INSERT IGNORE INTO user_salons (user_id, tenant_id, role, is_primary, is_active)
+       VALUES (?, ?, ?, TRUE, TRUE)`,
+      [result.insertId, req.tenantId, role || "staff"]
     );
 
     res.status(201).json({
@@ -1044,6 +1116,100 @@ router.put("/profile/password", authMiddleware, tenantMiddleware, async (req, re
     res.status(500).json({
       success: false,
       error: "Erreur serveur",
+    });
+  }
+});
+
+// ==========================================
+// GET - Statistiques détaillées du profil (owner/admin only)
+// ==========================================
+router.get("/profile/stats", authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    // Vérifier permissions
+    if (!["owner", "admin"].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        error: "Accès refusé. Réservé aux administrateurs.",
+      });
+    }
+
+    const tenantId = req.tenantId;
+
+    // 1. Chiffre d'affaires (Total et 30 derniers jours)
+    const [revenueStats] = await query(
+      `SELECT 
+        SUM(s.price) as total_revenue,
+        SUM(CASE WHEN a.appointment_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN s.price ELSE 0 END) as revenue_30d,
+        COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_count
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      WHERE a.tenant_id = ? AND a.status = 'completed'`,
+      [tenantId]
+    );
+
+    // 2. Clients fidèles (>= 3 RDV complétés)
+    const [loyalClients] = await query(
+      `SELECT COUNT(*) as count FROM (
+        SELECT client_id FROM appointments 
+        WHERE tenant_id = ? AND status = 'completed' 
+        GROUP BY client_id HAVING COUNT(*) >= 3
+      ) as loyal`,
+      [tenantId]
+    );
+
+    // 3. Taux de remplissage (Last 30 days)
+    // On calcule le nombre total de minutes de RDV / capacité théorique
+    // Capacité théorique (estimée) = 30 jours * 8 heures * nb employés actifs
+    const [fillStats] = await query(
+      `SELECT 
+        SUM(s.duration) as total_minutes,
+        (SELECT COUNT(*) FROM users WHERE tenant_id = ? AND is_active = 1) as staff_count
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      WHERE a.tenant_id = ? AND a.status = 'completed' 
+      AND a.appointment_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)`,
+      [tenantId, tenantId]
+    );
+
+    const staffCount = fillStats.staff_count || 1;
+    const theoreticalCapacityMinutes = 30 * 8 * 60 * staffCount;
+    const fillRate = theoreticalCapacityMinutes > 0 
+      ? Math.min(Math.round((fillStats.total_minutes || 0) / theoreticalCapacityMinutes * 100), 100)
+      : 0;
+
+    // 4. Tendances (Revenus par mois - last 6 months)
+    const trends = await query(
+      `SELECT 
+        DATE_FORMAT(appointment_date, '%b %Y') as month,
+        SUM(s.price) as revenue
+      FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      WHERE a.tenant_id = ? AND a.status = 'completed'
+      AND a.appointment_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+      GROUP BY month
+      ORDER BY MIN(appointment_date) ASC`,
+      [tenantId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        total_revenue: parseFloat(revenueStats.total_revenue || 0),
+        revenue_30d: parseFloat(revenueStats.revenue_30d || 0),
+        completed_appointments: revenueStats.completed_count || 0,
+        loyal_clients_count: loyalClients.count || 0,
+        fill_rate: fillRate,
+        trends: trends.map(t => ({
+          month: t.month,
+          revenue: parseFloat(t.revenue || 0)
+        }))
+      }
+    });
+  } catch (error) {
+    console.error("Erreur récupération stats profil:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur lors de la récupération des statistiques",
     });
   }
 });

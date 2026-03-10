@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Reference — SalonHub</title>
+    <link rel="icon" type="image/png" href="../logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .ref-header {
+            background: #1F2937;
+            color: #fff;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .ref-header a {
+            color: rgba(255,255,255,.7);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color .2s;
+        }
+        .ref-header a:hover { color: #fff; }
+        .ref-header__title {
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ref-header__title span {
+            background: linear-gradient(135deg, #6366F1, #818CF8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .ref-header__nav { display: flex; gap: 20px; }
+        #redoc-container { min-height: calc(100vh - 52px); }
+        .redoc-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 52px);
+            color: #6B7280;
+            font-size: 16px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <header class="ref-header">
+        <div class="ref-header__title">
+            <a href="../docs.html" style="color:#fff;display:flex;align-items:center;gap:6px">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Docs
+            </a>
+            <span style="opacity:.3;margin:0 4px">/</span>
+            <span>API Reference</span>
+        </div>
+        <div class="ref-header__nav">
+            <a href="quickstart.html">Quick Start</a>
+            <a href="integrations.html">Integrations</a>
+            <a href="../index.html">SalonHub.app</a>
+        </div>
+    </header>
+
+    <div id="redoc-container">
+        <div class="redoc-loading">Chargement de la documentation...</div>
+    </div>
+
+    <script>
+        // Polyfill Node.js globals that Redoc's bundled dependencies expect in the browser
+        (function() {
+            if (typeof process === 'undefined') {
+                window.process = {};
+            }
+            var p = window.process;
+            if (!p.env) p.env = {};
+            if (!p.env.NODE_ENV) p.env.NODE_ENV = 'production';
+            if (!p.cwd) p.cwd = function() { return '/'; };
+            if (!p.platform) p.platform = 'browser';
+            if (!p.version) p.version = '';
+            if (!p.nextTick) p.nextTick = function(fn) { setTimeout(fn, 0); };
+            if (typeof global === 'undefined') window.global = window;
+        })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
+    <script src="https://cdn.redoc.ly/redoc/v2.4.0/bundles/redoc.standalone.js"></script>
+    <script>
+        // Fetch YAML spec ourselves and pass parsed object to Redoc.init()
+        // This bypasses Redoc's BaseResolver which tries to use Node.js fs APIs
+        fetch('openapi.yaml')
+            .then(function(res) {
+                if (!res.ok) throw new Error('Failed to load openapi.yaml: ' + res.status);
+                return res.text();
+            })
+            .then(function(yamlText) {
+                var spec = jsyaml.load(yamlText);
+                Redoc.init(spec, {
+                    hideHostname: true,
+                    expandResponses: '200',
+                    pathInMiddlePanel: true,
+                    theme: {
+                        colors: {
+                            primary: { main: '#6366F1' },
+                            success: { main: '#10B981' },
+                            warning: { main: '#F59E0B' },
+                            error: { main: '#EF4444' }
+                        },
+                        typography: {
+                            fontFamily: 'Plus Jakarta Sans, Inter, sans-serif',
+                            headings: { fontFamily: 'Plus Jakarta Sans, Inter, sans-serif' },
+                            fontSize: '15px',
+                            code: { fontSize: '13px' }
+                        },
+                        sidebar: {
+                            backgroundColor: '#F9FAFB',
+                            textColor: '#1F2937',
+                            activeTextColor: '#6366F1'
+                        },
+                        rightPanel: {
+                            backgroundColor: '#1F2937'
+                        }
+                    }
+                }, document.getElementById('redoc-container'));
+            })
+            .catch(function(err) {
+                document.getElementById('redoc-container').innerHTML =
+                    '<div class="redoc-loading" style="color:#EF4444">Erreur: ' + err.message + '</div>';
+            });
+    </script>
+</body>
+</html>

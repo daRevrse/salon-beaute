@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Recherchez un salon de beauté, restaurant, centre de formation ou cabinet médical près de chez vous sur SalonHub.">
+    <meta name="keywords" content="recherche salon, trouver salon de beauté, réservation en ligne, SalonHub">
+    <meta name="author" content="FlowKraft Agency">
+
+    <title>Rechercher un salon - SalonHub by FlowKraft</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <!-- Font Awesome -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Styles CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <!-- HEADER / NAVIGATION -->
+    <header>
+        <nav class="nav-container">
+            <a href="index.html" class="logo">
+                <img src="logo.png" alt="SalonHub Logo">
+                SalonHub
+            </a>
+            <div class="nav-menu">
+                <div class="nav-buttons">
+                    <a href="index.html#features">Fonctionnalités</a>
+                    <a href="index.html#pricing">Tarifs</a>
+                    <a href="recherche.html" class="nav-search-link active"><i class="fas fa-search"></i> Rechercher</a>
+                    <a href="index.html#contact">Contact</a>
+                </div>
+            </div>
+            <button class="hamburger" aria-label="Ouvrir le menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </nav>
+    </header>
+
+    <!-- SEARCH HERO -->
+    <section class="search-hero">
+        <h1>Trouvez votre établissement</h1>
+        <p>Recherchez parmi nos partenaires : salons de beauté, restaurants, centres de formation et cabinets médicaux.
+        </p>
+
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Nom, ville ou secteur d'activité..." autofocus>
+            <button id="search-btn"><i class="fas fa-search"></i> Rechercher</button>
+        </div>
+
+        <div class="search-filters">
+            <button class="filter-chip active" data-type="">Tous</button>
+            <button class="filter-chip" data-type="beauty"><i data-lucide="scissors"></i> Beauté</button>
+            <button class="filter-chip" data-type="restaurant"><i data-lucide="utensils"></i> Restaurant</button>
+            <button class="filter-chip" data-type="training"><i class="fas fa-chalkboard-teacher"></i>
+                Formation</button>
+            <button class="filter-chip" data-type="medical"><i data-lucide="heart-pulse"></i> Médical</button>
+        </div>
+    </section>
+
+    <!-- SEARCH RESULTS -->
+    <section class="search-results" id="search-results">
+        <p class="search-hint"><i class="fas fa-search"
+                style="font-size: 2rem; display: block; margin-bottom: 12px; opacity: 0.3;"></i>Entrez au moins 2
+            caractères pour lancer la recherche</p>
+    </section>
+
+    <!-- FOOTER -->
+    <footer id="contact">
+        <div class="footer-container">
+            <div class="footer-main">
+                <div class="footer-col footer-about">
+                    <div class="footer-logo">
+                        <img src="logo_fk.png" alt="FlowKraft Logo">
+                        <span>SalonHub</span>
+                    </div>
+                    <p class="footer-description">
+                        La solution SaaS complète pour moderniser et optimiser la gestion de votre salon.
+                    </p>
+                </div>
+
+                <div class="footer-col">
+                    <h3>Navigation</h3>
+                    <ul class="footer-links">
+                        <li><a href="index.html#features"><i data-lucide="chevron-right"></i>Fonctionnalités</a></li>
+                        <li><a href="index.html#pricing"><i data-lucide="chevron-right"></i>Tarifs</a></li>
+                        <li><a href="recherche.html"><i data-lucide="chevron-right"></i>Rechercher un salon</a></li>
+                        <li><a href="https://flowkraftagency.com"><i data-lucide="chevron-right"></i>FK Agency</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h3>Contact</h3>
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <i data-lucide="mail"></i>
+                            <div>
+                                <span>Email</span>
+                                <a href="mailto:info@flowkraftagency.com">info@flowkraftagency.com</a>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <i data-lucide="phone"></i>
+                            <div>
+                                <span>Téléphone</span>
+                                <a href="tel:+33652794562">+33 (0)6 52 79 45 62</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <div class="footer-bottom-content">
+                    <div class="copyright">
+                        <p>&copy; 2025 <strong>FlowKraft Agency</strong>. Tous droits réservés.</p>
+                    </div>
+                    <div class="legal-links">
+                        <a href="confidentialite.html">Confidentialité</a>
+                        <a href="mentions-legales.html">Mentions légales</a>
+                        <a href="cookies.html">Cookies</a>
+                        <a href="cgu.html">CGU</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Search Script -->
+    <script src="search.js"></script>
+
+    <!-- Responsive Nav -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const hamburger = document.querySelector(".hamburger");
+            const header = document.querySelector("header");
+            if (hamburger) {
+                hamburger.addEventListener("click", function () {
+                    header.classList.toggle("nav-open");
+                });
+            }
+
+            // Header scroll effect
+            window.addEventListener("scroll", () => {
+                if (window.scrollY > 50) {
+                    header.classList.add("scrolled");
+                } else {
+                    header.classList.remove("scrolled");
+                }
+            });
+        });
+    </script>
+
+</body>
+
+</html>

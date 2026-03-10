@@ -31,7 +31,7 @@ const StaffFormScreen = ({ navigation, route }) => {
 
   const roles = [
     { value: 'owner', label: 'Propriétaire', color: '#6366F1' },
-    { value: 'manager', label: 'Responsable', color: '#8B5CF6' },
+    { value: 'manager', label: 'Responsable', color: '#6366F1' },
     { value: 'employee', label: 'Employé', color: '#3B82F6' },
   ];
 
@@ -80,10 +80,10 @@ const StaffFormScreen = ({ navigation, route }) => {
     setSubmitting(true);
     try {
       if (isEditing) {
-        await api.put(`/staff/${staffId}`, staffData);
+        await api.put(`/auth/staff/${staffId}`, staffData);
         Alert.alert('Succès', 'Employé modifié avec succès');
       } else {
-        await api.post('/staff', staffData);
+        await api.post('/auth/staff', staffData);
         Alert.alert('Succès', 'Employé créé avec succès');
       }
       navigation.goBack();

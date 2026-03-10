@@ -1,17 +1,20 @@
 /**
- * Page du formulaire client
- * Collecte les informations du client pour finaliser la réservation
+ * Public Booking Client Info Page - Purple Dynasty Theme
+ * Multi-Sector Adaptive with Business Type Terminology
  */
 
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
+import { usePublicTheme } from "../../contexts/PublicThemeContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { formatDuration } from "../../contexts/PublicThemeContext";
+import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
 import PromoCodeInput from "../../components/common/PromoCodeInput";
 import api from "../../services/api";
+import pwaService from "../../services/pwaService";
 import { getImageUrl } from "../../utils/imageUtils";
 import {
-  // <-- Import Heroicons
   ClockIcon,
   PhoneIcon as PhoneIconOutline,
   EnvelopeIcon,
@@ -21,6 +24,8 @@ import {
   UserCircleIcon,
   CurrencyDollarIcon,
   ChatBubbleOvalLeftEllipsisIcon,
+  MapPinIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 
 const BookingClientInfo = () => {
@@ -29,9 +34,18 @@ const BookingClientInfo = () => {
   const location = useLocation();
   const { service, date, slot } = location.state || {};
   const { formatPrice } = useCurrency();
+  const { salon, settings, dynamicStyles, theme: themeSettings } = usePublicTheme();
 
-  const { salon, loading, error, fetchSalon, createAppointment, clearError } =
+  const { loading, error, createAppointment, clearError } =
     usePublicBooking(slug);
+
+  // Business type configuration
+  const businessType = salon?.business_type || "beauty";
+  const config = getBusinessTypeConfig(businessType);
+  const term = config.terminology;
+
+  // Thème personnalisé - Utilisation de dynamicStyles du contexte
+  const customStyles = dynamicStyles;
 
   const [formData, setFormData] = useState({
     first_name: "",
@@ -39,7 +53,7 @@ const BookingClientInfo = () => {
     phone: "",
     email: "",
     notes: "",
-    preferred_contact_method: "email", // Par défaut: email
+    preferred_contact_method: "email",
   });
 
   const [formErrors, setFormErrors] = useState({});
@@ -52,14 +66,19 @@ const BookingClientInfo = () => {
       navigate(`/book/${slug}`);
       return;
     }
-    fetchSalon();
-  }, [service, date, slot, slug, navigate, fetchSalon]);
+  }, [service, date, slot, slug, navigate]);
 
   useEffect(() => {
     if (service) {
       setFinalAmount(service.price);
     }
   }, [service]);
+
+  useEffect(() => {
+    if (salon?.tenant_id) {
+      pwaService.setTenantId(salon.tenant_id);
+    }
+  }, [salon]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -68,7 +87,6 @@ const BookingClientInfo = () => {
       [name]: value,
     }));
 
-    // Clear error for this field when user starts typing
     if (formErrors[name]) {
       setFormErrors((prev) => ({
         ...prev,
@@ -129,7 +147,11 @@ const BookingClientInfo = () => {
 
       const result = await createAppointment(appointmentData);
 
-      // Navigation vers la page de confirmation avec les données
+      // Si l'utilisateur est abonné aux notifications, lier son clientId à l'abonnement
+      if (result.appointment?.client_id) {
+        await pwaService.saveSubscriptionToBackend(null, result.appointment.client_id);
+      }
+
       navigate(`/book/${slug}/confirmation`, {
         state: {
           service,
@@ -140,7 +162,7 @@ const BookingClientInfo = () => {
         },
       });
     } catch (err) {
-      console.error("Erreur lors de la création du rendez-vous:", err);
+      console.error("Error creating appointment:", err);
       setSubmitting(false);
     }
   };
@@ -151,7 +173,6 @@ const BookingClientInfo = () => {
 
   const handleValidatePromoCode = async (code) => {
     if (!code) {
-      // Retirer le code promo
       setPromoCode(null);
       setFinalAmount(service.price);
       return { success: true };
@@ -175,7 +196,7 @@ const BookingClientInfo = () => {
         return response.data;
       }
     } catch (error) {
-      console.error("Erreur validation promo:", error);
+      console.error("Error validating promo:", error);
       throw error;
     }
   };
@@ -187,42 +208,50 @@ const BookingClientInfo = () => {
       month: "long",
       day: "numeric",
     };
-    return new Date(dateString + "T00:00:00").toLocaleDateString(
-      "fr-FR",
-      options
-    );
+    return new Date(dateString + "T00:00:00").toLocaleDateString("fr-FR", options);
+  };
+
+  const inputStyle = (fieldName) => ({
+    outline: "none",
+    transition: "all 0.2s ease-in-out"
+  });
+
+  const handleInputFocus = (e, fieldName) => {
+    if (!formErrors[fieldName]) {
+      e.target.style.boxShadow = dynamicStyles.focusRing.boxShadow;
+      e.target.style.borderColor = dynamicStyles.focusRing.borderColor;
+    }
+  };
+
+  const handleInputBlur = (e, fieldName) => {
+    if (!formErrors[fieldName]) {
+      e.target.style.boxShadow = "none";
+      e.target.style.borderColor = "#e2e8f0";
+    }
   };
 
   return (
-    <div className="min-h-screen relative">
-      {/* Background Image avec Overlay */}
-      {service?.image_url && (
-        <div className="fixed inset-0 z-0">
-          <img
-            src={getImageUrl(service.image_url)}
-            alt={service.name}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-white/90 backdrop-blur-sm"></div>
-        </div>
-      )}
+    <div className="min-h-screen relative flex flex-col bg-slate-50" style={customStyles.fontFamily}>
+      {/* Background overlay if no service image */}
+      {!service?.image_url && <div className="fixed inset-0 bg-slate-50 z-0" />}
 
       {/* Content */}
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-col min-h-screen">
         {/* Header */}
-        <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-200">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <header className="bg-white/80 backdrop-blur-md shadow-soft border-b border-slate-200 sticky top-0 z-50">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center justify-between">
               <button
                 onClick={handleBack}
-                className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors font-medium"
+                className="flex items-center transition-colors font-medium"
+                style={dynamicStyles.primaryText}
               >
                 <ChevronLeftIcon className="w-5 h-5 mr-2" />
                 Retour
               </button>
               <div className="text-center flex-1">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {salon?.name || "Salon de Beauté"}
+                <h1 className="text-2xl font-display font-bold text-slate-900">
+                  {salon?.name || term.establishment}
                 </h1>
               </div>
               <div className="w-20"></div>
@@ -231,377 +260,305 @@ const BookingClientInfo = () => {
         </header>
 
         {/* Main Content */}
-        <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center mb-10">
-            <p className="text-sm font-medium text-indigo-600 mb-2">
-              Étape 3/3
-            </p>
-            <h2 className="text-3xl font-bold text-gray-900">
-              Vos coordonnées
-            </h2>
-            <p className="text-gray-600 mt-2">
-              Vérifiez et complétez vos informations pour finaliser la
-              réservation
-            </p>
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+          {/* Progress Indication */}
+          <div className="text-center mb-8">
+            <div 
+              className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-2"
+              style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryText }}
+            >
+              Étape 3 sur 3 : Finalisation
+            </div>
+            <h2 className="text-3xl font-display font-bold text-slate-900">Vos coordonnées</h2>
           </div>
 
-          {/* Récapitulatif - Enhanced Box Style */}
+          {/* Recap Summary - Premium Unified Card */}
           {service && date && slot && (
-            <div className="bg-white border border-indigo-200 rounded-xl shadow-lg p-4 sm:p-6 mb-8 space-y-4">
-              <h3 className="font-semibold text-gray-900 text-lg sm:text-xl border-b pb-3 mb-4 flex items-center">
-                <CalendarDaysIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-indigo-600" />
-                Votre Réservation
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Service</p>
-                  <p className="font-medium text-gray-900">{service.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Prix</p>
-                  {promoCode ? (
-                    <div>
-                      <p className="text-sm text-gray-400 line-through">
-                        {formatPrice(service.price)}
-                      </p>
-                      <p className="font-bold text-green-600 text-lg flex items-center">
-                        <CurrencyDollarIcon className="w-5 h-5 mr-1" />
-                        {formatPrice(finalAmount)}
-                      </p>
+            <div className="bg-white border border-slate-200 rounded-3xl shadow-soft px-6 py-6 mb-8 relative overflow-hidden">
+               <div 
+                className="absolute left-0 top-0 bottom-0 w-1.5"
+                style={dynamicStyles.primaryButton}
+              />
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center space-x-5">
+                  <div 
+                    className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border-2"
+                    style={dynamicStyles.primaryBorderLight}
+                  >
+                    <img
+                      src={getImageUrl(service.image_url) || `https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200&h=200&fit=crop`}
+                      alt={service.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">{service.name}</h3>
+                    <div className="flex flex-col text-slate-500 text-sm mt-1 space-y-1">
+                      <span className="flex items-center">
+                        <CalendarDaysIcon className="w-5 h-5 mr-2" style={dynamicStyles.primaryText} />
+                        {formatDate(date)}
+                      </span>
+                      <span className="flex items-center">
+                        <ClockIcon className="w-5 h-5 mr-2" style={dynamicStyles.primaryText} />
+                        {slot.time} • {formatDuration(service.duration)}
+                      </span>
                     </div>
-                  ) : (
-                    <p className="font-bold text-indigo-600 text-lg flex items-center">
-                      <CurrencyDollarIcon className="w-5 h-5 mr-1" />
-                      {formatPrice(service.price)}
-                    </p>
-                  )}
+                  </div>
                 </div>
-                <div className="sm:col-span-2">
-                  <p className="text-sm text-gray-500">Date & Heure</p>
-                  <p className="font-medium text-gray-900">
-                    {formatDate(date)} à {slot.time}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Durée</p>
-                  <p className="font-medium text-gray-900 flex items-center">
-                    <ClockIcon className="w-4 h-4 mr-1 inline-block" />
-                    {service.duration} minutes
-                  </p>
+                
+                <div className="flex items-center justify-between md:flex-col md:items-end md:justify-center border-t md:border-t-0 pt-4 md:pt-0">
+                  <span className="text-slate-500 text-sm md:mb-1">Montant total</span>
+                  <div className="text-right">
+                    {promoCode ? (
+                      <div className="flex flex-col items-end">
+                        <span className="text-sm text-slate-400 line-through">
+                          {formatPrice(service.price)}
+                        </span>
+                        <span className="text-2xl font-bold text-emerald-600">
+                          {formatPrice(finalAmount)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-2xl font-bold" style={dynamicStyles.primaryText}>
+                        {formatPrice(service.price)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Formulaire */}
-          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center border-b pb-3">
-                <UserCircleIcon className="w-5 h-5 mr-2 text-indigo-600" />
-                Vos coordonnées personnelles
-              </h3>
+          {/* Form Section */}
+          <div className="bg-white rounded-3xl shadow-soft-xl border border-slate-200 overflow-hidden">
+            <div 
+              className="h-2 w-full" 
+              style={dynamicStyles.primaryButton}
+            />
+            
+            <div className="p-8 sm:p-10">
+              <form onSubmit={handleSubmit} className="space-y-8">
+                {/* Section Header */}
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 rounded-2xl" style={dynamicStyles.primaryBg}>
+                    <UserCircleIcon className="w-8 h-8" style={dynamicStyles.primaryText} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-900">Informations personnelles</h3>
+                    <p className="text-slate-500">Pour vous envoyer la confirmation de votre {term.appointment.toLowerCase()}</p>
+                  </div>
+                </div>
 
-              {/* Prénom et Nom */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label
-                    htmlFor="first_name"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Prénom *
-                  </label>
-                  <input
-                    type="text"
-                    id="first_name"
-                    name="first_name"
-                    value={formData.first_name}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* First Name */}
+                  <div className="space-y-2">
+                    <label htmlFor="first_name" className="block text-sm font-semibold text-slate-700">
+                      Prénom <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="first_name"
+                      name="first_name"
+                      autoComplete="given-name"
+                      value={formData.first_name}
+                      onChange={handleChange}
+                      onFocus={(e) => handleInputFocus(e, "first_name")}
+                      onBlur={(e) => handleInputBlur(e, "first_name")}
+                      placeholder="Ex: Jean"
+                      className={`w-full px-5 py-4 border rounded-2xl transition-all outline-none bg-slate-50/50 focus:bg-white ${
+                        formErrors.first_name ? "border-red-500 ring-2 ring-red-100" : "border-slate-200"
+                      }`}
+                      required
+                    />
+                    {formErrors.first_name && (
+                      <p className="text-xs text-red-600 font-medium pl-1">{formErrors.first_name}</p>
+                    )}
+                  </div>
+
+                  {/* Last Name */}
+                  <div className="space-y-2">
+                    <label htmlFor="last_name" className="block text-sm font-semibold text-slate-700">
+                      Nom <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="last_name"
+                      name="last_name"
+                      autoComplete="family-name"
+                      value={formData.last_name}
+                      onChange={handleChange}
+                      onFocus={(e) => handleInputFocus(e, "last_name")}
+                      onBlur={(e) => handleInputBlur(e, "last_name")}
+                      placeholder="Ex: Dupont"
+                      className={`w-full px-5 py-4 border rounded-2xl transition-all outline-none bg-slate-50/50 focus:bg-white ${
+                        formErrors.last_name ? "border-red-500 ring-2 ring-red-100" : "border-slate-200"
+                      }`}
+                      required
+                    />
+                    {formErrors.last_name && (
+                      <p className="text-xs text-red-600 font-medium pl-1">{formErrors.last_name}</p>
+                    )}
+                  </div>
+
+                  {/* Phone */}
+                  <div className="space-y-2 md:col-span-1">
+                    <label htmlFor="phone" className="block text-sm font-semibold text-slate-700">
+                      Téléphone <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      autoComplete="tel"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      onFocus={(e) => handleInputFocus(e, "phone")}
+                      onBlur={(e) => handleInputBlur(e, "phone")}
+                      placeholder="+33 6 ..."
+                      className={`w-full px-5 py-4 border rounded-2xl transition-all outline-none bg-slate-50/50 focus:bg-white ${
+                        formErrors.phone ? "border-red-500 ring-2 ring-red-100" : "border-slate-200"
+                      }`}
+                      required
+                    />
+                    {formErrors.phone && (
+                      <p className="text-xs text-red-600 font-medium pl-1">{formErrors.phone}</p>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-2 md:col-span-1">
+                    <label htmlFor="email" className="block text-sm font-semibold text-slate-700">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      autoComplete="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      onFocus={(e) => handleInputFocus(e, "email")}
+                      onBlur={(e) => handleInputBlur(e, "email")}
+                      placeholder="vous@exemple.com"
+                      className={`w-full px-5 py-4 border rounded-2xl transition-all outline-none bg-slate-50/50 focus:bg-white ${
+                        formErrors.email ? "border-red-500 ring-2 ring-red-100" : "border-slate-200"
+                      }`}
+                    />
+                    {formErrors.email && (
+                      <p className="text-xs text-red-600 font-medium pl-1">{formErrors.email}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notification Preference */}
+                <div className="space-y-4 pt-4">
+                  <div className="flex items-center space-x-3 text-slate-900">
+                    <EnvelopeIcon className="w-6 h-6" style={dynamicStyles.primaryText} />
+                    <h4 className="text-lg font-bold">Préférence de notification</h4>
+                  </div>
+                  <p className="text-sm text-slate-500">Choisir le canal pour recevoir la confirmation :</p>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[
+                      { id: 'email', label: 'Email', icon: EnvelopeIcon },
+                      { id: 'sms', label: 'SMS', icon: ChatBubbleBottomCenterTextIcon },
+                      { id: 'whatsapp', label: 'WhatsApp', icon: ChatBubbleOvalLeftEllipsisIcon },
+                      { id: 'phone', label: 'Appel', icon: PhoneIconOutline }
+                    ].map((method) => (
+                      <button
+                        key={method.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, preferred_contact_method: method.id })}
+                        className={`flex flex-col items-center justify-center p-4 border-2 rounded-2xl transition-all duration-200 ${
+                          formData.preferred_contact_method === method.id
+                            ? "shadow-md"
+                            : "border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200"
+                        }`}
+                        style={formData.preferred_contact_method === method.id ? dynamicStyles.activeOption : {}}
+                      >
+                        <method.icon className={`w-8 h-8 mb-2 ${formData.preferred_contact_method === method.id ? "" : "text-slate-400"}`} />
+                        <span className="text-xs font-bold uppercase tracking-wide">{method.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Notes Section */}
+                <div className="space-y-2 pt-4">
+                   <div className="flex items-center space-x-3 text-slate-900 mb-2">
+                    <ChatBubbleBottomCenterTextIcon className="w-6 h-6" style={dynamicStyles.primaryText} />
+                    <h4 className="text-lg font-bold">Notes ou demandes</h4>
+                  </div>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows="3"
+                    value={formData.notes}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                      formErrors.first_name
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                    required
+                    onFocus={(e) => handleInputFocus(e, "notes")}
+                    onBlur={(e) => handleInputBlur(e, "notes")}
+                    placeholder="Précisez vos préférences particulières ici..."
+                    className="w-full px-5 py-4 border border-slate-200 rounded-2xl transition-all outline-none bg-slate-50/50 focus:bg-white resize-none"
                   />
-                  {formErrors.first_name && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {formErrors.first_name}
-                    </p>
-                  )}
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="last_name"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Nom *
-                  </label>
-                  <input
-                    type="text"
-                    id="last_name"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                      formErrors.last_name
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                    required
+                {/* Promo Code Component */}
+                <div className="pt-4 px-1">
+                  <PromoCodeInput
+                    onValidate={handleValidatePromoCode}
+                    currentAmount={service?.price || 0}
+                    clientId={null}
                   />
-                  {formErrors.last_name && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {formErrors.last_name}
-                    </p>
+                </div>
+
+                {/* Security/Trust indicator */}
+                <div className="flex items-center justify-center space-x-2 text-slate-400 text-xs pt-4">
+                  <ShieldCheckIcon className="w-4 h-4" />
+                  <span>Vos données sont protégées et ne seront jamais partagées.</span>
+                </div>
+
+                {/* Success/Error API Feedback */}
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-pulse">
+                    <p className="text-red-800 font-medium text-center">{error}</p>
+                  </div>
+                )}
+
+                {/* Primary Action Button */}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full text-white py-5 px-8 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed group"
+                  style={dynamicStyles.primaryButton}
+                  onMouseEnter={(e) => Object.assign(e.currentTarget.style, dynamicStyles.primaryButtonHover, dynamicStyles.shadowGlow)}
+                  onMouseLeave={(e) => {
+                    Object.assign(e.currentTarget.style, dynamicStyles.primaryButton);
+                    e.currentTarget.style.boxShadow = "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)";
+                  }}
+                >
+                  {submitting ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Confirmation en cours...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center">
+                      Confirmer {businessType === "restaurant" ? "ma table" : businessType === "medical" ? "mon rendez-vous" : term.appointment.toLowerCase()}
+                    </span>
                   )}
-                </div>
-              </div>
-
-              {/* Téléphone */}
-              <div>
-                <label
-                  htmlFor="phone"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Téléphone *
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="+33 6 12 34 56 78"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                    formErrors.phone ? "border-red-500" : "border-gray-300"
-                  }`}
-                  required
-                />
-                {formErrors.phone && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {formErrors.phone}
-                  </p>
-                )}
-              </div>
-
-              {/* Email */}
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Email (optionnel)
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="vous@exemple.com"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
-                    formErrors.email ? "border-red-500" : "border-gray-300"
-                  }`}
-                />
-                {formErrors.email && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {formErrors.email}
-                  </p>
-                )}
-              </div>
-
-              {/* Moyen de notification préféré - Enhanced Selector */}
-              <div className="pt-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center border-b pb-3">
-                  <EnvelopeIcon className="w-5 h-5 mr-2 text-indigo-600" />
-                  Préférence de Contact
-                </h3>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Comment souhaitez-vous être notifié ? *
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Email Option */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        preferred_contact_method: "email",
-                      })
-                    }
-                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-lg transition-all ${
-                      formData.preferred_contact_method === "email"
-                        ? "border-indigo-600 bg-indigo-50 shadow-md"
-                        : "border-gray-300 hover:border-indigo-300 bg-white"
-                    }`}
-                  >
-                    <EnvelopeIcon
-                      className={`w-7 h-7 mb-2 ${
-                        formData.preferred_contact_method === "email"
-                          ? "text-indigo-600"
-                          : "text-gray-400"
-                      }`}
-                    />
-                    <span className="text-sm font-medium">Email</span>
-                  </button>
-
-                  {/* SMS Option */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        preferred_contact_method: "sms",
-                      })
-                    }
-                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-lg transition-all ${
-                      formData.preferred_contact_method === "sms"
-                        ? "border-indigo-600 bg-indigo-50 shadow-md"
-                        : "border-gray-300 hover:border-indigo-300 bg-white"
-                    }`}
-                  >
-                    <ChatBubbleBottomCenterTextIcon
-                      className={`w-7 h-7 mb-2 ${
-                        formData.preferred_contact_method === "sms"
-                          ? "text-indigo-600"
-                          : "text-gray-400"
-                      }`}
-                    />
-                    <span className="text-sm font-medium">SMS</span>
-                  </button>
-
-                  {/* WhatsApp Option (Using Phone Icon for simplicity) */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        preferred_contact_method: "whatsapp",
-                      })
-                    }
-                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-lg transition-all ${
-                      formData.preferred_contact_method === "whatsapp"
-                        ? "border-indigo-600 bg-indigo-50 shadow-md"
-                        : "border-gray-300 hover:border-indigo-300 bg-white"
-                    }`}
-                  >
-                    <ChatBubbleOvalLeftEllipsisIcon
-                      className={`w-7 h-7 mb-2 ${
-                        formData.preferred_contact_method === "whatsapp"
-                          ? "text-indigo-600"
-                          : "text-gray-400"
-                      }`}
-                    />
-                    <span className="text-sm font-medium">WhatsApp</span>
-                  </button>
-
-                  {/* Phone Option */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        preferred_contact_method: "phone",
-                      })
-                    }
-                    className={`flex flex-col items-center justify-center px-4 py-4 border-2 rounded-lg transition-all ${
-                      formData.preferred_contact_method === "phone"
-                        ? "border-indigo-600 bg-indigo-50 shadow-md"
-                        : "border-gray-300 hover:border-indigo-300 bg-white"
-                    }`}
-                  >
-                    <PhoneIconOutline
-                      className={`w-7 h-7 mb-2 ${
-                        formData.preferred_contact_method === "phone"
-                          ? "text-indigo-600"
-                          : "text-gray-400"
-                      }`}
-                    />
-                    <span className="text-sm font-medium">Téléphone</span>
-                  </button>
-                </div>
-                <p className="mt-2 text-sm text-gray-500">
-                  Nous vous contacterons via ce moyen pour confirmer votre
-                  rendez-vous
-                </p>
-              </div>
-
-              {/* Notes */}
-              <div className="pt-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center border-b pb-3">
-                  <ChatBubbleBottomCenterTextIcon className="w-5 h-5 mr-2 text-indigo-600" />
-                  Notes (Optionnel)
-                </h3>
-                <label
-                  htmlFor="notes"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Notes ou demandes particulières
-                </label>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  rows="3"
-                  placeholder="Précisez vos demandes ou préférences..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              {/* Code Promo */}
-              <div className="pt-4">
-                <PromoCodeInput
-                  onValidate={handleValidatePromoCode}
-                  currentAmount={service?.price || 0}
-                  clientId={null}
-                />
-              </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-6">
-                  <p className="text-red-800 font-medium">{error}</p>
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-indigo-600 text-white py-4 px-6 rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 mt-6 shadow-xl"
-              >
-                {submitting ? (
-                  <span className="flex items-center justify-center">
-                    <svg
-                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Confirmation en cours...
-                  </span>
-                ) : (
-                  "✓ Confirmer la réservation"
-                )}
-              </button>
-            </form>
+                </button>
+              </form>
+            </div>
           </div>
         </main>
+        
+        {/* Simple Footer */}
+        <footer className="mt-auto py-8 text-center text-slate-400 text-sm">
+          <p>© {new Date().getFullYear()} {salon?.name || "SalonHub"}. Tous droits réservés.</p>
+        </footer>
       </div>
     </div>
   );

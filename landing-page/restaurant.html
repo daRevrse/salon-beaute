@@ -8,7 +8,7 @@
         content="Gérez les réservations de votre restaurant et optimisez votre service avec SalonHub.">
     <title>SalonHub pour Restaurants & Cafés</title>
     <link rel="icon" type="image/png" href="logo_fk_black.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -36,171 +36,134 @@
     </header>
 
     <main>
-        <!-- Hero Section -->
-        <section class="hero">
-            <div class="hero-content">
-                <h1>Optimisez la gestion de votre Restaurant ou Café</h1>
-                <p>Offrez à vos clients une expérience de réservation simple et fluide. Gérez votre salle avec une
-                    efficacité redoutable sans commission sur les réservations.</p>
-                <a href="index.html#hero-form" class="btn-cta-primary">Démarrer mon essai gratuit</a>
+        <!-- V3 Sector Hero: Split Design -->
+        <section class="hero-v3">
+            <div class="hero-v3__content">
+                <div class="hero-v3__pill" data-anim="fade">SalonHub Gastronomie</div>
+                <h1 data-anim="fade">Un service impeccable, <span class="gradient-text">une salle toujours
+                        pleine.</span></h1>
+                <p data-anim="fade">Libérez-vous du téléphone. Gérez vos réservations, l'agencement de vos tables et la
+                    satisfaction de vos clients avec une plateforme conçue pour l'excellence culinaire.</p>
+                <div class="hero-v3__ctas" data-anim="fade">
+                    <a href="index.html#hero-form" class="btn btn-cta-primary">Démarrer mon essai gratuit</a>
+                </div>
             </div>
-            <div class="hero-image">
-                <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop"
-                    alt="Restaurant moderne">
-            </div>
-        </section>
-
-        <!-- Benefits Section -->
-        <section class="features">
-            <h2 class="section-title">Pourquoi les restaurateurs choisissent SalonHub</h2>
-            <p class="section-subtitle">Des fonctionnalités pensées pour maximiser vos réservations et optimiser votre
-                service</p>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-utensils"></i></div>
-                    <h3>Gestion des Tables</h3>
-                    <p>Plan de salle interactif, rotation optimisée, et attribution automatique des tables selon la
-                        taille des groupes et les préférences clients.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-calendar-alt"></i></div>
-                    <h3>Réservations en Ligne</h3>
-                    <p>Widget de réservation sur votre site web et intégration avec Google Maps. Vos clients réservent
-                        directement, 24h/24 et 7j/7.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-percentage"></i></div>
-                    <h3>Zéro Commission</h3>
-                    <p>Contrairement aux plateformes tierces, gardez 100% de vos revenus. Aucune commission sur les
-                        réservations effectuées via SalonHub.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-bell"></i></div>
-                    <h3>Rappels Automatiques</h3>
-                    <p>Réduisez les no-shows de 60% avec des rappels SMS et email automatiques. Confirmations
-                        instantanées pour chaque réservation.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-users"></i></div>
-                    <h3>Gestion des Événements</h3>
-                    <p>Organisez des événements spéciaux, soirées à thème, et gérez les réservations de groupes avec des
-                        outils dédiés.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon"><i class="fas fa-chart-bar"></i></div>
-                    <h3>Statistiques Avancées</h3>
-                    <p>Analysez vos pics d'affluence, taux de remplissage, clients fidèles et performances par service
-                        (déjeuner/dîner).</p>
-                </div>
+            <div class="hero-v3__image" data-anim="fade">
+                <img src="hero-restaurant.jpeg" alt="Intérieur de restaurant chic premium">
             </div>
         </section>
 
-        <!-- Use Cases Section with Image -->
-        <section class="use-case-details">
-            <div class="use-case-container">
-                <div class="use-case-content">
-                    <h2>Adapté à tous types d'établissements</h2>
-                    <div class="use-case-list">
-                        <div class="use-case-item">
-                            <div class="use-case-icon"><i class="fas fa-concierge-bell"></i></div>
-                            <div>
-                                <h3>Restaurants Gastronomiques</h3>
-                                <p>Gestion fine des services, menus dégustation, allergies et préférences alimentaires.
-                                    Liste d'attente intelligente.</p>
-                            </div>
-                        </div>
-                        <div class="use-case-item">
-                            <div class="use-case-icon"><i class="fas fa-coffee"></i></div>
-                            <div>
-                                <h3>Cafés & Brunch</h3>
-                                <p>Rotation rapide des tables, gestion des files d'attente en temps réel, réservations
-                                    pour petits déjeuners et brunchs.</p>
-                            </div>
-                        </div>
-                        <div class="use-case-item">
-                            <div class="use-case-icon"><i class="fas fa-pizza-slice"></i></div>
-                            <div>
-                                <h3>Pizzerias & Bistrots</h3>
-                                <p>Système simplifié pour une gestion rapide, intégration avec les commandes à emporter,
-                                    gestion des terrasses.</p>
-                            </div>
-                        </div>
-                        <div class="use-case-item">
-                            <div class="use-case-icon"><i class="fas fa-wine-glass-alt"></i></div>
-                            <div>
-                                <h3>Bars & Lounges</h3>
-                                <p>Réservation de tables VIP, gestion des événements privés, coordination avec le
-                                    service traiteur.</p>
-                            </div>
-                        </div>
+        <!-- V3 Features: Clean Grid -->
+        <section class="features-v3">
+            <div class="container">
+                <div class="section-header text-center">
+                    <h2 class="section-title" data-anim="fade">L'excellence pour votre salle</h2>
+                    <p class="section-subtitle" data-anim="fade">Conçu spécifiquement pour répondre au rythme effréné de
+                        la restauration.</p>
+                </div>
+
+                <div class="features-v3__grid">
+                    <div class="feature-v3-card" data-anim="fade">
+                        <div class="feature-v3-icon"><i data-lucide="book-open-check"></i></div>
+                        <h3>Réservations 24/7 sans commission</h3>
+                        <p>Recevez des réservations depuis votre site, Google ou Instagram. Zéro commission par couvert,
+                            contrarement aux plateformes concurrentes.</p>
                     </div>
-                </div>
-                <div class="use-case-image">
-                    <img src="https://images.unsplash.com/photo-1552566626-52f8b828add9?w=600&h=700&fit=crop"
-                        alt="Serveur dans un restaurant">
+                    <div class="feature-v3-card" data-anim="fade" style="transition-delay: 0.1s">
+                        <div class="feature-v3-icon"><i data-lucide="layout-dashboard"></i></div>
+                        <h3>Plan de salle interactif</h3>
+                        <p>Visualisez l'occupation en temps réel. Optimisez la rotation des tables et le placement selon
+                            la taille des groupes.</p>
+                    </div>
+                    <div class="feature-v3-card" data-anim="fade" style="transition-delay: 0.2s">
+                        <div class="feature-v3-icon"><i data-lucide="shield-alert"></i></div>
+                        <h3>Protection Anti-No-Show</h3>
+                        <p>Empreinte bancaire, acomptes et rappels automatiques. Divisez vos tables vides liées aux
+                            absences par quatre.</p>
+                    </div>
+                    <div class="feature-v3-card" data-anim="fade">
+                        <div class="feature-v3-icon"><i data-lucide="users"></i></div>
+                        <h3>Fichier Client Sur-Mesure</h3>
+                        <p>Notez les allergies, préférences de vin et tables favorites pour offrir une expérience
+                            ultra-personnalisée à vos habitués.</p>
+                    </div>
+                    <div class="feature-v3-card" data-anim="fade" style="transition-delay: 0.1s">
+                        <div class="feature-v3-icon"><i data-lucide="bar-chart-3"></i></div>
+                        <h3>Statistiques Avancées</h3>
+                        <p>Suivez le taux d'occupation, le ticket moyen et identifiez vos jours les plus rentables pour
+                            ajuster votre personnel.</p>
+                    </div>
+                    <div class="feature-v3-card" data-anim="fade" style="transition-delay: 0.2s">
+                        <div class="feature-v3-icon"><i data-lucide="ticket"></i></div>
+                        <h3>Cartes Cadeaux</h3>
+                        <p>Générez un revenu additionnel immédiat en vendant des bons cadeaux directement via votre
+                            module de réservation en ligne.</p>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Testimonial Section -->
-        <!-- <section class="testimonials">
-            <h2 class="section-title">Ce que disent nos restaurateurs</h2>
-            <div class="testimonials-grid">
-                <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+        <!-- V3 Cas d'Usage: Zigzag Layout -->
+        <section class="zigzag-v3">
+            <div class="container">
+                <!-- Row 1: Image Left, Text Right -->
+                <div class="zigzag-row">
+                    <div class="zigzag-image" data-anim="fade">
+                        <img src="zigzag-restaurant-1.jpeg" alt="Plat gastronomique" class="sector-card__img">
                     </div>
-                    <p class="testimonial-text">"Depuis que nous utilisons SalonHub, nos no-shows ont diminué de moitié et notre taux de remplissage a augmenté de 30%. Un investissement qui s'est payé en un mois."</p>
-                    <div class="testimonial-author">
-                        <div class="author-avatar">
-                            <img src="https://i.pravatar.cc/80?img=12" alt="Pierre Dubois">
-                        </div>
-                        <div>
-                            <strong>Pierre Dubois</strong>
-                            <span>Chef & Propriétaire, Le Bistrot Gourmand - Paris</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
-                    </div>
-                    <p class="testimonial-text">"L'intégration avec notre site web est parfaite. Nos clients adorent pouvoir réserver directement sans passer par des plateformes qui prennent des commissions."</p>
-                    <div class="testimonial-author">
-                        <div class="author-avatar">
-                            <img src="https://i.pravatar.cc/80?img=20" alt="Sarah Benali">
-                        </div>
-                        <div>
-                            <strong>Sarah Benali</strong>
-                            <span>Gérante, La Table Méditerranéenne - Nice</span>
-                        </div>
+                    <div class="zigzag-content" data-anim="fade">
+                        <div class="zigzag-icon"><i data-lucide="utensils-crossed"></i></div>
+                        <h2>Restaurants Gastronomiques & Bistronomes</h2>
+                        <p>Offrez une expérience de réservation à la hauteur de votre cuisine. Gérez les demandes
+                            spéciales, les menus dégustation et exigez des empreintes bancaires pour sécuriser vos
+                            revenus soirs de grande affluence.</p>
+                        <ul class="zigzag-list">
+                            <li><i data-lucide="check-circle-2"></i> Pré-paiement des menus stricts</li>
+                            <li><i data-lucide="check-circle-2"></i> File d'attente automatisée</li>
+                            <li><i data-lucide="check-circle-2"></i> Profils clients VIP</li>
+                        </ul>
                     </div>
                 </div>
-                <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+
+                <!-- Row 2: Text Left, Image Right -->
+                <div class="zigzag-row reverse">
+                    <div class="zigzag-content" data-anim="fade">
+                        <div class="zigzag-icon"><i data-lucide="coffee"></i></div>
+                        <h2>Bars à Cocktails, Cafés & Brasseries</h2>
+                        <p>Idéal pour les établissements à forte rotation. Optimisez le placement rapide, gérez
+                            l'affluence du midi et préparez facilement vos événements ou soirées spéciales de fin de
+                            semaine.</p>
+                        <ul class="zigzag-list">
+                            <li><i data-lucide="check-circle-2"></i> Rotation rapide des tables</li>
+                            <li><i data-lucide="check-circle-2"></i> Privatisation de zones</li>
+                            <li><i data-lucide="check-circle-2"></i> Gestion des pics d'affluence</li>
+                        </ul>
                     </div>
-                    <p class="testimonial-text">"Interface intuitive et équipe support réactive. Nous gérons maintenant 3 établissements avec le même système, un vrai gain de temps."</p>
-                    <div class="testimonial-author">
-                        <div class="author-avatar">
-                            <img src="https://i.pravatar.cc/80?img=33" alt="Marc Leroy">
-                        </div>
-                        <div>
-                            <strong>Marc Leroy</strong>
-                            <span>Directeur, Groupe Saveurs & Co - Lyon</span>
-                        </div>
+                    <div class="zigzag-image" data-anim="fade">
+                        <img src="zigzag-restaurant-2.jpeg" alt="Bartender préparant un cocktail"
+                            class="sector-card__img">
                     </div>
                 </div>
             </div>
-        </section> -->
+        </section>
 
-        <!-- CTA Section -->
-        <section class="cta-section">
-            <div class="cta-content">
-                <h2>Prêt à remplir votre restaurant ?</h2>
-                <p>Rejoignez des centaines de restaurateurs qui optimisent leur gestion avec SalonHub.</p>
-                <a href="index.html#hero-form" class="btn-cta-primary">Démarrer mon essai gratuit de 14 jours</a>
-                <p class="trial-subtext">Sans engagement • Sans carte bancaire</p>
+        <!-- Standard CTA from Home (to preserve consistency at the end) -->
+        <section class="cta-final">
+            <div class="cta-final__bg">
+                <div class="cta-final__orb cta-final__orb--1"></div>
+                <div class="cta-final__orb cta-final__orb--2"></div>
+            </div>
+            <div class="container cta-final__inner">
+                <h2 data-anim="fade">Passez au niveau supérieur.</h2>
+                <p data-anim="fade">Rejoignez des centaines de restaurateurs qui gagnent déjà du temps chaque jour.
+                    Essayez gratuitement, sans carte bancaire.</p>
+                <div class="cta-final__actions" data-anim="fade">
+                    <a href="index.html#hero-form" class="btn btn-cta-primary">Commencer l'essai de 14 jours</a>
+                    <a href="index.html#contact" class="btn btn-outline"
+                        style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;">Nous
+                        contacter</a>
+                </div>
+                <div class="cta-final__sub" data-anim="fade">Aucun engagement • Configuration en 2 minutes</div>
             </div>
         </section>
     </main>
@@ -218,13 +181,13 @@
                     </p>
                     <div class="social-links">
                         <a href="#" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer">
-                            <i class="fab fa-linkedin-in"></i>
+                            <i data-lucide="linkedin"></i>
                         </a>
                         <a href="#" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
-                            <i class="fab fa-facebook-f"></i>
+                            <i data-lucide="facebook"></i>
                         </a>
                         <a href="#" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
-                            <i class="fab fa-instagram"></i>
+                            <i data-lucide="instagram"></i>
                         </a>
                     </div>
                 </div>
@@ -232,43 +195,43 @@
                 <div class="footer-col">
                     <h3>Navigation</h3>
                     <ul class="footer-links">
-                        <li><a href="index.html#features"><i class="fas fa-chevron-right"></i>Fonctionnalités</a></li>
-                        <li><a href="index.html#pricing"><i class="fas fa-chevron-right"></i>Tarifs</a></li>
-                        <li><a href="https://flowkraftagency.com"><i class="fas fa-chevron-right"></i>FK Agency</a></li>
+                        <li><a href="index.html#features"><i data-lucide="chevron-right"></i>Fonctionnalités</a></li>
+                        <li><a href="index.html#pricing"><i data-lucide="chevron-right"></i>Tarifs</a></li>
+                        <li><a href="https://flowkraftagency.com"><i data-lucide="chevron-right"></i>FK Agency</a></li>
                     </ul>
                 </div>
 
-                <div class="footer-col">
+                <!-- <div class="footer-col">
                     <h3>Solutions</h3>
                     <ul class="footer-links">
-                        <li><a href="salon-de-beaute.html"><i class="fas fa-chevron-right"></i>Salons de Beauté</a></li>
-                        <li><a href="centre-de-formation.html"><i class="fas fa-chevron-right"></i>Centres de
+                        <li><a href="salon-de-beaute.html"><i data-lucide="chevron-right"></i>Salons de Beauté</a></li>
+                        <li><a href="centre-de-formation.html"><i data-lucide="chevron-right"></i>Centres de
                                 Formation</a></li>
-                        <li><a href="restaurant.html"><i class="fas fa-chevron-right"></i>Restaurants</a></li>
-                        <li><a href="cabinet-medical.html"><i class="fas fa-chevron-right"></i>Cabinets Médicaux</a>
+                        <li><a href="restaurant.html"><i data-lucide="chevron-right"></i>Restaurants</a></li>
+                        <li><a href="cabinet-medical.html"><i data-lucide="chevron-right"></i>Cabinets Médicaux</a>
                         </li>
                     </ul>
-                </div>
+                </div> -->
 
                 <div class="footer-col">
                     <h3>Contact</h3>
                     <div class="contact-info">
                         <div class="contact-item">
-                            <i class="fas fa-envelope"></i>
+                            <i data-lucide="mail"></i>
                             <div>
                                 <span>Email</span>
                                 <a href="mailto:info@flowkraftagency.com">info@flowkraftagency.com</a>
                             </div>
                         </div>
                         <div class="contact-item">
-                            <i class="fas fa-phone"></i>
+                            <i data-lucide="phone"></i>
                             <div>
                                 <span>Téléphone</span>
                                 <a href="tel:+33652794562">+33 (0)6 52 79 45 62</a>
                             </div>
                         </div>
                         <div class="contact-item">
-                            <i class="fas fa-map-marker-alt"></i>
+                            <i data-lucide="map-pin"></i>
                             <div>
                                 <span>Adresse</span>
                                 <span>France, Toulouse</span>
@@ -284,7 +247,7 @@
                         <div class="input-group">
                             <input type="email" placeholder="Votre email" required aria-label="Email newsletter">
                             <button type="submit" aria-label="S'abonner à la newsletter">
-                                <i class="fas fa-paper-plane"></i>
+                                <i data-lucide="send"></i>
                             </button>
                         </div>
                     </form>
