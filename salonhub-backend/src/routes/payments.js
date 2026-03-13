@@ -76,7 +76,10 @@ router.post('/paygate/init-appointment', async (req, res) => {
         const response = await axios.post(PAYGATE_API_URL, paygatePayload);
 
         if (response.data && response.data.tx_reference) {
-             await query("UPDATE appointments SET payment_reference = ? WHERE id = ?", [response.data.tx_reference, appointmentId]);
+             await query(
+                "UPDATE appointments SET payment_reference = ?, amount_paid = ? WHERE id = ?",
+                [response.data.tx_reference, amount, appointmentId]
+             );
         }
 
         res.json({
@@ -112,14 +115,24 @@ router.post('/paygate/webhook', async (req, res) => {
         if (typeof identifier === 'string' && identifier.startsWith('APP_')) {
             const appointmentId = identifier.replace('APP_', '');
             const { query } = require('../config/database');
-            
+
             const [appts] = await query("SELECT * FROM appointments WHERE id = ?", [appointmentId]);
             if (!appts || appts.length === 0 || appts[0].payment_status === 'paid') return;
-            
+
             const appointment = appts[0];
-            
-            // 1. Mark as Paid
-            await query("UPDATE appointments SET payment_status = 'paid', payment_reference = ? WHERE id = ?", [tx_reference, appointmentId]);
+
+            // Fetch service price to determine if this is a deposit or full payment
+            const [services] = await query("SELECT price FROM services WHERE id = ?", [appointment.service_id]);
+            const servicePrice = services && services[0] ? parseFloat(services[0].price) : 0;
+            const paymentAmount = parseFloat(amount);
+            const isFullPayment = servicePrice > 0 ? paymentAmount >= servicePrice : true;
+            const newPaymentStatus = isFullPayment ? 'paid' : 'deposit_paid';
+
+            // 1. Mark payment status (deposit_paid or paid)
+            await query(
+                "UPDATE appointments SET payment_status = ?, amount_paid = ?, payment_reference = ? WHERE id = ?",
+                [newPaymentStatus, paymentAmount, tx_reference, appointmentId]
+            );
             
             // 2. Platform Commission
             const PLATFORM_FEE_PERCENTAGE = 0.05;
@@ -203,6 +216,69 @@ router.post('/paygate/webhook', async (req, res) => {
 
     } catch (error) {
         console.error("Webhook processing error:", error);
+    }
+});
+
+// ==========================================
+// 3. Stripe Checkout for Shop Orders (Card Payment)
+// ==========================================
+router.post('/stripe/init-order', async (req, res) => {
+    try {
+        const { orderId, amount, tenantSlug } = req.body;
+        const { stripe } = require('../config/stripe');
+
+        // Verify the order exists
+        const [orders] = await query("SELECT id, tenant_id, total_amount, status FROM orders WHERE id = ?", [orderId]);
+        const order = orders ? orders[0] : null;
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        if (order.status === 'PAID') return res.status(400).json({ error: 'Order already paid' });
+
+        // Get tenant info
+        const [tenants] = await query("SELECT name, slug, currency FROM tenants WHERE id = ?", [order.tenant_id]);
+        const tenant = tenants ? tenants[0] : null;
+
+        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const slug = tenantSlug || tenant?.slug || '';
+        const currency = (tenant?.currency || 'XOF').toLowerCase();
+
+        // Zero-decimal currencies (Stripe does not expect cents for these)
+        const ZERO_DECIMAL_CURRENCIES = ['xof', 'xaf', 'bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv'];
+        const isZeroDecimal = ZERO_DECIMAL_CURRENCIES.includes(currency);
+        const unitAmount = isZeroDecimal
+            ? Math.round(parseFloat(order.total_amount))
+            : Math.round(parseFloat(order.total_amount) * 100);
+
+        const session = await stripe.checkout.sessions.create({
+            mode: 'payment',
+            payment_method_types: ['card'],
+            line_items: [{
+                price_data: {
+                    currency: currency,
+                    product_data: {
+                        name: `Commande #${orderId} - ${tenant?.name || 'SalonHub Shop'}`,
+                    },
+                    unit_amount: unitAmount,
+                },
+                quantity: 1,
+            }],
+            metadata: {
+                order_id: orderId.toString(),
+                tenant_id: order.tenant_id.toString(),
+                type: 'shop_order',
+            },
+            success_url: `${baseUrl}/book/${slug}/shop/order-confirmation?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`,
+            cancel_url: `${baseUrl}/book/${slug}/checkout?cancelled=true`,
+        });
+
+        res.json({
+            success: true,
+            sessionId: session.id,
+            url: session.url,
+        });
+
+    } catch (error) {
+        console.error("Stripe Init Order Error:", error);
+        res.status(500).json({ error: 'Failed to create payment session' });
     }
 });
 

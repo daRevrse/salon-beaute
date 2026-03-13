@@ -148,7 +148,7 @@ router.get("/services/:slug", checkPublicSubscription('slug'), async (req, res) 
     const tenantId = tenant[0].id;
 
     const services = await db.query(
-      `SELECT id, name, description, duration, price, category, image_url
+      `SELECT id, name, description, duration, price, category, image_url, requires_deposit, deposit_amount
        FROM services
        WHERE tenant_id = ? AND is_active = TRUE AND available_for_online_booking = TRUE
        ORDER BY category, name`,
@@ -242,7 +242,7 @@ router.get("/salon/:slug/services", checkPublicSubscription('slug'), async (req,
 
     // Récupérer les services actifs et disponibles pour réservation en ligne
     const services = await db.query(
-      `SELECT id, name, description, duration, slot_duration, price, category, image_url, gallery
+      `SELECT id, name, description, duration, slot_duration, price, category, image_url, gallery, requires_deposit, deposit_amount
        FROM services
        WHERE tenant_id = ?
          AND is_active = 1
@@ -972,7 +972,7 @@ router.get("/appointments/:id/payment-status", async (req, res) => {
   try {
     const { id } = req.params;
     const [appointment] = await db.query(
-      "SELECT id, payment_status, payment_reference, status FROM appointments WHERE id = ?",
+      "SELECT id, payment_status, payment_reference, amount_paid, status FROM appointments WHERE id = ?",
       [id]
     );
 
@@ -985,6 +985,7 @@ router.get("/appointments/:id/payment-status", async (req, res) => {
       data: {
         payment_status: appointment.payment_status,
         payment_reference: appointment.payment_reference,
+        amount_paid: appointment.amount_paid,
         status: appointment.status
       }
     });

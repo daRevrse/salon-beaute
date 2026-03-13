@@ -65,6 +65,21 @@ const BookingClientInfo = () => {
   const [isAwaitingPayment, setIsAwaitingPayment] = useState(false);
   const [paymentAppointmentDetails, setPaymentAppointmentDetails] = useState(null);
 
+  // Deposit calculation
+  const isDepositEnabled = settings?.require_appointment_deposit === true || settings?.require_appointment_deposit === 'true';
+  const serviceHasDeposit = service?.requires_deposit === 1 || service?.requires_deposit === true;
+  // Deposit amount: use service-level if set, otherwise default to 30% of finalAmount when deposit is enabled
+  const rawDepositAmount = isDepositEnabled
+    ? (serviceHasDeposit && parseFloat(service?.deposit_amount) > 0)
+      ? parseFloat(service.deposit_amount)
+      : Math.round(finalAmount * 0.3)
+    : null;
+  // Guard: deposit cannot exceed total amount
+  const depositAmount = rawDepositAmount && rawDepositAmount < finalAmount ? rawDepositAmount : null;
+  const remainingAmount = depositAmount ? (finalAmount - depositAmount) : 0;
+  // Show payment section if salon enabled deposits (regardless of plan)
+  const showPaymentSection = isDepositEnabled;
+
   useEffect(() => {
     if (!service || !date || !slot) {
       navigate(`/book/${slug}`);
@@ -161,7 +176,7 @@ const BookingClientInfo = () => {
         await api.post('/payments/paygate/init-appointment', {
             appointmentId: result.appointment.id,
             phone: paygatePhone,
-            amount: finalAmount
+            amount: depositAmount || finalAmount
         });
 
         const apptDetails = {
@@ -201,7 +216,7 @@ const BookingClientInfo = () => {
       attempts++;
       try {
         const res = await api.get(`/public/appointments/${appointmentId}/payment-status`);
-        if (res.data.success && res.data.data.payment_status === 'paid') {
+        if (res.data.success && (res.data.data.payment_status === 'paid' || res.data.data.payment_status === 'deposit_paid')) {
             clearInterval(poll);
             setIsAwaitingPayment(false);
             navigate(`/book/${slug}/confirmation`, {
@@ -375,6 +390,12 @@ const BookingClientInfo = () => {
                       <span className="text-2xl font-bold" style={dynamicStyles.primaryText}>
                         {formatPrice(service.price)}
                       </span>
+                    )}
+                    {depositAmount && (
+                      <div className="mt-2 text-xs text-slate-500 space-y-0.5 text-right">
+                        <div>Acompte : <span className="font-semibold text-amber-600">{formatPrice(depositAmount)}</span></div>
+                        <div>Reste sur place : <span className="font-medium">{formatPrice(remainingAmount)}</span></div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -570,56 +591,106 @@ const BookingClientInfo = () => {
                   <span>Vos données sont protégées et ne seront jamais partagées.</span>
                 </div>
 
-                {/* Payment Option for Pro Salons (Mockup of integration) */}
-                {(salon?.subscription_plan === 'PRO' || salon?.subscription_plan === 'CUSTOM' || salon?.subscription_plan === 'professional' || salon?.subscription_plan === 'enterprise' || salon?.subscription_plan === 'custom' || salon?.subscription_plan === 'pro') && (settings?.require_appointment_deposit === true || settings?.require_appointment_deposit === 'true') && (
-                  <div className="space-y-4 pt-4 border-t border-slate-100 mt-6">
+                {/* Payment Section - Deposit/Partial Payment */}
+                {showPaymentSection && (
+                  <div className="space-y-5 pt-6 border-t border-slate-100 mt-6">
+                    {/* Section Header */}
                     <div className="flex items-center space-x-3 text-slate-900">
-                      <CurrencyDollarIcon className="w-6 h-6" style={dynamicStyles.primaryText} />
-                      <h4 className="text-lg font-bold">Paiement (Optionnel)</h4>
-                    </div>
-                    <p className="text-sm text-slate-500">Sécurisez votre {term.appointment.toLowerCase()} en payant une avance par Mobile Money ou payez sur place.</p>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                       <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, payment_method: 'paygate' })}
-                          className={`flex flex-col items-center justify-center p-4 border-2 rounded-2xl transition-all duration-200 ${
-                            formData.payment_method === 'paygate'
-                              ? "shadow-md"
-                              : "border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200"
-                          }`}
-                          style={formData.payment_method === 'paygate' ? dynamicStyles.activeOption : {}}
-                        >
-                          <span className="text-sm font-bold uppercase tracking-wide mb-1">Mobile Money</span>
-                          <span className="text-xs text-slate-500 text-center">T-Money, Moov Africa</span>
-                       </button>
-
-                       <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, payment_method: 'onsite' })}
-                          className={`flex flex-col items-center justify-center p-4 border-2 rounded-2xl transition-all duration-200 ${
-                            formData.payment_method === 'onsite' || !formData.payment_method
-                              ? "shadow-md"
-                              : "border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200"
-                          }`}
-                          style={formData.payment_method === 'onsite' || !formData.payment_method ? dynamicStyles.activeOption : {}}
-                        >
-                          <span className="text-sm font-bold uppercase tracking-wide mb-1">Sur place</span>
-                          <span className="text-xs text-slate-500 text-center">Payer à la fin de la prestation</span>
-                       </button>
+                      <div className="p-2 rounded-xl" style={dynamicStyles.primaryBg}>
+                        <CurrencyDollarIcon className="w-6 h-6" style={dynamicStyles.primaryText} />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-bold">Paiement d'acompte</h4>
+                        <p className="text-sm text-slate-500">Sécurisez votre {term.appointment.toLowerCase()} avec un acompte</p>
+                      </div>
                     </div>
 
-                    {formData.payment_method === 'paygate' && (
-                        <div className="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
-                            <label className="block text-sm font-semibold text-indigo-900 mb-1.5">Numéro Mobile Money pour le prélèvement</label>
-                            <input 
-                                type="tel" 
-                                placeholder="Numéro (ex: 90000000)"
-                                value={formData.payment_phone || formData.phone || ''}
-                                onChange={(e) => setFormData({...formData, payment_phone: e.target.value})}
-                                className="w-full px-4 py-3 rounded-xl border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
+                    {/* Deposit Breakdown Card */}
+                    {depositAmount && (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-600">Montant total du service</span>
+                          <span className="text-sm font-semibold text-slate-800">{formatPrice(finalAmount)}</span>
                         </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-semibold text-amber-700">Acompte à payer maintenant</span>
+                          <span className="text-base font-bold text-amber-700">{formatPrice(depositAmount)}</span>
+                        </div>
+                        <div className="border-t border-amber-200 pt-2 flex justify-between items-center">
+                          <span className="text-sm text-slate-500">Reste à payer sur place</span>
+                          <span className="text-sm font-medium text-slate-600">{formatPrice(remainingAmount)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Payment Method Selection */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, payment_method: 'paygate' })}
+                        className={`relative flex flex-col items-center justify-center p-5 border-2 rounded-2xl transition-all duration-200 ${
+                          formData.payment_method === 'paygate'
+                            ? "shadow-lg"
+                            : "border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200"
+                        }`}
+                        style={formData.payment_method === 'paygate' ? dynamicStyles.activeOption : {}}
+                      >
+                        <svg className="w-7 h-7 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-6 18h6" />
+                        </svg>
+                        <span className="text-sm font-bold uppercase tracking-wide">Mobile Money</span>
+                        <span className="text-xs text-slate-500 mt-1">T-Money, Moov Africa</span>
+                        {depositAmount && formData.payment_method === 'paygate' && (
+                          <span className="mt-2 text-xs font-bold px-3 py-1 rounded-full" style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryText }}>
+                            {formatPrice(depositAmount)}
+                          </span>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, payment_method: 'onsite' })}
+                        className={`relative flex flex-col items-center justify-center p-5 border-2 rounded-2xl transition-all duration-200 ${
+                          formData.payment_method === 'onsite' || !formData.payment_method
+                            ? "shadow-lg"
+                            : "border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200"
+                        }`}
+                        style={formData.payment_method === 'onsite' || !formData.payment_method ? dynamicStyles.activeOption : {}}
+                      >
+                        <svg className="w-7 h-7 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                        </svg>
+                        <span className="text-sm font-bold uppercase tracking-wide">Sur place</span>
+                        <span className="text-xs text-slate-500 mt-1">Payer lors de la prestation</span>
+                        {formData.payment_method === 'onsite' || !formData.payment_method ? (
+                          <span className="mt-2 text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">
+                            {formatPrice(finalAmount)}
+                          </span>
+                        ) : null}
+                      </button>
+                    </div>
+
+                    {/* Mobile Money Phone Input */}
+                    {formData.payment_method === 'paygate' && (
+                      <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
+                        <label className="block text-sm font-semibold text-slate-700">
+                          Numéro Mobile Money pour le prélèvement
+                        </label>
+                        <input
+                          type="tel"
+                          placeholder="Ex: 90 00 00 00"
+                          value={formData.payment_phone || formData.phone || ''}
+                          onChange={(e) => setFormData({...formData, payment_phone: e.target.value})}
+                          onFocus={(e) => handleInputFocus(e, "payment_phone")}
+                          onBlur={(e) => handleInputBlur(e, "payment_phone")}
+                          className="w-full px-5 py-4 border border-slate-200 rounded-2xl transition-all outline-none bg-white focus:bg-white"
+                        />
+                        <p className="text-xs text-slate-400 flex items-center gap-1.5">
+                          <ShieldCheckIcon className="w-3.5 h-3.5" />
+                          Un prélèvement de <strong className="text-slate-600">{formatPrice(depositAmount || finalAmount)}</strong> sera initié sur ce numéro
+                        </p>
+                      </div>
                     )}
                   </div>
                 )}
@@ -649,7 +720,15 @@ const BookingClientInfo = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Confirmation en cours...
+                      {formData.payment_method === 'paygate' ? 'Paiement en cours...' : 'Confirmation en cours...'}
+                    </span>
+                  ) : formData.payment_method === 'paygate' && depositAmount ? (
+                    <span className="flex items-center justify-center">
+                      Payer l'acompte de {formatPrice(depositAmount)} et confirmer
+                    </span>
+                  ) : formData.payment_method === 'paygate' ? (
+                    <span className="flex items-center justify-center">
+                      Payer {formatPrice(finalAmount)} et confirmer
                     </span>
                   ) : (
                     <span className="flex items-center justify-center">
@@ -674,7 +753,7 @@ const BookingClientInfo = () => {
             <div className="w-20 h-20 mb-6 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
             <h3 className="text-2xl font-bold text-slate-900 mb-2 font-display">Confirmation du paiement...</h3>
             <p className="text-slate-500 text-center max-w-sm px-4">
-                Veuillez valider le paiement sur votre téléphone. Une fois validé, vous serez redirigé automatiquement.
+                Veuillez valider le paiement de <strong className="text-slate-800">{formatPrice(depositAmount || finalAmount)}</strong> sur votre téléphone. Une fois validé, vous serez redirigé automatiquement.
             </p>
             <button 
                 onClick={() => setIsAwaitingPayment(false)}

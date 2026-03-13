@@ -2,21 +2,26 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { usePublicTheme } from '../../contexts/PublicThemeContext';
-import { ChevronLeft, Lock, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, Lock, CheckCircle2, CreditCard, Smartphone } from 'lucide-react';
 
 const Checkout = () => {
     const { slug } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
     const { salon } = usePublicTheme();
-    
+
     const cart = location.state?.cart || [];
     const totalAmount = location.state?.total || 0;
 
     const [guestInfo, setGuestInfo] = useState({ name: '', phone: '', address: '' });
+    const [paymentMethod, setPaymentMethod] = useState('mobile_money');
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState(null);
+
+    const formatAmount = (amount) => {
+        return new Intl.NumberFormat('fr-TN', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(amount);
+    };
 
     if (cart.length === 0 && !success) {
         return (
@@ -39,22 +44,34 @@ const Checkout = () => {
             const orderRes = await axios.post(`/api/shop/${salon.id}/orders`, {
                 items: cart.map(item => ({ productId: item.id, quantity: item.quantity })),
                 guestInfo,
-                paymentMethod: 'PAYGATE'
+                paymentMethod: paymentMethod === 'card' ? 'STRIPE' : 'PAYGATE'
             });
 
             const order = orderRes.data;
 
-            // 2. Init Paygate Mobile Payment
-            const paygateRes = await axios.post('/api/payments/paygate/init', {
-                orderId: order.id,
-                phone: guestInfo.phone,
-                amount: totalAmount
-            });
+            if (paymentMethod === 'mobile_money') {
+                // 2a. Mobile Money flow (Paygate)
+                const paygateRes = await axios.post('/api/payments/paygate/init', {
+                    orderId: order.id,
+                    phone: guestInfo.phone,
+                    amount: totalAmount
+                });
 
-            if (paygateRes.data.success) {
-                // Here we usually redirect or show a "Please check your phone to confirm USSD push" message.
-                // For demonstration, we simply show the success screen
-                setSuccess(true);
+                if (paygateRes.data.success) {
+                    setSuccess(true);
+                }
+            } else if (paymentMethod === 'card') {
+                // 2b. Card payment flow (Stripe Checkout)
+                const stripeRes = await axios.post('/api/payments/stripe/init-order', {
+                    orderId: order.id,
+                    amount: totalAmount,
+                    tenantSlug: slug
+                });
+
+                if (stripeRes.data.success && stripeRes.data.url) {
+                    window.location.href = stripeRes.data.url;
+                    return;
+                }
             }
 
         } catch (err) {
@@ -73,7 +90,7 @@ const Checkout = () => {
                  </div>
                  <h2 className="text-3xl font-black text-gray-900 mb-2">Commande confirmée !</h2>
                  <p className="text-gray-500 max-w-sm mx-auto mb-8">
-                     Une demande de paiement a été envoyée sur votre téléphone ({guestInfo.phone}). 
+                     Une demande de paiement a été envoyée sur votre téléphone ({guestInfo.phone}).
                      Veuillez composer le code USSD pour valider.
                  </p>
                  <button onClick={() => navigate(`/book/${slug}/shop`)} className="px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold rounded-xl transition-colors">
@@ -109,32 +126,95 @@ const Checkout = () => {
                          <form onSubmit={handleSubmit} className="space-y-5">
                              <div>
                                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nom complet</label>
-                                 <input 
-                                     required 
-                                     type="text" 
+                                 <input
+                                     required
+                                     type="text"
                                      placeholder="Ex: Jean Dupont"
                                      value={guestInfo.name}
                                      onChange={(e) => setGuestInfo({...guestInfo, name: e.target.value})}
                                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                  />
                              </div>
-                             <div>
-                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Numéro Mobile Money</label>
-                                 <input 
-                                     required 
-                                     type="tel" 
-                                     placeholder="Ex: 90 00 00 00"
-                                     value={guestInfo.phone}
-                                     onChange={(e) => setGuestInfo({...guestInfo, phone: e.target.value})}
-                                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                 />
-                                 <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                     <Lock className="w-3 h-3" /> Paiement sécurisé via Paygate Global
-                                 </p>
+
+                             {/* Payment Method Selection */}
+                             <div className="pt-2">
+                                 <label className="block text-sm font-semibold text-gray-700 mb-3">Mode de paiement</label>
+                                 <div className="grid grid-cols-2 gap-3">
+                                     <button
+                                         type="button"
+                                         onClick={() => setPaymentMethod('mobile_money')}
+                                         className={`flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all ${
+                                             paymentMethod === 'mobile_money'
+                                                 ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                                 : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                                         }`}
+                                     >
+                                         <Smartphone className="w-6 h-6 mb-2" />
+                                         <span className="font-bold text-sm">Mobile Money</span>
+                                         <span className="text-xs text-gray-500 mt-0.5">T-Money, Moov Africa</span>
+                                     </button>
+                                     <button
+                                         type="button"
+                                         onClick={() => setPaymentMethod('card')}
+                                         className={`flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all ${
+                                             paymentMethod === 'card'
+                                                 ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                                 : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                                         }`}
+                                     >
+                                         <CreditCard className="w-6 h-6 mb-2" />
+                                         <span className="font-bold text-sm">Carte bancaire</span>
+                                         <span className="text-xs text-gray-500 mt-0.5">Visa, Mastercard</span>
+                                     </button>
+                                 </div>
                              </div>
+
+                             {/* Phone input - only for Mobile Money */}
+                             {paymentMethod === 'mobile_money' && (
+                                 <div>
+                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Numéro Mobile Money</label>
+                                     <input
+                                         required
+                                         type="tel"
+                                         placeholder="Ex: 90 00 00 00"
+                                         value={guestInfo.phone}
+                                         onChange={(e) => setGuestInfo({...guestInfo, phone: e.target.value})}
+                                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                     />
+                                     <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                         <Lock className="w-3 h-3" /> Paiement sécurisé via Paygate Global
+                                     </p>
+                                 </div>
+                             )}
+
+                             {/* Card info notice */}
+                             {paymentMethod === 'card' && (
+                                 <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                                     <p className="text-sm text-indigo-800 flex items-center gap-2">
+                                         <Lock className="w-4 h-4 flex-shrink-0" />
+                                         Vous serez redirigé vers une page de paiement sécurisée Stripe pour saisir vos informations de carte.
+                                     </p>
+                                 </div>
+                             )}
+
+                             {/* Phone for contact (when card) */}
+                             {paymentMethod === 'card' && (
+                                 <div>
+                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Téléphone (contact)</label>
+                                     <input
+                                         required
+                                         type="tel"
+                                         placeholder="Ex: 90 00 00 00"
+                                         value={guestInfo.phone}
+                                         onChange={(e) => setGuestInfo({...guestInfo, phone: e.target.value})}
+                                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                     />
+                                 </div>
+                             )}
+
                               <div>
                                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Adresse de livraison (Optionnel)</label>
-                                 <textarea 
+                                 <textarea
                                      rows={3}
                                      placeholder="Si vous souhaitez être livré..."
                                      value={guestInfo.address}
@@ -144,15 +224,17 @@ const Checkout = () => {
                              </div>
 
                              <div className="pt-4">
-                                <button 
+                                <button
                                     type="submit"
                                     disabled={loading}
                                     className="w-full flex items-center justify-center py-4 px-8 border border-transparent rounded-xl shadow-sm text-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
                                 >
                                     {loading ? (
                                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                                    ) : paymentMethod === 'card' ? (
+                                        <>Payer par carte {formatAmount(totalAmount)}</>
                                     ) : (
-                                        <>Payer {new Intl.NumberFormat('fr-TN', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(totalAmount)}</>
+                                        <>Payer {formatAmount(totalAmount)}</>
                                     )}
                                 </button>
                              </div>
@@ -162,7 +244,7 @@ const Checkout = () => {
                      {/* Right: Summary */}
                      <div className="w-full md:w-80 bg-gray-50 p-8 md:p-10 flex flex-col">
                          <h3 className="text-lg font-bold text-gray-900 mb-6">Récapitulatif</h3>
-                         
+
                          <ul className="space-y-4 mb-8 flex-1">
                              {cart.map((item, idx) => (
                                  <li key={idx} className="flex justify-between items-start text-sm">
@@ -171,7 +253,7 @@ const Checkout = () => {
                                          <p className="text-gray-500">Qté: {item.quantity}</p>
                                      </div>
                                      <p className="font-bold text-gray-900 whitespace-nowrap">
-                                        {new Intl.NumberFormat('fr-TN', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(item.price * item.quantity)}
+                                        {formatAmount(item.price * item.quantity)}
                                      </p>
                                  </li>
                              ))}
@@ -181,7 +263,7 @@ const Checkout = () => {
                               <div className="flex justify-between items-center text-lg font-black text-gray-900">
                                   <span>Total</span>
                                   <span className="text-indigo-600">
-                                      {new Intl.NumberFormat('fr-TN', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(totalAmount)}
+                                      {formatAmount(totalAmount)}
                                   </span>
                               </div>
                          </div>

@@ -381,6 +381,13 @@ router.post(
 // ==========================================
 
 async function handleCheckoutSessionCompleted(session) {
+  // Handle shop order payments (one-time, not subscription)
+  if (session.metadata.type === 'shop_order') {
+    await handleShopOrderPayment(session);
+    return;
+  }
+
+  // Existing subscription flow
   const tenantId = parseInt(session.metadata.tenant_id);
   const plan = session.metadata.plan;
 
@@ -396,6 +403,51 @@ async function handleCheckoutSessionCompleted(session) {
   );
 
   console.log(`✅ Checkout complété pour tenant ${tenantId}, plan: ${plan}`);
+}
+
+async function handleShopOrderPayment(session) {
+  const orderId = session.metadata.order_id;
+  const tenantId = parseInt(session.metadata.tenant_id);
+
+  // Check if already processed
+  const [orders] = await query("SELECT id, total_amount, status FROM orders WHERE id = ?", [orderId]);
+  const order = orders ? orders[0] : null;
+  if (!order || order.status === 'PAID') return;
+
+  const amount = parseFloat(order.total_amount);
+
+  // 1. Mark order as paid
+  await query(
+    "UPDATE orders SET status = 'PAID', payment_reference = ? WHERE id = ?",
+    [session.payment_intent || session.id, orderId]
+  );
+
+  // 2. Platform commission (5%)
+  const PLATFORM_FEE_PERCENTAGE = 0.05;
+  const platformFee = amount * PLATFORM_FEE_PERCENTAGE;
+  const tenantEarnings = amount - platformFee;
+
+  // 3. Record transactions
+  await query(
+    "INSERT INTO transactions (tenant_id, type, amount, reference_model, reference_id, status, payment_provider_data) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [tenantId, 'PAYMENT', amount, 'Order', orderId, 'SUCCESS', JSON.stringify({ stripe_session: session.id })]
+  );
+
+  await query(
+    "INSERT INTO transactions (tenant_id, type, amount, reference_model, reference_id, status) VALUES (?, ?, ?, ?, ?, ?)",
+    [tenantId, 'COMMISSION', -platformFee, 'Order', orderId, 'SUCCESS']
+  );
+
+  // 4. Credit tenant wallet
+  const [wallets] = await query("SELECT * FROM wallets WHERE tenant_id = ?", [tenantId]);
+  const wallet = wallets ? wallets[0] : null;
+  if (!wallet) {
+    await query("INSERT INTO wallets (tenant_id, balance) VALUES (?, ?)", [tenantId, tenantEarnings]);
+  } else {
+    await query("UPDATE wallets SET balance = balance + ? WHERE tenant_id = ?", [tenantEarnings, tenantId]);
+  }
+
+  console.log(`✅ Shop order #${orderId} paid via Stripe for tenant ${tenantId}`);
 }
 
 async function handleSubscriptionUpdated(subscription) {

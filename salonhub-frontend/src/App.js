@@ -66,6 +66,7 @@ import BookingClientInfo from "./pages/public/BookingClientInfo";
 import BookingConfirmation from "./pages/public/BookingConfirmation";
 import SalonShop from "./pages/public/SalonShop";
 import Checkout from "./pages/public/Checkout";
+import OrderConfirmation from "./pages/public/OrderConfirmation";
 
 // Pages publiques Training
 import TrainingLanding from "./pages/public/training/TrainingLanding";
@@ -191,6 +192,10 @@ function App() {
                   <Route
                     path="/book/:slug/checkout"
                     element={<Checkout />}
+                  />
+                  <Route
+                    path="/book/:slug/shop/order-confirmation"
+                    element={<OrderConfirmation />}
                   />
                 </Route>
 

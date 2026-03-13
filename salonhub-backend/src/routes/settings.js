@@ -275,7 +275,30 @@ router.put("/salon", checkScope("settings:write"), async (req, res) => {
 router.put("/", checkScope("settings:write"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { business_hours, slot_duration, currency, theme_settings } = req.body;
+    const { business_hours, slot_duration, currency, theme_settings, require_appointment_deposit } = req.body;
+
+    // Mettre à jour require_appointment_deposit
+    if (require_appointment_deposit !== undefined) {
+      const existing = await db.query(
+        "SELECT id FROM settings WHERE tenant_id = ? AND setting_key = ?",
+        [tenantId, "require_appointment_deposit"]
+      );
+
+      if (existing.length > 0) {
+        await db.query(
+          `UPDATE settings
+           SET setting_value = ?, setting_type = 'boolean', updated_at = NOW()
+           WHERE tenant_id = ? AND setting_key = ?`,
+          [require_appointment_deposit.toString(), tenantId, "require_appointment_deposit"]
+        );
+      } else {
+        await db.query(
+          `INSERT INTO settings (tenant_id, setting_key, setting_value, setting_type)
+           VALUES (?, 'require_appointment_deposit', ?, 'boolean')`,
+          [tenantId, require_appointment_deposit.toString()]
+        );
+      }
+    }
 
     // Mettre à jour business_hours
     if (business_hours) {
