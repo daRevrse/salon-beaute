@@ -61,6 +61,10 @@ const BookingClientInfo = () => {
   const [promoCode, setPromoCode] = useState(null);
   const [finalAmount, setFinalAmount] = useState(service?.price || 0);
 
+  // Paygate state
+  const [isAwaitingPayment, setIsAwaitingPayment] = useState(false);
+  const [paymentAppointmentDetails, setPaymentAppointmentDetails] = useState(null);
+
   useEffect(() => {
     if (!service || !date || !slot) {
       navigate(`/book/${slug}`);
@@ -152,19 +156,68 @@ const BookingClientInfo = () => {
         await pwaService.saveSubscriptionToBackend(null, result.appointment.client_id);
       }
 
-      navigate(`/book/${slug}/confirmation`, {
-        state: {
-          service,
-          date,
-          slot,
-          client: formData,
-          appointment: result.appointment,
-        },
-      });
+      if (formData.payment_method === 'paygate') {
+        const paygatePhone = formData.payment_phone?.trim() || formData.phone.trim();
+        await api.post('/payments/paygate/init-appointment', {
+            appointmentId: result.appointment.id,
+            phone: paygatePhone,
+            amount: finalAmount
+        });
+
+        const apptDetails = {
+           service,
+           date,
+           slot,
+           client: formData,
+           appointment: result.appointment,
+        };
+        setPaymentAppointmentDetails(apptDetails);
+        setIsAwaitingPayment(true);
+        startPaymentPolling(result.appointment.id, apptDetails);
+
+      } else {
+        navigate(`/book/${slug}/confirmation`, {
+          state: {
+            service,
+            date,
+            slot,
+            client: formData,
+            appointment: result.appointment,
+          },
+        });
+      }
     } catch (err) {
       console.error("Error creating appointment:", err);
+      // Wait, if createAppointment fails, publicBooking hook already sets error, but we should also toast or show it cleanly
       setSubmitting(false);
     }
+  };
+
+  const startPaymentPolling = (appointmentId, details) => {
+    let attempts = 0;
+    const maxAttempts = 40; // Approx 2 minutes with 3-second interval
+
+    const poll = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await api.get(`/public/appointments/${appointmentId}/payment-status`);
+        if (res.data.success && res.data.data.payment_status === 'paid') {
+            clearInterval(poll);
+            setIsAwaitingPayment(false);
+            navigate(`/book/${slug}/confirmation`, {
+              state: details,
+            });
+        }
+      } catch(err) {
+        console.error("Error polling payment status", err);
+      }
+      
+      if (attempts >= maxAttempts) {
+         clearInterval(poll);
+         setIsAwaitingPayment(false);
+         alert("Le paiement a pris trop de temps. Veuillez vérifier l'état de votre rendez-vous ou réessayer.");
+      }
+    }, 3000);
   };
 
   const handleBack = () => {
@@ -517,6 +570,60 @@ const BookingClientInfo = () => {
                   <span>Vos données sont protégées et ne seront jamais partagées.</span>
                 </div>
 
+                {/* Payment Option for Pro Salons (Mockup of integration) */}
+                {(salon?.subscription_plan === 'PRO' || salon?.subscription_plan === 'CUSTOM' || salon?.subscription_plan === 'professional' || salon?.subscription_plan === 'enterprise' || salon?.subscription_plan === 'custom' || salon?.subscription_plan === 'pro') && (settings?.require_appointment_deposit === true || settings?.require_appointment_deposit === 'true') && (
+                  <div className="space-y-4 pt-4 border-t border-slate-100 mt-6">
+                    <div className="flex items-center space-x-3 text-slate-900">
+                      <CurrencyDollarIcon className="w-6 h-6" style={dynamicStyles.primaryText} />
+                      <h4 className="text-lg font-bold">Paiement (Optionnel)</h4>
+                    </div>
+                    <p className="text-sm text-slate-500">Sécurisez votre {term.appointment.toLowerCase()} en payant une avance par Mobile Money ou payez sur place.</p>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                       <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, payment_method: 'paygate' })}
+                          className={`flex flex-col items-center justify-center p-4 border-2 rounded-2xl transition-all duration-200 ${
+                            formData.payment_method === 'paygate'
+                              ? "shadow-md"
+                              : "border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200"
+                          }`}
+                          style={formData.payment_method === 'paygate' ? dynamicStyles.activeOption : {}}
+                        >
+                          <span className="text-sm font-bold uppercase tracking-wide mb-1">Mobile Money</span>
+                          <span className="text-xs text-slate-500 text-center">T-Money, Moov Africa</span>
+                       </button>
+
+                       <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, payment_method: 'onsite' })}
+                          className={`flex flex-col items-center justify-center p-4 border-2 rounded-2xl transition-all duration-200 ${
+                            formData.payment_method === 'onsite' || !formData.payment_method
+                              ? "shadow-md"
+                              : "border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200"
+                          }`}
+                          style={formData.payment_method === 'onsite' || !formData.payment_method ? dynamicStyles.activeOption : {}}
+                        >
+                          <span className="text-sm font-bold uppercase tracking-wide mb-1">Sur place</span>
+                          <span className="text-xs text-slate-500 text-center">Payer à la fin de la prestation</span>
+                       </button>
+                    </div>
+
+                    {formData.payment_method === 'paygate' && (
+                        <div className="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                            <label className="block text-sm font-semibold text-indigo-900 mb-1.5">Numéro Mobile Money pour le prélèvement</label>
+                            <input 
+                                type="tel" 
+                                placeholder="Numéro (ex: 90000000)"
+                                value={formData.payment_phone || formData.phone || ''}
+                                onChange={(e) => setFormData({...formData, payment_phone: e.target.value})}
+                                className="w-full px-4 py-3 rounded-xl border border-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                        </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Success/Error API Feedback */}
                 {error && (
                   <div className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-pulse">
@@ -560,6 +667,22 @@ const BookingClientInfo = () => {
           <p>© {new Date().getFullYear()} {salon?.name || "SalonHub"}. Tous droits réservés.</p>
         </footer>
       </div>
+      
+      {/* Payment Loading Overlay */}
+      {isAwaitingPayment && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/90 backdrop-blur-md">
+            <div className="w-20 h-20 mb-6 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2 font-display">Confirmation du paiement...</h3>
+            <p className="text-slate-500 text-center max-w-sm px-4">
+                Veuillez valider le paiement sur votre téléphone. Une fois validé, vous serez redirigé automatiquement.
+            </p>
+            <button 
+                onClick={() => setIsAwaitingPayment(false)}
+                className="mt-8 text-sm text-slate-400 hover:text-slate-600 underline">
+                Annuler l'attente
+            </button>
+        </div>
+      )}
     </div>
   );
 };

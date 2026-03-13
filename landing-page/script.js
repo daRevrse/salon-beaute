@@ -753,16 +753,16 @@ document.addEventListener('DOMContentLoaded', () => {
       // Nav
       nav_features: 'Fonctionnalités',
       nav_pricing: 'Tarifs',
-      nav_api: 'API',
+      nav_testimonials: 'Temoignages',
       nav_faq: 'FAQ',
       nav_login: 'Connexion',
-      nav_cta: 'Essai gratuit',
+      nav_cta: 'Creer mon salon',
       // Hero
-      hero_pill: '+500 professionnels nous font confiance',
-      hero_title: 'Votre activite,<br><span class="gradient-text">sous controle.</span>',
-      hero_desc: 'Rendez-vous, clients, paiements et analyses — la plateforme tout-en-un qui libere votre temps et booste votre chiffre d\'affaires.',
-      hero_cta1: 'Demarrer gratuitement',
-      hero_cta2: 'Demander une démo',
+      hero_pill: '+500 salons de beaute nous font confiance',
+      hero_title: 'Remplissez votre agenda,<br><span class="gradient-text">pas votre paperasse.</span>',
+      hero_desc: 'Reservations en ligne 24h/24, rappels automatiques, fiches clients et statistiques. SalonHub fait tourner votre salon pendant que vous coiffez.',
+      hero_cta1: 'Creer mon salon gratuitement',
+      hero_cta2: 'Voir le produit en action',
       // Floating cards
       float_revenue: 'de revenus',
       float_absence: 'd\'absences',

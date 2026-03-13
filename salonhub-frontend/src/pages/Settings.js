@@ -91,6 +91,7 @@ const Settings = () => {
   });
 
   const [slotDuration, setSlotDuration] = useState(30);
+  const [requireAppointmentDeposit, setRequireAppointmentDeposit] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState(currency);
   const [logoUrl, setLogoUrl] = useState(null);
   const [bannerUrl, setBannerUrl] = useState(null);
@@ -214,6 +215,10 @@ const Settings = () => {
 
       if (settings.slot_duration) {
         setSlotDuration(settings.slot_duration);
+      }
+
+      if (settings.require_appointment_deposit !== undefined) {
+        setRequireAppointmentDeposit(settings.require_appointment_deposit === 'true' || settings.require_appointment_deposit === true);
       }
 
       if (settings.currency) {
@@ -542,6 +547,7 @@ const Settings = () => {
         {
           business_hours: businessHours,
           slot_duration: slotDuration,
+          require_appointment_deposit: requireAppointmentDeposit.toString(),
           currency: selectedCurrency,
           theme_settings: themeSettings,
         },
@@ -880,10 +886,31 @@ const Settings = () => {
                       </p>
                       <button
                         onClick={() => navigate("/billing")}
-                        className={`w-full px-4 py-2.5 border ${config.borderColor} ${config.textColor} rounded-xl ${config.hoverBg} transition-colors font-medium`}
+                        className={`w-full px-4 py-2.5 border ${config.borderColor} ${config.textColor} rounded-xl ${config.hoverBg} transition-colors font-medium mb-6`}
                       >
                         Accéder à la facturation
                       </button>
+
+                      <div className="pt-6 border-t border-slate-200">
+                        <label className="flex items-start cursor-pointer">
+                          <div className="flex items-center h-5">
+                            <input
+                              type="checkbox"
+                              checked={requireAppointmentDeposit}
+                              onChange={(e) => setRequireAppointmentDeposit(e.target.checked)}
+                              className={`w-4 h-4 rounded border-gray-300 ${config.textColor} focus:ring-${config.textColor}`}
+                            />
+                          </div>
+                          <div className="ml-3">
+                            <span className="block text-sm font-medium text-slate-800">
+                              Activer le paiement d'acompte (Mobile Money / Carte)
+                            </span>
+                            <span className="block text-xs text-slate-500 mt-1">
+                              Permet à vos clients de payer un acompte via Paygate Global lors de la prise de rendez-vous en ligne. (Fonctionnalité Pro).
+                            </span>
+                          </div>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>

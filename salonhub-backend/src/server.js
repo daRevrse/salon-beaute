@@ -165,6 +165,9 @@ app.use("/api/auth", require("./routes/auth"));
 // Routes Stripe (partiellement publiques - webhook)
 app.use("/api/stripe", require("./routes/stripe"));
 
+// Routes Paygate (Mobile Money & Webhook)
+app.use("/api/payments", require("./routes/payments"));
+
 // Routes publiques sectorielles (plus spécifiques - doivent être avant /api/public)
 app.use("/api/public/restaurant", require("./routes/restaurant/public"));
 app.use("/api/public/training", require("./routes/training/public"));
@@ -202,6 +205,10 @@ app.use("/api/webhooks", require("./routes/webhooks"));
 
 // Routes Salons (Multi-Salon)
 app.use("/api/salons", require("./routes/salons"));
+
+// Routes Boutique & Wallet (SaaS Pro)
+app.use("/api/shop", require("./routes/shop"));
+app.use("/api/wallet", require("./routes/wallet"));
 
 // Routes Restaurant (multi-secteur)
 app.use("/api/restaurant", require("./routes/restaurant"));
@@ -311,7 +318,7 @@ startServer();
 
 // Gestion arrêt gracieux
 process.on("SIGTERM", () => {
-  console.log("👋 Arrêt du serveur...");
+  console.log("👋 Arrêt du serveur... ");
   scheduler.stop();
   process.exit(0);
 });

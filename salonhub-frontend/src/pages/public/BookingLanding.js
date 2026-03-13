@@ -18,6 +18,7 @@ import {
   ChevronRightIcon,
   SparklesIcon,
   PhotoIcon,
+  ShoppingBagIcon as ShoppingBag,
 } from "@heroicons/react/24/outline";
 import GalleryLightbox from "../../components/common/GalleryLightbox";
 
@@ -190,6 +191,17 @@ const BookingLanding = () => {
                 {salon.address} {salon.city && `, ${salon.city}`}
               </span>
             </div>
+          )}
+
+          {/* New Shop Button */}
+          {(salon?.subscription_plan === 'PRO' || salon?.subscription_plan === 'CUSTOM' || salon?.subscription_plan === 'professional' || salon?.subscription_plan === 'enterprise' || salon?.subscription_plan === 'custom' || salon?.subscription_plan === 'pro') && (
+            <button
+                onClick={() => navigate(`/book/${slug}/shop`)}
+                className="mt-8 px-8 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white font-bold hover:bg-white hover:text-gray-900 transition-all flex items-center gap-2"
+            >
+                <ShoppingBag className="w-5 h-5" />
+                Accéder à la boutique
+            </button>
           )}
         </div>
       </div>

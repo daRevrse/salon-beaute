@@ -30,6 +30,10 @@ import Billing from "./pages/Billing";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 
+// Pages Agnostic / E-Commerce
+import ShopManagement from "./pages/dashboard/ShopManagement";
+import Wallet from "./pages/dashboard/Wallet";
+
 // Pages Restaurant
 import RestaurantTables from "./pages/restaurant/Tables";
 import RestaurantMenus from "./pages/restaurant/Menus";
@@ -60,6 +64,8 @@ import BookingLanding from "./pages/public/BookingLanding";
 import BookingDateTime from "./pages/public/BookingDateTime";
 import BookingClientInfo from "./pages/public/BookingClientInfo";
 import BookingConfirmation from "./pages/public/BookingConfirmation";
+import SalonShop from "./pages/public/SalonShop";
+import Checkout from "./pages/public/Checkout";
 
 // Pages publiques Training
 import TrainingLanding from "./pages/public/training/TrainingLanding";
@@ -178,6 +184,14 @@ function App() {
                     path="/book/:slug/confirmation"
                     element={<BookingConfirmation />}
                   />
+                  <Route
+                    path="/book/:slug/shop"
+                    element={<SalonShop />}
+                  />
+                  <Route
+                    path="/book/:slug/checkout"
+                    element={<Checkout />}
+                  />
                 </Route>
 
                 {/* Routes publiques - Training */}
@@ -255,6 +269,24 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Routes Agnostic & E-commerce */}
+                <Route
+                  path="/shop"
+                  element={
+                    <ProtectedRoute>
+                      <ShopManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/wallet"
+                  element={
+                    <ProtectedRoute>
+                      <Wallet />
                     </ProtectedRoute>
                   }
                 />

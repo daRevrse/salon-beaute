@@ -35,6 +35,8 @@ import {
   UserGroupIcon,
   DocumentTextIcon,
   ArrowDownTrayIcon,
+  WalletIcon,
+  ShoppingBagIcon,
 } from "@heroicons/react/24/outline";
 
 // Business Type Configuration
@@ -160,6 +162,12 @@ const Navbar = () => {
       label: "Clients",
       icon: <UsersIcon className="h-5 w-5" />,
       visible: can.viewClients,
+    },
+    {
+      path: "/shop",
+      label: "Boutique",
+      icon: <ShoppingBagIcon className="h-5 w-5" />,
+      visible: true, // Visible to all admins so they can see the Pro banner at least
     },
     {
       path: config.servicesPath || "/services",
@@ -340,6 +348,15 @@ const Navbar = () => {
                           Facturation
                         </Link>
                       )}
+
+                      <Link
+                        to="/wallet"
+                        onClick={() => setProfileMenuOpen(false)}
+                        className={`flex items-center gap-2 px-4 py-2.5 text-slate-700 ${config.hoverBg} hover:${config.textColor} text-sm transition-colors`}
+                      >
+                        <WalletIcon className="h-5 w-5" />
+                        Portefeuille
+                      </Link>
 
                       {canInstall && (
                         <button

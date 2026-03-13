@@ -179,7 +179,7 @@ router.get("/salon/:slug", checkPublicSubscription('slug'), async (req, res) => 
 
     const tenant = await db.query(
       `SELECT id, name, slug, phone, address, city, postal_code,
-              subscription_status, logo_url, banner_url, slogan, currency
+              subscription_status, subscription_plan, logo_url, banner_url, slogan, currency
        FROM tenants
        WHERE slug = ? `,
       [slug]
@@ -189,24 +189,28 @@ router.get("/salon/:slug", checkPublicSubscription('slug'), async (req, res) => 
       return res.status(404).json({ error: "Salon non trouvé ou inactif" });
     }
 
-    // Récupérer les business_hours depuis les settings
+    // Récupérer les business_hours et require_appointment_deposit depuis les settings
     const settings = await db.query(
-      `SELECT setting_value FROM settings
-       WHERE tenant_id = ? AND setting_key = 'business_hours'`,
+      `SELECT setting_key, setting_value FROM settings
+       WHERE tenant_id = ? AND setting_key IN ('business_hours', 'require_appointment_deposit')`,
       [tenant[0].id]
     );
 
     const salonData = { ...tenant[0] };
 
-    // Ajouter business_hours si disponible
-    if (settings.length > 0) {
-      try {
-        salonData.business_hours = JSON.parse(settings[0].setting_value);
-      } catch (e) {
-        console.error("Erreur parsing business_hours:", e);
-        salonData.business_hours = null;
+    // Ajouter business_hours et require_appointment_deposit si disponible
+    settings.forEach(s => {
+      if (s.setting_key === 'business_hours') {
+        try {
+          salonData.business_hours = JSON.parse(s.setting_value);
+        } catch (e) {
+          console.error("Erreur parsing business_hours:", e);
+          salonData.business_hours = null;
+        }
+      } else if (s.setting_key === 'require_appointment_deposit') {
+        salonData.require_appointment_deposit = s.setting_value === 'true' || s.setting_value === true;
       }
-    }
+    });
 
     res.json(salonData);
   } catch (error) {
@@ -279,7 +283,7 @@ router.get("/salon/:slug/settings", checkPublicSubscription('slug'), async (req,
       `SELECT setting_key, setting_value, setting_type
        FROM settings
        WHERE tenant_id = ?
-         AND setting_key IN ('business_hours', 'appointment_buffer', 'slot_duration', 'theme_settings')`,
+         AND setting_key IN ('business_hours', 'appointment_buffer', 'slot_duration', 'theme_settings', 'require_appointment_deposit')`,
       [tenantId]
     );
 
@@ -957,6 +961,36 @@ router.post("/promotions/validate", async (req, res) => {
     });
   } catch (error) {
     console.error("Erreur validation promo publique:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
+// ==========================================
+// POLLING PAIEMENT PUBLIC
+// ==========================================
+router.get("/appointments/:id/payment-status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [appointment] = await db.query(
+      "SELECT id, payment_status, payment_reference, status FROM appointments WHERE id = ?",
+      [id]
+    );
+
+    if (!appointment) {
+      return res.status(404).json({ success: false, error: "Rendez-vous introuvable" });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        payment_status: appointment.payment_status,
+        payment_reference: appointment.payment_reference,
+        status: appointment.status
+      }
+    });
+
+  } catch (error) {
+    console.error("Erreur statut paiement:", error);
     res.status(500).json({ success: false, error: "Erreur serveur" });
   }
 });
