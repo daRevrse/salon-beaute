@@ -12,6 +12,7 @@ const { Server } = require("socket.io");
 
 const { testConnection } = require("./config/database");
 const scheduler = require("./services/scheduler");
+const { authMiddleware } = require("./middleware/auth");
 
 // Initialiser Express
 const app = express();
@@ -129,7 +130,7 @@ app.get("/health", (req, res) => {
 });
 
 // Root
-app.get("/", (req, res) => {
+app.get("/", authMiddleware, (req, res) => {
   res.json({
     message: "SalonHub API",
     version: "1.0.0",

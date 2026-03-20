@@ -26,9 +26,10 @@ import {
   EllipsisHorizontalIcon,
   ArrowTrendingUpIcon,
   SignalIcon,
-  Cog6ToothIcon,
   PowerIcon,
   BoltIcon,
+  WalletIcon,
+  BanknotesIcon,
 } from "@heroicons/react/24/outline";
 import Toast from "../../components/common/Toast";
 import { useToast } from "../../hooks/useToast";
@@ -273,6 +274,36 @@ function PlanBar({ plan, count, total, delay = 0 }) {
   );
 }
 
+/* ─────────── Sector Distribution Bar ─────────── */
+function SectorBar({ sector, count, total, delay = 0 }) {
+  const pct = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+  const labels = { beauty: "Beauté & Bien-être", restaurant: "Restaurant", medical: "Médical", training: "Formation", unknown: "Non défini" };
+  const colors = { beauty: "#fb7185", restaurant: "#fbbf24", medical: "#22d3ee", training: "#818cf8", unknown: "#94a3b8" };
+  const color = colors[sector] || "#94a3b8";
+
+  return (
+    <div style={{ animation: `fadeInUp 0.4s ease ${delay}ms both` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", textTransform: "capitalize" }}>{labels[sector] || sector}</span>
+        <span style={{ fontSize: 13, color: "#94a3b8" }}>
+          {count} <span style={{ color: "#64748b" }}>({pct}%)</span>
+        </span>
+      </div>
+      <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.06)" }}>
+        <div
+          style={{
+            height: "100%",
+            width: `${pct}%`,
+            borderRadius: 3,
+            background: `linear-gradient(90deg, ${color}, ${color}88)`,
+            transition: "width 1s ease",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 /* ─────────── Month Growth Bar ─────────── */
 function MonthBar({ month, count, maxCount, delay = 0 }) {
   const pct = maxCount > 0 ? Math.min((count / maxCount) * 100, 100) : 0;
@@ -370,8 +401,10 @@ function SuperAdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [planDistribution, setPlanDistribution] = useState([]);
   const [monthlyGrowth, setMonthlyGrowth] = useState([]);
+  const [sectorDistribution, setSectorDistribution] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [sectorFilter, setSectorFilter] = useState("");
   const { toast, hideToast, success, error: showError } = useToast();
 
   const getToken = () => localStorage.getItem("superadmin_token");
@@ -404,6 +437,7 @@ function SuperAdminDashboard() {
       setStats(statsResponse.data.stats);
       setPlanDistribution(statsResponse.data.plan_distribution || []);
       setMonthlyGrowth(statsResponse.data.monthly_growth || []);
+      setSectorDistribution(statsResponse.data.sector_distribution || []);
 
       await loadTenants();
     } catch (error) {
@@ -422,6 +456,7 @@ function SuperAdminDashboard() {
       const params = new URLSearchParams({ limit: "20", offset: "0" });
       if (searchTerm) params.append("search", searchTerm);
       if (statusFilter) params.append("status", statusFilter);
+      if (sectorFilter) params.append("sector", sectorFilter);
 
       const response = await axios.get(
         `${API_URL}/admin/tenants?${params.toString()}`,
@@ -432,7 +467,7 @@ function SuperAdminDashboard() {
     } catch (error) {
       console.error("Erreur chargement tenants:", error);
     }
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, sectorFilter]);
 
   const handleLogout = () => {
     localStorage.removeItem("superadmin_token");
@@ -506,6 +541,10 @@ function SuperAdminDashboard() {
 
   const commandActions = [
     { icon: CurrencyEuroIcon, label: "Billing", desc: "Revenus & facturation", accent: "emerald", action: () => navigate("/superadmin/billing") },
+    { icon: WalletIcon, label: "Wallets", desc: "Soldes & retraits", accent: "fuchsia", action: () => navigate("/superadmin/wallets") },
+    { icon: SparklesIcon, label: "Abonnements", desc: "Prix & forfaits", accent: "pink", action: () => navigate("/superadmin/subscription-plans") },
+    { icon: BuildingStorefrontIcon, label: "Secteurs", desc: "Contrôle métiers", accent: "rose", action: () => navigate("/superadmin/sectors") },
+    { icon: BanknotesIcon, label: "Transactions", desc: "Historique système", accent: "teal", action: () => navigate("/superadmin/system-transactions") },
     { icon: ChartBarIcon, label: "Analytics+", desc: "Cohortes & santé", accent: "indigo", action: () => navigate("/superadmin/analytics") },
     { icon: ArrowRightOnRectangleIcon, label: "Impersonation", desc: "Support client", accent: "orange", action: () => navigate("/superadmin/impersonation") },
     { icon: ShieldCheckIcon, label: "SuperAdmins", desc: "Gérer les admins", accent: "violet", action: () => navigate("/superadmin/admins") },
@@ -853,6 +892,35 @@ function SuperAdminDashboard() {
                 <StatusMiniCard label="Nouveaux (30j)" count={stats.new_tenants_30d} accent="violet" icon={ArrowTrendingUpIcon} delay={240} />
               </div>
             </div>
+
+            {/* Sector Breakdown */}
+            <div
+              style={{
+                background: "#1e1e2e",
+                borderRadius: 16,
+                border: "1px solid rgba(255,255,255,0.06)",
+                padding: 28,
+              }}
+            >
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: "#e2e8f0", marginBottom: 20 }}>
+                Répartition par métier
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {sectorDistribution.length > 0 ? (
+                  sectorDistribution.map((sector, i) => (
+                    <SectorBar
+                      key={sector.label}
+                      sector={sector.label}
+                      count={sector.count}
+                      total={stats.total_tenants}
+                      delay={i * 100}
+                    />
+                  ))
+                ) : (
+                  <p style={{ color: "#64748b", fontSize: 13 }}>Aucune donnée</p>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -911,6 +979,27 @@ function SuperAdminDashboard() {
                     onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}
                   />
                 </div>
+                <select
+                  value={sectorFilter}
+                  onChange={(e) => setSectorFilter(e.target.value)}
+                  style={{
+                    padding: "10px 14px",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 10,
+                    color: "#e2e8f0",
+                    fontSize: 13,
+                    outline: "none",
+                    cursor: "pointer",
+                    minWidth: 160,
+                  }}
+                >
+                  <option value="">Tous les métiers</option>
+                  <option value="beauty">Beauté & Bien-être</option>
+                  <option value="restaurant">Restaurant</option>
+                  <option value="medical">Médical</option>
+                  <option value="training">Formation</option>
+                </select>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}

@@ -25,57 +25,20 @@ import {
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon as CheckCircleSolid } from "@heroicons/react/24/solid";
 
-// Business Types Configuration
-const BUSINESS_TYPES = [
-  {
-    id: "beauty",
-    name: "Beaute & Bien-etre",
-    description: "Salons de coiffure, instituts, spa, barbershops",
-    icon: ScissorsIcon,
-    color: "violet",
-    gradient: "from-violet-500 to-violet-600",
-    lightBg: "bg-violet-50",
-    borderColor: "border-violet-500",
-    textColor: "text-violet-600",
-    comingSoon: false,
-  },
-  {
-    id: "restaurant",
-    name: "Restauration",
-    description: "Restaurants, cafes, bars, traiteurs",
-    icon: BuildingStorefrontIcon,
-    color: "amber",
-    gradient: "from-amber-500 to-orange-500",
-    lightBg: "bg-amber-50",
-    borderColor: "border-amber-500",
-    textColor: "text-amber-600",
-    comingSoon: true,
-  },
-  {
-    id: "training",
-    name: "Formation",
-    description: "Centres de formation, ecoles, coaching",
-    icon: AcademicCapIcon,
-    color: "emerald",
-    gradient: "from-emerald-500 to-green-500",
-    lightBg: "bg-emerald-50",
-    borderColor: "border-emerald-500",
-    textColor: "text-emerald-600",
-    comingSoon: true,
-  },
-  {
-    id: "medical",
-    name: "Sante & Medical",
-    description: "Cabinets medicaux, cliniques, praticiens",
-    icon: HeartIcon,
-    color: "cyan",
-    gradient: "from-cyan-500 to-teal-500",
-    lightBg: "bg-cyan-50",
-    borderColor: "border-cyan-500",
-    textColor: "text-cyan-600",
-    comingSoon: true,
-  },
-];
+// Sector config mapping
+const SECTOR_CONFIGS = {
+  coiffure: { icon: ScissorsIcon, gradient: "from-violet-500 to-violet-600", lightBg: "bg-violet-50", borderColor: "border-violet-500", textColor: "text-violet-600" },
+  barbier: { icon: SparklesIcon, gradient: "from-indigo-500 to-blue-600", lightBg: "bg-indigo-50", borderColor: "border-indigo-500", textColor: "text-indigo-600" },
+  institut: { icon: HeartIcon, gradient: "from-pink-500 to-rose-500", lightBg: "bg-pink-50", borderColor: "border-pink-500", textColor: "text-pink-600" },
+  spa: { icon: SparklesIcon, gradient: "from-teal-400 to-emerald-500", lightBg: "bg-teal-50", borderColor: "border-teal-500", textColor: "text-teal-600" },
+  onglerie: { icon: UserIcon, gradient: "from-fuchsia-500 to-purple-600", lightBg: "bg-fuchsia-50", borderColor: "border-fuchsia-500", textColor: "text-fuchsia-600" },
+  massage: { icon: SparklesIcon, gradient: "from-orange-400 to-red-500", lightBg: "bg-orange-50", borderColor: "border-orange-500", textColor: "text-orange-600" },
+  medical: { icon: HeartIcon, gradient: "from-cyan-500 to-blue-500", lightBg: "bg-cyan-50", borderColor: "border-cyan-500", textColor: "text-cyan-600" },
+  restaurant: { icon: BuildingStorefrontIcon, gradient: "from-amber-400 to-orange-500", lightBg: "bg-amber-50", borderColor: "border-amber-500", textColor: "text-amber-600" },
+  training: { icon: AcademicCapIcon, gradient: "from-emerald-500 to-green-600", lightBg: "bg-emerald-50", borderColor: "border-emerald-500", textColor: "text-emerald-600" },
+  other: { icon: Squares2X2Icon, gradient: "from-slate-400 to-gray-500", lightBg: "bg-slate-50", borderColor: "border-slate-500", textColor: "text-slate-600" },
+  default: { icon: BuildingStorefrontIcon, gradient: "from-violet-500 to-indigo-600", lightBg: "bg-violet-50", borderColor: "border-violet-500", textColor: "text-violet-600" }
+};
 
 const STEPS = [
   { id: 1, name: "Activite", icon: Squares2X2Icon },
@@ -93,7 +56,28 @@ const Register = () => {
   const [googleToken, setGoogleToken] = useState(null);
   const [googleUserData, setGoogleUserData] = useState(null);
 
+  const [businessTypes, setBusinessTypes] = useState([]);
+
   useEffect(() => {
+    fetch(`${process.env.REACT_APP_API_URL}/public/business-sectors`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const types = data.sectors.map(s => {
+            const config = SECTOR_CONFIGS[s.value] || SECTOR_CONFIGS.default;
+            return {
+              id: s.value,
+              name: s.label,
+              description: "",
+              comingSoon: !s.is_active,
+              ...config
+            };
+          });
+          setBusinessTypes(types);
+        }
+      })
+      .catch(console.error);
+
     if (isGoogleFlow) {
       const storedGoogleUser = sessionStorage.getItem("googleUser");
       const storedGoogleToken = sessionStorage.getItem("googleToken");
@@ -142,7 +126,7 @@ const Register = () => {
 
   const selectBusinessType = (typeId) => {
     // Prevent selection of coming-soon sectors
-    const type = BUSINESS_TYPES.find((bt) => bt.id === typeId);
+    const type = businessTypes.find((bt) => bt.id === typeId);
     if (type?.comingSoon) return;
 
     setFormData({
@@ -261,7 +245,7 @@ const Register = () => {
 
 
   // Get current business type config
-  const currentBusinessType = BUSINESS_TYPES.find(
+  const currentBusinessType = businessTypes.find(
     (bt) => bt.id === formData.business_type
   );
 
@@ -375,8 +359,8 @@ const Register = () => {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {BUSINESS_TYPES.map((type) => {
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {businessTypes.map((type) => {
                       const Icon = type.icon;
                       const isSelected = formData.business_type === type.id;
                       const isDisabled = type.comingSoon;

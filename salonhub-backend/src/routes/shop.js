@@ -54,6 +54,14 @@ router.delete('/admin/categories/:id', auth, isPro, async (req, res) => {
 router.post('/admin/products', auth, isPro, async (req, res) => {
     try {
         const { name, description, price, stock, categoryId, images } = req.body;
+        
+        if (categoryId) {
+            const catCheck = await query("SELECT id FROM categories WHERE id = ? AND tenant_id = ?", [categoryId, req.tenantId]);
+            if (catCheck.length === 0) {
+                return res.status(400).json({ error: 'Catégorie invalide pour cet établissement' });
+            }
+        }
+        
         const imgs = images ? JSON.stringify(images) : '[]';
         const result = await query(
             "INSERT INTO products (tenant_id, name, description, price, stock, category_id, images) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -87,6 +95,14 @@ router.get('/admin/products', auth, async (req, res) => {
 router.put('/admin/products/:id', auth, isPro, async (req, res) => {
      try {
         const { name, description, price, stock, categoryId, images, is_active } = req.body;
+        
+        if (categoryId) {
+            const catCheck = await query("SELECT id FROM categories WHERE id = ? AND tenant_id = ?", [categoryId, req.tenantId]);
+            if (catCheck.length === 0) {
+                return res.status(400).json({ error: 'Catégorie invalide pour cet établissement' });
+            }
+        }
+        
         const imgs = images ? JSON.stringify(images) : null;
         
         let updateSql = "UPDATE products SET name = ?, description = ?, price = ?, stock = ?, category_id = ?";

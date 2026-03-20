@@ -143,7 +143,7 @@ router.get(
   requirePermission("tenants", "view"),
   async (req, res) => {
     try {
-      const { status, plan, search, limit = 50, offset = 0 } = req.query;
+      const { status, plan, search, sector, limit = 50, offset = 0 } = req.query;
 
       let query = `
       SELECT
@@ -171,6 +171,11 @@ router.get(
         params.push(plan);
       }
 
+      if (sector) {
+        query += ` AND t.business_type = ?`;
+        params.push(sector);
+      }
+
       if (search) {
         query += ` AND (t.name LIKE ? OR t.email LIKE ? OR t.slug LIKE ?)`;
         const searchTerm = `%${search}%`;
@@ -193,6 +198,10 @@ router.get(
       if (plan) {
         countQuery += ` AND subscription_plan = ?`;
         countParams.push(plan);
+      }
+      if (sector) {
+        countQuery += ` AND business_type = ?`;
+        countParams.push(sector);
       }
       if (search) {
         countQuery += ` AND (name LIKE ? OR email LIKE ? OR slug LIKE ?)`;
@@ -576,11 +585,23 @@ router.get(
       ORDER BY month DESC
     `);
 
+      // Répartition par secteur
+      const [sectorDistribution] = await pool.query(`
+      SELECT
+        COALESCE(business_type, 'unknown') as label,
+        COUNT(*) as count
+      FROM tenants
+      WHERE subscription_status != 'deleted'
+      GROUP BY business_type
+      ORDER BY count DESC
+      `);
+
       res.json({
         success: true,
         stats: stats[0],
         plan_distribution: planDistribution,
         monthly_growth: monthlyGrowth,
+        sector_distribution: sectorDistribution,
       });
     } catch (error) {
       console.error("Erreur GET /analytics/overview:", error);
@@ -775,6 +796,252 @@ router.get(
     }
   }
 );
+
+// ==========================================
+// TRANSACTIONS SYSTÈME
+// ==========================================
+
+/**
+ * GET /api/admin/system/transactions
+ * Liste de toutes les transactions du système (réservations, paiements stripe, wallet)
+ */
+router.get(
+  "/system/transactions",
+  superAdminAuth,
+  requirePermission("billing", "view"),
+  async (req, res) => {
+    try {
+      const { status, limit = 50, offset = 0 } = req.query;
+      let query = `
+        SELECT 
+          tx.*,
+          t.name as tenant_name,
+          t.email as tenant_email
+        FROM transactions tx
+        JOIN tenants t ON tx.tenant_id = t.id
+        WHERE 1=1
+      `;
+      const params = [];
+      
+      if (status) {
+        query += ` AND tx.status = ?`;
+        params.push(status);
+      }
+      
+      query += ` ORDER BY tx.created_at DESC LIMIT ? OFFSET ?`;
+      params.push(parseInt(limit), parseInt(offset));
+      
+      const [transactions] = await pool.query(query, params);
+      
+      let countQuery = `SELECT COUNT(*) as total FROM transactions WHERE 1=1`;
+      const countParams = [];
+      if (status) {
+        countQuery += ` AND status = ?`;
+        countParams.push(status);
+      }
+      const [countResult] = await pool.query(countQuery, countParams);
+      
+      res.json({
+        success: true,
+        transactions,
+        pagination: {
+          total: countResult[0].total,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+        }
+      });
+    } catch (error) {
+      console.error("Erreur GET /system/transactions:", error);
+      res.status(500).json({ success: false, error: "Erreur serveur" });
+    }
+  }
+);
+
+// ==========================================
+// WALLETS & RETRAITS SYSTÈME
+// ==========================================
+
+/**
+ * GET /api/admin/system/wallets
+ */
+router.get(
+  "/system/wallets",
+  superAdminAuth,
+  requirePermission("billing", "view"),
+  async (req, res) => {
+    try {
+      const [wallets] = await pool.query(`
+        SELECT 
+          w.*,
+          t.name as tenant_name,
+          t.email as tenant_email
+        FROM wallets w
+        JOIN tenants t ON w.tenant_id = t.id
+        ORDER BY w.balance DESC
+      `);
+      res.json({ success: true, wallets });
+    } catch (error) {
+      console.error("Erreur GET /system/wallets:", error);
+      res.status(500).json({ success: false, error: "Erreur serveur" });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/system/withdrawals
+ */
+router.get(
+  "/system/withdrawals",
+  superAdminAuth,
+  requirePermission("billing", "view"),
+  async (req, res) => {
+    try {
+      const { status } = req.query;
+      let query = `
+        SELECT 
+          wr.*,
+          t.name as tenant_name,
+          t.email as tenant_email
+        FROM withdrawal_requests wr
+        JOIN tenants t ON wr.tenant_id = t.id
+        WHERE 1=1
+      `;
+      const params = [];
+      if (status) {
+        query += " AND wr.status = ?";
+        params.push(status);
+      }
+      query += " ORDER BY wr.created_at DESC";
+      
+      const [requests] = await pool.query(query, params);
+      res.json({ success: true, requests });
+    } catch (error) {
+      console.error("Erreur GET /system/withdrawals:", error);
+      res.status(500).json({ success: false, error: "Erreur serveur" });
+    }
+  }
+);
+
+/**
+ * PUT /api/admin/system/withdrawals/:id/status
+ */
+router.put(
+  "/system/withdrawals/:id/status",
+  superAdminAuth,
+  requirePermission("billing", "edit"),
+  async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+      const { status, notes } = req.body;
+      const withdrawalId = req.params.id;
+
+      if (!['COMPLETED', 'REJECTED'].includes(status)) {
+        return res.status(400).json({ success: false, error: "Statut invalide" });
+      }
+
+      await connection.beginTransaction();
+
+      const [request] = await connection.query("SELECT * FROM withdrawal_requests WHERE id = ? FOR UPDATE", [withdrawalId]);
+      if (!request.length) {
+        await connection.rollback();
+        return res.status(404).json({ success: false, error: "Demande introuvable" });
+      }
+
+      const wr = request[0];
+      if (wr.status !== 'PENDING') {
+        await connection.rollback();
+        return res.status(400).json({ success: false, error: "Demande déjà traitée" });
+      }
+
+      await connection.query(
+        "UPDATE withdrawal_requests SET status = ?, admin_notes = ?, processed_at = NOW() WHERE id = ?",
+        [status, notes || null, withdrawalId]
+      );
+
+      if (status === 'COMPLETED') {
+        await connection.query(
+          "UPDATE wallets SET pending_balance = pending_balance - ? WHERE tenant_id = ?",
+          [wr.amount, wr.tenant_id]
+        );
+      } else if (status === 'REJECTED') {
+        await connection.query(
+          "UPDATE wallets SET pending_balance = pending_balance - ?, balance = balance + ? WHERE tenant_id = ?",
+          [wr.amount, wr.amount, wr.tenant_id]
+        );
+      }
+
+      await connection.commit();
+      res.json({ success: true, message: "Demande traitée avec succès" });
+    } catch (error) {
+      await connection.rollback();
+      console.error("Erreur PUT /system/withdrawals/:id/status:", error);
+      res.status(500).json({ success: false, error: "Erreur serveur" });
+    } finally {
+      connection.release();
+    }
+  }
+);
+
+// ==========================================
+// CONFIGURATION DES ABONNEMENTS
+// ==========================================
+
+/**
+ * GET /api/admin/subscription-plans
+ */
+router.get("/subscription-plans", superAdminAuth, requirePermission("billing", "view"), async (req, res) => {
+  try {
+    const [plans] = await pool.query("SELECT * FROM subscription_plans ORDER BY price ASC");
+    res.json({ success: true, plans });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
+/**
+ * POST /api/admin/subscription-plans
+ */
+router.post("/subscription-plans", superAdminAuth, requirePermission("billing", "edit"), async (req, res) => {
+  try {
+    const { name, display_name, description, price, currency, interval_type, stripe_price_id, features, is_active } = req.body;
+    await pool.query(
+      `INSERT INTO subscription_plans (name, display_name, description, price, currency, interval_type, stripe_price_id, features, is_active) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name, display_name, description, price, currency || 'EUR', interval_type || 'month', stripe_price_id, JSON.stringify(features || []), is_active !== undefined ? is_active : true]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PUT /api/admin/subscription-plans/:id
+ */
+router.put("/subscription-plans/:id", superAdminAuth, requirePermission("billing", "edit"), async (req, res) => {
+  try {
+    const { display_name, description, price, stripe_price_id, features, is_active } = req.body;
+    await pool.query(
+      `UPDATE subscription_plans SET display_name=?, description=?, price=?, stripe_price_id=?, features=?, is_active=? WHERE id=?`,
+      [display_name, description, price, stripe_price_id, JSON.stringify(features || []), is_active, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/subscription-plans/:id
+ */
+router.delete("/subscription-plans/:id", superAdminAuth, requirePermission("billing", "edit"), async (req, res) => {
+  try {
+    await pool.query("UPDATE subscription_plans SET is_active=false WHERE id=?", [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
 
 // ==========================================
 // LOGS D'ACTIVITÉ

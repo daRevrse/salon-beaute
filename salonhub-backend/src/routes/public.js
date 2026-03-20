@@ -12,6 +12,22 @@ const pushService = require("../services/pushService");
 const expoPushService = require("../services/expoPushService");
 const { checkPublicSubscription } = require("../middleware/tenant");
 
+// ===== ABONNEMENTS =====
+
+/**
+ * GET /api/public/subscription-plans
+ * Récupère la liste des forfaits actifs
+ */
+router.get('/subscription-plans', async (req, res) => {
+  try {
+    const plans = await db.query("SELECT * FROM subscription_plans WHERE is_active = true ORDER BY price ASC");
+    res.json({ success: true, plans });
+  } catch (error) {
+    console.error("Erreur GET /public/subscription-plans:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
 // ===== RECHERCHE PUBLIQUE =====
 
 /**

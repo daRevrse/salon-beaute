@@ -83,6 +83,10 @@ import ActivityLogs from "./pages/admin/ActivityLogs";
 import UsersManagement from "./pages/admin/UsersManagement";
 import PasswordResetManagement from "./pages/admin/PasswordResetManagement";
 import BillingDashboard from "./pages/admin/BillingDashboard";
+import SystemTransactions from "./pages/admin/SystemTransactions";
+import WalletsManagement from "./pages/admin/WalletsManagement";
+import SubscriptionPlans from "./pages/admin/SubscriptionPlans";
+import SectorsManagement from "./pages/admin/SectorsManagement";
 import ImpersonationManager from "./pages/admin/ImpersonationManager";
 import AdvancedAnalytics from "./pages/admin/AdvancedAnalytics";
 import AnnouncementsManager from "./pages/admin/AnnouncementsManager";
@@ -146,6 +150,22 @@ function App() {
                 <Route
                   path="/superadmin/billing"
                   element={<BillingDashboard />}
+                />
+                <Route
+                  path="/superadmin/wallets"
+                  element={<WalletsManagement />}
+                />
+                <Route
+                  path="/superadmin/subscription-plans"
+                  element={<SubscriptionPlans />}
+                />
+                <Route
+                  path="/superadmin/sectors"
+                  element={<SectorsManagement />}
+                />
+                <Route
+                  path="/superadmin/system-transactions"
+                  element={<SystemTransactions />}
                 />
                 <Route
                   path="/superadmin/impersonation"

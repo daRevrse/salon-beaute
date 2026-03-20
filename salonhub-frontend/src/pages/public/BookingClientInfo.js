@@ -625,27 +625,7 @@ const BookingClientInfo = () => {
 
                     {/* Payment Method Selection */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, payment_method: 'paygate' })}
-                        className={`relative flex flex-col items-center justify-center p-5 border-2 rounded-2xl transition-all duration-200 ${
-                          formData.payment_method === 'paygate'
-                            ? "shadow-lg"
-                            : "border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200"
-                        }`}
-                        style={formData.payment_method === 'paygate' ? dynamicStyles.activeOption : {}}
-                      >
-                        <svg className="w-7 h-7 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-6 18h6" />
-                        </svg>
-                        <span className="text-sm font-bold uppercase tracking-wide">Mobile Money</span>
-                        <span className="text-xs text-slate-500 mt-1">T-Money, Moov Africa</span>
-                        {depositAmount && formData.payment_method === 'paygate' && (
-                          <span className="mt-2 text-xs font-bold px-3 py-1 rounded-full" style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryText }}>
-                            {formatPrice(depositAmount)}
-                          </span>
-                        )}
-                      </button>
+                      {/* Mobile Money payment option temporarily disabled */}
 
                       <button
                         type="button"

@@ -14,7 +14,7 @@ const Checkout = () => {
     const totalAmount = location.state?.total || 0;
 
     const [guestInfo, setGuestInfo] = useState({ name: '', phone: '', address: '' });
-    const [paymentMethod, setPaymentMethod] = useState('mobile_money');
+    const [paymentMethod, setPaymentMethod] = useState('card');
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState(null);
@@ -140,19 +140,7 @@ const Checkout = () => {
                              <div className="pt-2">
                                  <label className="block text-sm font-semibold text-gray-700 mb-3">Mode de paiement</label>
                                  <div className="grid grid-cols-2 gap-3">
-                                     <button
-                                         type="button"
-                                         onClick={() => setPaymentMethod('mobile_money')}
-                                         className={`flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all ${
-                                             paymentMethod === 'mobile_money'
-                                                 ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                                                 : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                                         }`}
-                                     >
-                                         <Smartphone className="w-6 h-6 mb-2" />
-                                         <span className="font-bold text-sm">Mobile Money</span>
-                                         <span className="text-xs text-gray-500 mt-0.5">T-Money, Moov Africa</span>
-                                     </button>
+                                     {/* Mobile Money payment option temporarily disabled */}
                                      <button
                                          type="button"
                                          onClick={() => setPaymentMethod('card')}
