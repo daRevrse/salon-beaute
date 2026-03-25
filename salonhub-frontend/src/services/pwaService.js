@@ -173,11 +173,19 @@ class PWAService {
       const tenantStr = localStorage.getItem('tenant');
       const tenant = tenantStr ? JSON.parse(tenantStr) : null;
 
+      const tenantId = this.tenantId || tenant?.id || null;
+      
+      // Ne pas synchroniser si on n'a ni tenant (salon public) ni utilisateur (staff)
+      if (!tenantId && !user) {
+        console.log('ℹ️ Skip sync abonnement push: aucun tenantId ou utilisateur trouvé');
+        return false;
+      }
+
       const response = await api.post('/push/subscribe', {
         subscription: sub,
         userId: user?.id || null,
         clientId: clientId || null,
-        tenantId: this.tenantId || tenant?.id || null
+        tenantId: tenantId
       });
 
       console.log('✅ Abonnement synchronisé avec le serveur:', response.data);

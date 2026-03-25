@@ -28,6 +28,20 @@ router.get('/subscription-plans', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/public/business-sectors
+ * Récupère la liste des secteurs d'activité
+ */
+router.get('/business-sectors', async (req, res) => {
+  try {
+    const sectors = await db.query("SELECT value, label, is_active FROM business_sectors WHERE is_active = true ORDER BY label ASC");
+    res.json({ success: true, sectors });
+  } catch (error) {
+    console.error("Erreur GET /public/business-sectors:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
 // ===== RECHERCHE PUBLIQUE =====
 
 /**

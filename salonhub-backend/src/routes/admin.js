@@ -2144,4 +2144,55 @@ router.delete(
   }
 );
 
+// ==========================================
+// GESTION DES SECTEURS D'ACTIVITÉ
+// ==========================================
+
+/**
+ * GET /api/admin/system/sectors
+ * Liste de tous les secteurs d'activité
+ */
+router.get(
+  "/system/sectors",
+  superAdminAuth,
+  requirePermission("system", "manage"),
+  async (req, res) => {
+    try {
+      const [sectors] = await pool.query(
+        "SELECT * FROM business_sectors ORDER BY label ASC"
+      );
+      res.json({ success: true, sectors });
+    } catch (error) {
+      console.error("Erreur GET /system/sectors:", error);
+      res.status(500).json({ success: false, error: "Erreur serveur" });
+    }
+  }
+);
+
+/**
+ * PUT /api/admin/system/sectors/:id/status
+ * Activer/Désactiver un secteur
+ */
+router.put(
+  "/system/sectors/:id/status",
+  superAdminAuth,
+  requirePermission("system", "manage"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { is_active } = req.body;
+
+      await pool.query(
+        "UPDATE business_sectors SET is_active = ? WHERE id = ?",
+        [is_active ? 1 : 0, id]
+      );
+
+      res.json({ success: true, message: "Statut du secteur mis à jour" });
+    } catch (error) {
+      console.error("Erreur PUT /system/sectors/:id/status:", error);
+      res.status(500).json({ success: false, error: "Erreur serveur" });
+    }
+  }
+);
+
 module.exports = router;

@@ -44,6 +44,11 @@ self.addEventListener('activate', (event) => {
 // Stratégie de cache: Network First, puis Cache
 // Only cache GET requests - POST/PUT/DELETE cannot be cached
 self.addEventListener('fetch', (event) => {
+  // Only cache http/https schemes
+  if (!(event.request.url.indexOf('http') === 0)) {
+    return;
+  }
+
   // Skip non-GET requests - they cannot be cached
   if (event.request.method !== 'GET') {
     return;

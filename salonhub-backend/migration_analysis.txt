@@ -1,0 +1,563 @@
+﻿=== TABLES MISSING IN PROD (Need to be created) ===
+[
+  'api_keys',           'business_sectors',
+  'categories',         'expo_push_tokens',
+  'order_items',        'orders',
+  'products',           'salon_invitations',
+  'subscription_plans', 'ticket_counter',
+  'transactions',       'user_salons',
+  'wallets',            'webhook_logs',
+  'webhooks',           'withdrawal_requests'
+]
+
+=== MODIFIED TABLES (Fields in DEV but not in PROD) ===
+Table: admin_activity_logs
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_super_admin` (`super_admin_id`)
+  + KEY `idx_action` (`action`)
+  + KEY `idx_resource` (`resource_type`,`resource_id`)
+  + KEY `idx_created` (`created_at`)
+  + CONSTRAINT `admin_activity_logs_ibfk_1` FOREIGN KEY (`super_admin_id`) REFERENCES `super_admins` (`id`) ON DELETE CASCADE
+Table: admin_announcements
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  + PRIMARY KEY (`id`)
+  + KEY `super_admin_id` (`super_admin_id`)
+  + CONSTRAINT `admin_announcements_ibfk_1` FOREIGN KEY (`super_admin_id`) REFERENCES `super_admins` (`id`)
+Table: admin_messages
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  + PRIMARY KEY (`id`)
+  + KEY `super_admin_id` (`super_admin_id`)
+  + KEY `tenant_id` (`tenant_id`)
+  + KEY `user_id` (`user_id`)
+  + CONSTRAINT `admin_messages_ibfk_1` FOREIGN KEY (`super_admin_id`) REFERENCES `super_admins` (`id`)
+  + CONSTRAINT `admin_messages_ibfk_2` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `admin_messages_ibfk_3` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+Table: admin_roles
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `name` (`name`)
+  + UNIQUE KEY `slug` (`slug`)
+  + KEY `idx_slug` (`slug`)
+Table: admin_sessions
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_token_hash` (`token_hash`)
+  + KEY `idx_super_admin_active` (`super_admin_id`,`is_active`)
+  + KEY `idx_expires` (`expires_at`)
+  + CONSTRAINT `admin_sessions_ibfk_1` FOREIGN KEY (`super_admin_id`) REFERENCES `super_admins` (`id`) ON DELETE CASCADE
+Table: alert_instances
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `acknowledged_by` (`acknowledged_by`)
+  + KEY `idx_rule_created` (`alert_rule_id`,`created_at`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_acknowledged` (`is_acknowledged`,`created_at`)
+  + KEY `idx_severity` (`severity`,`created_at`)
+  + CONSTRAINT `alert_instances_ibfk_1` FOREIGN KEY (`alert_rule_id`) REFERENCES `alert_rules` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `alert_instances_ibfk_2` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `alert_instances_ibfk_3` FOREIGN KEY (`acknowledged_by`) REFERENCES `super_admins` (`id`) ON DELETE SET NULL
+Table: alert_rules
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `created_by` (`created_by`)
+  + KEY `idx_active` (`is_active`)
+  + KEY `idx_condition_type` (`condition_type`)
+  + CONSTRAINT `alert_rules_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `super_admins` (`id`) ON DELETE SET NULL
+Table: announcement_reads
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `read_at` timestamp NOT NULL DEFAULT current_timestamp()
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_read` (`announcement_id`,`tenant_id`,`user_id`)
+  + KEY `user_id` (`user_id`)
+  + KEY `idx_announcement_reads_tenant` (`tenant_id`)
+  + CONSTRAINT `announcement_reads_ibfk_1` FOREIGN KEY (`announcement_id`) REFERENCES `admin_announcements` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `announcement_reads_ibfk_2` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `announcement_reads_ibfk_3` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+Table: announcements
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `created_by` (`created_by`)
+  + KEY `idx_active_dates` (`is_active`,`start_date`,`end_date`)
+  + KEY `idx_target` (`target_audience`)
+  + CONSTRAINT `announcements_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `super_admins` (`id`) ON DELETE SET NULL
+Table: api_performance_logs
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `tenant_id` (`tenant_id`)
+  + KEY `idx_endpoint_time` (`endpoint`,`created_at`)
+  + KEY `idx_slow_queries` (`response_time`,`created_at`)
+  + KEY `idx_errors` (`status_code`,`created_at`)
+  + CONSTRAINT `api_performance_logs_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE SET NULL
+Table: appointments
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `guest_count` tinyint(3) unsigned DEFAULT NULL
+  + `payment_reference` varchar(100) DEFAULT NULL
+  + PRIMARY KEY (`id`)
+  + KEY `service_id` (`service_id`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_date` (`appointment_date`)
+  + KEY `idx_client` (`client_id`)
+  + KEY `idx_staff` (`staff_id`)
+  + KEY `idx_status` (`status`)
+  + KEY `idx_datetime` (`appointment_date`,`start_time`)
+  + KEY `idx_appointments_table` (`table_id`,`appointment_date`,`start_time`)
+  + KEY `idx_appointments_training` (`training_session_id`)
+  + KEY `idx_appointments_patient` (`patient_id`)
+  + CONSTRAINT `appointments_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `appointments_ibfk_2` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `appointments_ibfk_3` FOREIGN KEY (`service_id`) REFERENCES `services` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `appointments_ibfk_4` FOREIGN KEY (`staff_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `fk_appointments_patient` FOREIGN KEY (`patient_id`) REFERENCES `medical_patients` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `fk_appointments_table` FOREIGN KEY (`table_id`) REFERENCES `restaurant_tables` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `fk_appointments_training_session` FOREIGN KEY (`training_session_id`) REFERENCES `training_sessions` (`id`) ON DELETE SET NULL
+Table: billing_transactions
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `invoice_number` (`invoice_number`)
+  + KEY `idx_tenant_status` (`tenant_id`,`status`)
+  + KEY `idx_created_at` (`created_at`)
+  + KEY `idx_invoice_number` (`invoice_number`)
+  + CONSTRAINT `billing_transactions_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: broadcast_emails
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `created_by` (`created_by`)
+  + KEY `idx_status` (`status`)
+  + KEY `idx_scheduled` (`scheduled_at`)
+  + CONSTRAINT `broadcast_emails_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `super_admins` (`id`) ON DELETE SET NULL
+Table: client_notifications
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `sent_by` (`sent_by`)
+  + KEY `idx_client` (`client_id`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_appointment` (`appointment_id`)
+  + KEY `idx_created` (`created_at`)
+  + CONSTRAINT `client_notifications_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `client_notifications_ibfk_2` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `client_notifications_ibfk_3` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `client_notifications_ibfk_4` FOREIGN KEY (`sent_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+Table: clients
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_email` (`email`)
+  + KEY `idx_phone` (`phone`)
+  + KEY `idx_last_name` (`last_name`)
+  + KEY `idx_last_visit` (`last_visit_date`)
+  + CONSTRAINT `clients_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: email_deliveries
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_broadcast` (`broadcast_email_id`,`status`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + CONSTRAINT `email_deliveries_ibfk_1` FOREIGN KEY (`broadcast_email_id`) REFERENCES `broadcast_emails` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `email_deliveries_ibfk_2` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: failed_login_attempts
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_email_time` (`email`,`attempted_at`)
+  + KEY `idx_ip_time` (`ip_address`,`attempted_at`)
+Table: feature_flag_checks
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `tenant_id` (`tenant_id`)
+  + KEY `idx_flag_tenant` (`feature_flag_id`,`tenant_id`,`checked_at`)
+  + KEY `idx_checked_at` (`checked_at`)
+  + CONSTRAINT `feature_flag_checks_ibfk_1` FOREIGN KEY (`feature_flag_id`) REFERENCES `feature_flags` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `feature_flag_checks_ibfk_2` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: feature_flags
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `flag_key` (`flag_key`)
+  + KEY `created_by` (`created_by`)
+  + KEY `idx_flag_key` (`flag_key`)
+  + KEY `idx_enabled` (`is_enabled`)
+  + CONSTRAINT `feature_flags_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `super_admins` (`id`) ON DELETE SET NULL
+Table: impersonation_sessions
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `user_id` (`user_id`)
+  + KEY `tenant_id` (`tenant_id`)
+  + KEY `idx_token_hash` (`token_hash`)
+  + KEY `idx_super_admin` (`super_admin_id`,`is_active`)
+  + KEY `idx_expires` (`expires_at`,`is_active`)
+  + CONSTRAINT `impersonation_sessions_ibfk_1` FOREIGN KEY (`super_admin_id`) REFERENCES `super_admins` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `impersonation_sessions_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `impersonation_sessions_ibfk_3` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: marketing_campaigns
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_status` (`status`)
+  + KEY `idx_scheduled` (`scheduled_for`)
+  + KEY `idx_type` (`campaign_type`)
+Table: medical_allergies
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant_allergies` (`tenant_id`)
+  + KEY `idx_patient` (`patient_id`)
+  + KEY `idx_severity` (`tenant_id`,`severity`)
+  + CONSTRAINT `medical_allergies_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_allergies_ibfk_2` FOREIGN KEY (`patient_id`) REFERENCES `medical_patients` (`id`) ON DELETE CASCADE
+Table: medical_conditions
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant_conditions` (`tenant_id`)
+  + KEY `idx_patient` (`patient_id`)
+  + KEY `idx_status` (`tenant_id`,`status`)
+  + CONSTRAINT `medical_conditions_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_conditions_ibfk_2` FOREIGN KEY (`patient_id`) REFERENCES `medical_patients` (`id`) ON DELETE CASCADE
+Table: medical_lab_results
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `record_id` (`record_id`)
+  + KEY `ordered_by` (`ordered_by`)
+  + KEY `idx_tenant_results` (`tenant_id`)
+  + KEY `idx_patient` (`patient_id`)
+  + KEY `idx_test_date` (`tenant_id`,`test_date`)
+  + KEY `idx_status` (`tenant_id`,`status`)
+  + CONSTRAINT `medical_lab_results_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_lab_results_ibfk_2` FOREIGN KEY (`patient_id`) REFERENCES `medical_patients` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_lab_results_ibfk_3` FOREIGN KEY (`record_id`) REFERENCES `medical_records` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `medical_lab_results_ibfk_4` FOREIGN KEY (`ordered_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+Table: medical_medications
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant_medications` (`tenant_id`)
+  + KEY `idx_patient` (`patient_id`)
+  + KEY `idx_active` (`tenant_id`,`is_active`)
+  + CONSTRAINT `medical_medications_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_medications_ibfk_2` FOREIGN KEY (`patient_id`) REFERENCES `medical_patients` (`id`) ON DELETE CASCADE
+Table: medical_patients
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `client_id` int(11) NOT NULL
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_patient_number` (`tenant_id`,`patient_number`)
+  + KEY `idx_tenant_patients` (`tenant_id`)
+  + KEY `idx_client` (`client_id`)
+  + CONSTRAINT `medical_patients_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_patients_ibfk_2` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE
+Table: medical_prescriptions
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `refills_allowed` tinyint(3) unsigned NOT NULL DEFAULT 0
+  + `refills_used` tinyint(3) unsigned NOT NULL DEFAULT 0
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_prescription_number` (`tenant_id`,`prescription_number`)
+  + KEY `record_id` (`record_id`)
+  + KEY `idx_tenant_prescriptions` (`tenant_id`)
+  + KEY `idx_patient` (`patient_id`)
+  + KEY `idx_doctor` (`doctor_id`)
+  + KEY `idx_status` (`tenant_id`,`status`)
+  + CONSTRAINT `medical_prescriptions_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_prescriptions_ibfk_2` FOREIGN KEY (`patient_id`) REFERENCES `medical_patients` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_prescriptions_ibfk_3` FOREIGN KEY (`record_id`) REFERENCES `medical_records` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `medical_prescriptions_ibfk_4` FOREIGN KEY (`doctor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+Table: medical_records
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_record_number` (`tenant_id`,`record_number`)
+  + KEY `appointment_id` (`appointment_id`)
+  + KEY `idx_tenant_records` (`tenant_id`)
+  + KEY `idx_patient` (`patient_id`)
+  + KEY `idx_doctor` (`doctor_id`)
+  + KEY `idx_visit_date` (`tenant_id`,`visit_date`)
+  + CONSTRAINT `medical_records_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_records_ibfk_2` FOREIGN KEY (`patient_id`) REFERENCES `medical_patients` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_records_ibfk_3` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `medical_records_ibfk_4` FOREIGN KEY (`doctor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+Table: medical_vaccinations
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `dose_number` tinyint(3) unsigned DEFAULT NULL
+  + PRIMARY KEY (`id`)
+  + KEY `administered_by` (`administered_by`)
+  + KEY `idx_tenant_vaccinations` (`tenant_id`)
+  + KEY `idx_patient` (`patient_id`)
+  + KEY `idx_vaccine` (`tenant_id`,`vaccine_name`)
+  + KEY `idx_date` (`tenant_id`,`vaccination_date`)
+  + CONSTRAINT `medical_vaccinations_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_vaccinations_ibfk_2` FOREIGN KEY (`patient_id`) REFERENCES `medical_patients` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `medical_vaccinations_ibfk_3` FOREIGN KEY (`administered_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+Table: password_reset_tokens
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `token` (`token`)
+  + KEY `idx_token` (`token`)
+  + KEY `idx_user_id` (`user_id`)
+  + KEY `idx_expires_at` (`expires_at`)
+  + KEY `idx_email` (`email`)
+  + KEY `tenant_id` (`tenant_id`)
+  + CONSTRAINT `password_reset_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `password_reset_tokens_ibfk_2` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: promotion_usages
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_promotion` (`promotion_id`)
+  + KEY `idx_client` (`client_id`)
+  + KEY `idx_used_at` (`used_at`)
+Table: promotions
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_code_per_tenant` (`tenant_id`,`code`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_active` (`is_active`)
+  + KEY `idx_dates` (`valid_from`,`valid_until`)
+  + KEY `idx_code` (`code`)
+Table: push_subscriptions
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_client` (`client_id`)
+  + KEY `idx_user` (`user_id`)
+  + KEY `idx_endpoint` (`endpoint`(255))
+  + CONSTRAINT `push_subscriptions_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `push_subscriptions_ibfk_2` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `push_subscriptions_ibfk_3` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+Table: reminder_logs
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_reminder` (`appointment_id`,`reminder_type`,`channel`)
+  + KEY `idx_appointment` (`appointment_id`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_sent_at` (`sent_at`)
+  + KEY `client_id` (`client_id`)
+  + CONSTRAINT `reminder_logs_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `reminder_logs_ibfk_2` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `reminder_logs_ibfk_3` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE
+Table: restaurant_menus
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant_menus` (`tenant_id`)
+  + KEY `idx_menu_category` (`tenant_id`,`category`,`is_active`)
+  + KEY `idx_menu_availability` (`tenant_id`,`is_available`)
+  + CONSTRAINT `restaurant_menus_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: restaurant_order_items
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `quantity` smallint(5) unsigned NOT NULL DEFAULT 1
+  + PRIMARY KEY (`id`)
+  + KEY `menu_item_id` (`menu_item_id`)
+  + KEY `idx_order_items` (`order_id`)
+  + KEY `idx_tenant_items` (`tenant_id`)
+  + CONSTRAINT `restaurant_order_items_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `restaurant_order_items_ibfk_2` FOREIGN KEY (`order_id`) REFERENCES `restaurant_orders` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `restaurant_order_items_ibfk_3` FOREIGN KEY (`menu_item_id`) REFERENCES `restaurant_menus` (`id`) ON DELETE SET NULL
+Table: restaurant_orders
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `guest_count` tinyint(3) unsigned DEFAULT NULL
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_order_number` (`tenant_id`,`order_number`)
+  + KEY `client_id` (`client_id`)
+  + KEY `staff_id` (`staff_id`)
+  + KEY `appointment_id` (`appointment_id`)
+  + KEY `idx_tenant_orders` (`tenant_id`)
+  + KEY `idx_order_date` (`tenant_id`,`order_date`,`order_time`)
+  + KEY `idx_order_status` (`tenant_id`,`status`)
+  + KEY `idx_table_orders` (`table_id`,`status`)
+  + KEY `idx_orders_type` (`tenant_id`,`order_type`)
+  + KEY `idx_orders_date` (`tenant_id`,`order_date`)
+  + CONSTRAINT `restaurant_orders_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `restaurant_orders_ibfk_2` FOREIGN KEY (`table_id`) REFERENCES `restaurant_tables` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `restaurant_orders_ibfk_3` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `restaurant_orders_ibfk_4` FOREIGN KEY (`staff_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `restaurant_orders_ibfk_5` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`id`) ON DELETE SET NULL
+Table: restaurant_reservations
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `confirmation_code` (`confirmation_code`)
+  + KEY `table_id` (`table_id`)
+  + KEY `idx_reservation_date` (`tenant_id`,`reservation_date`)
+  + KEY `idx_confirmation_code` (`confirmation_code`)
+  + CONSTRAINT `restaurant_reservations_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `restaurant_reservations_ibfk_2` FOREIGN KEY (`table_id`) REFERENCES `restaurant_tables` (`id`) ON DELETE SET NULL
+Table: restaurant_tables
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `capacity` tinyint(3) unsigned NOT NULL
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_table_per_section` (`tenant_id`,`table_number`,`section`)
+  + UNIQUE KEY `qr_code` (`qr_code`)
+  + KEY `idx_tenant_tables` (`tenant_id`)
+  + KEY `idx_table_availability` (`tenant_id`,`is_available`,`is_active`)
+  + CONSTRAINT `restaurant_tables_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: services
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_active` (`is_active`)
+  + KEY `idx_category` (`category`)
+  + KEY `idx_price` (`price`)
+  + CONSTRAINT `services_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: settings
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_setting_per_tenant` (`tenant_id`,`setting_key`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_key` (`setting_key`)
+  + CONSTRAINT `settings_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: slow_query_logs
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_hash` (`query_hash`)
+  + KEY `idx_execution_time` (`execution_time`,`created_at`)
+Table: storage_usage
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant` (`tenant_id`,`last_calculated_at`)
+  + CONSTRAINT `storage_usage_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: subscription_changes
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `admin_id` (`admin_id`)
+  + KEY `idx_tenant_date` (`tenant_id`,`effective_date`)
+  + KEY `idx_change_type` (`change_type`)
+  + CONSTRAINT `subscription_changes_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `subscription_changes_ibfk_2` FOREIGN KEY (`admin_id`) REFERENCES `super_admins` (`id`) ON DELETE SET NULL
+Table: super_admins
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `email` (`email`)
+  + KEY `idx_email` (`email`)
+  + KEY `idx_active` (`is_active`)
+  + KEY `idx_last_login` (`last_login_at`)
+  + KEY `fk_superadmin_role` (`role_id`)
+  + CONSTRAINT `fk_superadmin_role` FOREIGN KEY (`role_id`) REFERENCES `admin_roles` (`id`) ON DELETE SET NULL
+Table: support_tickets
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `ticket_number` (`ticket_number`)
+  + KEY `user_id` (`user_id`)
+  + KEY `idx_ticket_number` (`ticket_number`)
+  + KEY `idx_tenant` (`tenant_id`,`status`)
+  + KEY `idx_assigned` (`assigned_to`,`status`)
+  + KEY `idx_status` (`status`,`priority`)
+  + KEY `idx_created` (`created_at`)
+  + CONSTRAINT `support_tickets_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `support_tickets_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `support_tickets_ibfk_3` FOREIGN KEY (`assigned_to`) REFERENCES `super_admins` (`id`) ON DELETE SET NULL
+Table: system_error_logs
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `user_id` (`user_id`)
+  + KEY `resolved_by` (`resolved_by`)
+  + KEY `idx_error_type` (`error_type`,`created_at`)
+  + KEY `idx_severity` (`severity`,`resolved`,`created_at`)
+  + KEY `idx_tenant` (`tenant_id`,`created_at`)
+  + KEY `idx_endpoint` (`endpoint`,`created_at`)
+  + CONSTRAINT `system_error_logs_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `system_error_logs_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  + CONSTRAINT `system_error_logs_ibfk_3` FOREIGN KEY (`resolved_by`) REFERENCES `super_admins` (`id`) ON DELETE SET NULL
+Table: system_health_checks
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_check_type` (`check_type`,`checked_at`)
+  + KEY `idx_status` (`status`,`checked_at`)
+Table: system_settings
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `setting_key` (`setting_key`)
+  + KEY `updated_by` (`updated_by`)
+  + KEY `idx_key` (`setting_key`)
+  + KEY `idx_public` (`is_public`)
+  + CONSTRAINT `system_settings_ibfk_1` FOREIGN KEY (`updated_by`) REFERENCES `super_admins` (`id`) ON DELETE SET NULL
+Table: tenant_feature_overrides
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_tenant_feature` (`tenant_id`,`feature_flag_id`)
+  + KEY `feature_flag_id` (`feature_flag_id`)
+  + KEY `created_by` (`created_by`)
+  + CONSTRAINT `tenant_feature_overrides_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `tenant_feature_overrides_ibfk_2` FOREIGN KEY (`feature_flag_id`) REFERENCES `feature_flags` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `tenant_feature_overrides_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `super_admins` (`id`) ON DELETE SET NULL
+Table: tenants
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `subscription_status` enum('trial','active','suspended','cancelled') DEFAULT 'trial'
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `slug` (`slug`)
+  + KEY `idx_slug` (`slug`)
+  + KEY `idx_email` (`email`)
+  + KEY `idx_subscription_status` (`subscription_status`)
+  + KEY `idx_tenants_currency` (`currency`)
+  + KEY `idx_trial_ends` (`trial_ends_at`)
+  + KEY `idx_onboarding_status` (`onboarding_status`)
+  + KEY `idx_business_type` (`business_type`)
+  + KEY `idx_tenants_slug_active` (`slug`,`is_active`)
+  + KEY `idx_tenants_business_type` (`business_type`)
+  + KEY `idx_tenants_active_slug` (`slug`,`is_active`)
+Table: ticket_messages
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_ticket` (`ticket_id`,`created_at`)
+  + CONSTRAINT `ticket_messages_ibfk_1` FOREIGN KEY (`ticket_id`) REFERENCES `support_tickets` (`id`) ON DELETE CASCADE
+Table: training_attendance
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_enrollment_date` (`enrollment_id`,`session_date`)
+  + KEY `idx_tenant_attendance` (`tenant_id`)
+  + KEY `idx_enrollment` (`enrollment_id`)
+  + KEY `idx_date` (`tenant_id`,`session_date`)
+  + CONSTRAINT `training_attendance_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `training_attendance_ibfk_2` FOREIGN KEY (`enrollment_id`) REFERENCES `training_enrollments` (`id`) ON DELETE CASCADE
+Table: training_certificates
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_certificate_number` (`tenant_id`,`certificate_number`)
+  + KEY `idx_tenant_certificates` (`tenant_id`)
+  + KEY `idx_enrollment` (`enrollment_id`)
+  + KEY `idx_verification` (`verification_code`)
+  + CONSTRAINT `training_certificates_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `training_certificates_ibfk_2` FOREIGN KEY (`enrollment_id`) REFERENCES `training_enrollments` (`id`) ON DELETE CASCADE
+Table: training_courses
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `max_students` tinyint(3) unsigned DEFAULT NULL
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant_courses` (`tenant_id`)
+  + KEY `idx_category` (`tenant_id`,`category`,`is_active`)
+  + KEY `idx_level` (`tenant_id`,`level`)
+  + KEY `idx_delivery_mode` (`tenant_id`,`delivery_mode`)
+  + CONSTRAINT `training_courses_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+Table: training_enrollments
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_enrollment_number` (`tenant_id`,`enrollment_number`)
+  + KEY `idx_tenant_enrollments` (`tenant_id`)
+  + KEY `idx_session` (`session_id`)
+  + KEY `idx_student` (`student_id`)
+  + KEY `idx_status` (`tenant_id`,`status`)
+  + KEY `idx_payment_status` (`tenant_id`,`payment_status`)
+  + CONSTRAINT `training_enrollments_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `training_enrollments_ibfk_2` FOREIGN KEY (`session_id`) REFERENCES `training_sessions` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `training_enrollments_ibfk_3` FOREIGN KEY (`student_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE
+Table: training_materials
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + KEY `idx_tenant_materials` (`tenant_id`)
+  + KEY `idx_course` (`course_id`)
+  + KEY `idx_type` (`tenant_id`,`material_type`)
+  + CONSTRAINT `training_materials_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `training_materials_ibfk_2` FOREIGN KEY (`course_id`) REFERENCES `training_courses` (`id`) ON DELETE CASCADE
+Table: training_sessions
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + `max_students` tinyint(3) unsigned DEFAULT NULL
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_session_number` (`tenant_id`,`session_number`)
+  + KEY `idx_tenant_sessions` (`tenant_id`)
+  + KEY `idx_course` (`course_id`)
+  + KEY `idx_instructor` (`instructor_id`)
+  + KEY `idx_dates` (`tenant_id`,`start_date`,`end_date`)
+  + KEY `idx_status` (`tenant_id`,`status`)
+  + CONSTRAINT `training_sessions_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `training_sessions_ibfk_2` FOREIGN KEY (`course_id`) REFERENCES `training_courses` (`id`) ON DELETE CASCADE
+  + CONSTRAINT `training_sessions_ibfk_3` FOREIGN KEY (`instructor_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+Table: users
+  + `id` int(11) NOT NULL AUTO_INCREMENT
+  + PRIMARY KEY (`id`)
+  + UNIQUE KEY `unique_email_per_tenant` (`tenant_id`,`email`)
+  + UNIQUE KEY `idx_users_google_id` (`google_id`)
+  + KEY `idx_tenant` (`tenant_id`)
+  + KEY `idx_email` (`email`)
+  + KEY `idx_role` (`role`)
+  + KEY `idx_active` (`is_active`)
+  + CONSTRAINT `users_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
