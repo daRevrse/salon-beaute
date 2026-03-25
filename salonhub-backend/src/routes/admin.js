@@ -1003,11 +1003,11 @@ router.get("/subscription-plans", superAdminAuth, requirePermission("billing", "
  */
 router.post("/subscription-plans", superAdminAuth, requirePermission("billing", "edit"), async (req, res) => {
   try {
-    const { name, display_name, description, price, currency, interval_type, stripe_price_id, features, is_active } = req.body;
+    const { name, display_name, description, price, currency, interval_type, stripe_price_id, features, technical_features, is_active } = req.body;
     await pool.query(
-      `INSERT INTO subscription_plans (name, display_name, description, price, currency, interval_type, stripe_price_id, features, is_active) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, display_name, description, price, currency || 'EUR', interval_type || 'month', stripe_price_id, JSON.stringify(features || []), is_active !== undefined ? is_active : true]
+      `INSERT INTO subscription_plans (name, display_name, description, price, currency, interval_type, stripe_price_id, features, technical_features, is_active) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name, display_name, description, price, currency || 'EUR', interval_type || 'month', stripe_price_id, JSON.stringify(features || []), JSON.stringify(technical_features || []), is_active !== undefined ? is_active : true]
     );
     res.json({ success: true });
   } catch (error) {
@@ -1020,10 +1020,10 @@ router.post("/subscription-plans", superAdminAuth, requirePermission("billing", 
  */
 router.put("/subscription-plans/:id", superAdminAuth, requirePermission("billing", "edit"), async (req, res) => {
   try {
-    const { display_name, description, price, stripe_price_id, features, is_active } = req.body;
+    const { display_name, description, price, stripe_price_id, features, technical_features, is_active } = req.body;
     await pool.query(
-      `UPDATE subscription_plans SET display_name=?, description=?, price=?, stripe_price_id=?, features=?, is_active=? WHERE id=?`,
-      [display_name, description, price, stripe_price_id, JSON.stringify(features || []), is_active, req.params.id]
+      `UPDATE subscription_plans SET display_name=?, description=?, price=?, stripe_price_id=?, features=?, technical_features=?, is_active=? WHERE id=?`,
+      [display_name, description, price, stripe_price_id, JSON.stringify(features || []), JSON.stringify(technical_features || []), is_active, req.params.id]
     );
     res.json({ success: true });
   } catch (error) {
@@ -2190,6 +2190,27 @@ router.put(
       res.json({ success: true, message: "Statut du secteur mis à jour" });
     } catch (error) {
       console.error("Erreur PUT /system/sectors/:id/status:", error);
+      res.status(500).json({ success: false, error: "Erreur serveur" });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/system/features
+ * Liste de toutes les fonctionnalités techniques possibles
+ */
+router.get(
+  "/system/features",
+  superAdminAuth,
+  requirePermission("system", "manage"),
+  async (req, res) => {
+    try {
+      const [features] = await pool.query(
+        "SELECT * FROM system_features ORDER BY category, display_name ASC"
+      );
+      res.json({ success: true, features });
+    } catch (error) {
+      console.error("Erreur GET /system/features:", error);
       res.status(500).json({ success: false, error: "Erreur serveur" });
     }
   }

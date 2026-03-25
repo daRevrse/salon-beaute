@@ -6,8 +6,8 @@ import DashboardLayout from '../../components/common/DashboardLayout';
 import { getBusinessTypeConfig } from '../../utils/businessTypeConfig';
 // import Button removed
 const Wallet = () => {
-    const { user, tenant } = useAuth();
-    const isPro = ['pro', 'professional', 'custom', 'enterprise', 'PRO', 'CUSTOM'].includes(tenant?.subscription_plan);
+    const { user, tenant, hasFeature } = useAuth();
+    const isPro = hasFeature('wallet');
     const businessType = tenant?.business_type || "beauty";
     const config = getBusinessTypeConfig(businessType);
     

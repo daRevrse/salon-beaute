@@ -9,57 +9,17 @@ const router = express.Router();
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { query } = require("../config/database");
-const { authMiddleware, roleMiddleware } = require("../middleware/auth");
+const { authMiddleware, roleMiddleware, featureMiddleware } = require("../middleware/auth");
 const { tenantMiddleware } = require("../middleware/tenant");
-const { API_KEY_PREFIX, API_ALLOWED_PLANS } = require("../middleware/apiKey");
+const { API_KEY_PREFIX } = require("../middleware/apiKey");
+
+const apiFeatureGate = featureMiddleware('api_access');
 
 const MAX_KEYS_PER_TENANT = 5;
 
 // Tous les routes nécessitent auth JWT + tenant
 router.use(authMiddleware, tenantMiddleware);
 
-/**
- * Middleware: vérifier que le plan autorise les clés API
- */
-const checkApiPlan = async (req, res, next) => {
-  try {
-    const [tenant] = await query(
-      "SELECT subscription_plan, subscription_status, trial_ends_at FROM tenants WHERE id = ?",
-      [req.tenantId]
-    );
-
-    if (!tenant) {
-      return res.status(404).json({ success: false, error: "Tenant introuvable" });
-    }
-
-    // Trial actif → autorisé
-    if (tenant.subscription_status === "trial") {
-      if (tenant.trial_ends_at && new Date(tenant.trial_ends_at) < new Date()) {
-        return res.status(403).json({
-          success: false,
-          error: "Période d'essai expirée",
-          message: "Passez au plan Developer ou Custom pour utiliser les clés API.",
-        });
-      }
-      return next();
-    }
-
-    // Plan developer ou custom → autorisé
-    if (API_ALLOWED_PLANS.includes(tenant.subscription_plan)) {
-      return next();
-    }
-
-    return res.status(403).json({
-      success: false,
-      error: "Plan insuffisant",
-      message:
-        "Les clés API nécessitent un plan Developer (14,99€/mois) ou Custom.",
-    });
-  } catch (error) {
-    console.error("Erreur checkApiPlan:", error);
-    return res.status(500).json({ success: false, error: "Erreur serveur" });
-  }
-};
 
 /**
  * POST /api/api-keys
@@ -69,7 +29,7 @@ const checkApiPlan = async (req, res, next) => {
 router.post(
   "/",
   roleMiddleware(["owner", "admin"]),
-  checkApiPlan,
+  apiFeatureGate,
   async (req, res) => {
     try {
       const { name, scopes, expires_at } = req.body;
@@ -184,6 +144,7 @@ router.post(
 router.get(
   "/",
   roleMiddleware(["owner", "admin"]),
+  apiFeatureGate,
   async (req, res) => {
     try {
       const keys = await query(
@@ -220,6 +181,7 @@ router.get(
 router.patch(
   "/:id",
   roleMiddleware(["owner", "admin"]),
+  apiFeatureGate,
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -294,6 +256,7 @@ router.patch(
 router.delete(
   "/:id",
   roleMiddleware(["owner", "admin"]),
+  apiFeatureGate,
   async (req, res) => {
     try {
       const { id } = req.params;

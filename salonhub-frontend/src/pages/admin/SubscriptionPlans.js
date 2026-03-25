@@ -10,6 +10,7 @@ const API_URL = process.env.REACT_APP_API_URL;
 function SubscriptionPlans() {
   const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
+  const [availableFeatures, setAvailableFeatures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingPlan, setEditingPlan] = useState(null);
   const { toast, hideToast, success, error: showError } = useToast();
@@ -23,7 +24,19 @@ function SubscriptionPlans() {
       return;
     }
     loadPlans();
+    loadAvailableFeatures();
   }, [navigate]);
+
+  const loadAvailableFeatures = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/admin/system/features`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      setAvailableFeatures(res.data.features || []);
+    } catch (error) {
+      console.error("Erreur chargement features:", error);
+    }
+  };
 
   const loadPlans = async () => {
     try {
@@ -65,6 +78,21 @@ function SubscriptionPlans() {
       loadPlans();
     } catch (error) {
       showError("Erreur lors de l'enregistrement");
+    }
+  };
+
+  const toggleTechnicalFeature = (featureKey) => {
+    const currentFeatures = editingPlan.technical_features || [];
+    if (currentFeatures.includes(featureKey)) {
+      setEditingPlan({
+        ...editingPlan,
+        technical_features: currentFeatures.filter(f => f !== featureKey)
+      });
+    } else {
+      setEditingPlan({
+        ...editingPlan,
+        technical_features: [...currentFeatures, featureKey]
+      });
     }
   };
 
@@ -141,8 +169,27 @@ function SubscriptionPlans() {
                 </div>
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 13, color: "#94a3b8", marginBottom: 6 }}>Fonctionnalités (une par ligne)</label>
-                <textarea rows="4" value={typeof editingPlan.features === "string" ? editingPlan.features : (editingPlan.features || []).join("\\n")} onChange={e => setEditingPlan({...editingPlan, features: e.target.value})} style={{ width: "100%", padding: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 14 }} />
+                <label style={{ display: "block", fontSize: 13, color: "#94a3b8", marginBottom: 6 }}>Fonctionnalités marketing (affichage une par ligne)</label>
+                <textarea rows="3" value={typeof editingPlan.features === "string" ? editingPlan.features : (editingPlan.features || []).join("\n")} onChange={e => setEditingPlan({...editingPlan, features: e.target.value})} style={{ width: "100%", padding: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 14 }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 13, color: "#94a3b8", marginBottom: 12 }}>Fonctionnalités techniques (Gating API/UI)</label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12, maxHeight: 200, overflowY: "auto", padding: 16, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12 }}>
+                  {availableFeatures.map(f => (
+                    <label key={f.feature_key} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13, color: "#cbd5e1" }}>
+                      <input 
+                        type="checkbox" 
+                        checked={(editingPlan.technical_features || []).includes(f.feature_key)}
+                        onChange={() => toggleTechnicalFeature(f.feature_key)}
+                        style={{ width: 16, height: 16, borderRadius: 4, cursor: "pointer", accentColor: "#6366f1" }} 
+                      />
+                      <div>
+                        <div style={{ fontWeight: 600, color: "#f8fafc" }}>{f.display_name}</div>
+                        <div style={{ fontSize: 11, color: "#64748b" }}>{f.category}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
               </div>
               <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
                 <button type="submit" style={{ padding: "10px 24px", background: "#34d399", color: "#064e3b", borderRadius: 8, fontWeight: 600, border: "none", cursor: "pointer" }}>Enregistrer</button>
@@ -160,7 +207,11 @@ function SubscriptionPlans() {
                     <p style={{ fontSize: 13, color: "#94a3b8", margin: "4px 0 0" }}>{plan.description}</p>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => setEditingPlan({...plan, features: Array.isArray(plan.features) ? plan.features : (typeof plan.features === 'string' ? JSON.parse(plan.features || '[]') : [])})} style={{ background: "transparent", border: "none", color: "#818cf8", cursor: "pointer", padding: 4 }}><PencilIcon style={{width: 18}}/></button>
+                    <button onClick={() => setEditingPlan({
+                      ...plan, 
+                      features: Array.isArray(plan.features) ? plan.features : (typeof plan.features === 'string' ? JSON.parse(plan.features || '[]') : []),
+                      technical_features: Array.isArray(plan.technical_features) ? plan.technical_features : (typeof plan.technical_features === 'string' ? JSON.parse(plan.technical_features || '[]') : [])
+                    })} style={{ background: "transparent", border: "none", color: "#818cf8", cursor: "pointer", padding: 4 }}><PencilIcon style={{width: 18}}/></button>
                     {plan.is_active && <button onClick={() => handleDelete(plan.id)} style={{ background: "transparent", border: "none", color: "#fb7185", cursor: "pointer", padding: 4 }}><TrashIcon style={{width: 18}}/></button>}
                   </div>
                 </div>

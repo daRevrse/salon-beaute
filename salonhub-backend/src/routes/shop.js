@@ -1,28 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, featureMiddleware } = require('../middleware/auth');
 const { tenantMiddleware } = require('../middleware/tenant');
 
-// Basic isPro middleware
-const isPro = async (req, res, next) => {
-    const { query } = require("../config/database");
-    try {
-        const [tenant] = await query("SELECT subscription_plan FROM tenants WHERE id = ?", [req.user?.tenant_id || req.tenantId]);
-        if (tenant && !['pro', 'professional', 'custom', 'enterprise', 'PRO', 'CUSTOM'].includes(tenant.subscription_plan)) {
-            return res.status(403).json({ error: 'Upgrade to PRO required' });
-        }
-    } catch (e) {
-        // tolerate missing column
-    }
-    next();
-};
+const shopFeatureGate = featureMiddleware('shop');
 
 const auth = [authMiddleware, tenantMiddleware];
 // --- ADMIN ROUTES (Shop Management) - Requires Login + Pro Plan ---
 
 // Manage Categories
-router.post('/admin/categories', auth, isPro, async (req, res) => {
+router.post('/admin/categories', auth, shopFeatureGate, async (req, res) => {
     try {
         const result = await query("INSERT INTO categories (tenant_id, name) VALUES (?, ?)", [req.tenantId, req.body.name]);
         res.status(201).json({ id: result.insertId, name: req.body.name, tenant_id: req.tenantId });
@@ -36,14 +24,14 @@ router.get('/admin/categories', auth, async (req, res) => {
     } catch(err) { res.status(500).json({error: err.message}); }
 });
 
-router.put('/admin/categories/:id', auth, isPro, async (req, res) => {
+router.put('/admin/categories/:id', auth, shopFeatureGate, async (req, res) => {
     try {
         await query("UPDATE categories SET name = ? WHERE id = ? AND tenant_id = ?", [req.body.name, req.params.id, req.tenantId]);
         res.json({ id: req.params.id, name: req.body.name, tenant_id: req.tenantId });
     } catch(err) { res.status(500).json({error: err.message}); }
 });
 
-router.delete('/admin/categories/:id', auth, isPro, async (req, res) => {
+router.delete('/admin/categories/:id', auth, shopFeatureGate, async (req, res) => {
     try {
         await query("DELETE FROM categories WHERE id = ? AND tenant_id = ?", [req.params.id, req.tenantId]);
         res.json({ success: true });
@@ -51,7 +39,7 @@ router.delete('/admin/categories/:id', auth, isPro, async (req, res) => {
 });
 
 // Manage Products
-router.post('/admin/products', auth, isPro, async (req, res) => {
+router.post('/admin/products', auth, shopFeatureGate, async (req, res) => {
     try {
         const { name, description, price, stock, categoryId, images } = req.body;
         
@@ -92,7 +80,7 @@ router.get('/admin/products', auth, async (req, res) => {
     } catch(err) { res.status(500).json({error: err.message}); }
 });
 
-router.put('/admin/products/:id', auth, isPro, async (req, res) => {
+router.put('/admin/products/:id', auth, shopFeatureGate, async (req, res) => {
      try {
         const { name, description, price, stock, categoryId, images, is_active } = req.body;
         
@@ -126,7 +114,7 @@ router.put('/admin/products/:id', auth, isPro, async (req, res) => {
     } catch(err) { res.status(500).json({error: err.message}); }
 });
 
-router.delete('/admin/products/:id', auth, isPro, async (req, res) => {
+router.delete('/admin/products/:id', auth, shopFeatureGate, async (req, res) => {
     try {
         await query("DELETE FROM products WHERE id = ? AND tenant_id = ?", [req.params.id, req.tenantId]);
         res.json({ success: true });
@@ -134,7 +122,7 @@ router.delete('/admin/products/:id', auth, isPro, async (req, res) => {
 });
 
 // Manage Orders
-router.get('/admin/orders', auth, isPro, async (req, res) => {
+router.get('/admin/orders', auth, shopFeatureGate, async (req, res) => {
      try {
         const orders = await query("SELECT * FROM orders WHERE tenant_id = ? ORDER BY created_at DESC", [req.tenantId]);
         
@@ -160,7 +148,7 @@ router.get('/admin/orders', auth, isPro, async (req, res) => {
     } catch(err) { res.status(500).json({error: err.message}); }
 });
 
-router.put('/admin/orders/:id/status', auth, isPro, async (req, res) => {
+router.put('/admin/orders/:id/status', auth, shopFeatureGate, async (req, res) => {
     try {
         const { status } = req.body;
         await query("UPDATE orders SET status = ? WHERE id = ? AND tenant_id = ?", [status, req.params.id, req.tenantId]);

@@ -82,10 +82,12 @@ router.get("/salon", checkScope("settings:read"), async (req, res) => {
     const tenantId = req.tenantId;
 
     const tenant = await db.query(
-      `SELECT id, name, slug, phone, email, address, city, postal_code, logo_url, banner_url, slogan, currency, business_type,
-              subscription_status, subscription_plan, trial_ends_at, onboarding_status
-       FROM tenants
-       WHERE id = ?`,
+      `SELECT t.id, t.name, t.slug, t.phone, t.email, t.address, t.city, t.postal_code, t.logo_url, t.banner_url, t.slogan, t.currency, t.business_type,
+              t.subscription_status, t.subscription_plan, t.trial_ends_at, t.onboarding_status,
+              sp.technical_features as plan_features
+       FROM tenants t
+       LEFT JOIN subscription_plans sp ON t.subscription_plan = sp.name
+       WHERE t.id = ?`,
       [tenantId]
     );
 
@@ -109,7 +111,10 @@ router.get("/salon", checkScope("settings:read"), async (req, res) => {
 
     res.json({
       success: true,
-      data: tenantData,
+      data: {
+        ...tenantData,
+        features: Array.isArray(tenantData.plan_features) ? tenantData.plan_features : (typeof tenantData.plan_features === 'string' ? JSON.parse(tenantData.plan_features || '[]') : []),
+      },
     });
   } catch (error) {
     console.error("Erreur lors de la récupération du salon:", error);
@@ -129,10 +134,12 @@ router.get("/subscription", checkScope("settings:read"), async (req, res) => {
     const tenantId = req.tenantId;
 
     const tenant = await db.query(
-      `SELECT subscription_status, subscription_plan, trial_ends_at,
-              subscription_started_at, stripe_customer_id, stripe_subscription_id
-       FROM tenants
-       WHERE id = ?`,
+      `SELECT t.subscription_status, t.subscription_plan, t.trial_ends_at,
+              t.subscription_started_at, t.stripe_customer_id, t.stripe_subscription_id,
+              sp.technical_features as plan_features
+       FROM tenants t
+       LEFT JOIN subscription_plans sp ON t.subscription_plan = sp.name
+       WHERE t.id = ?`,
       [tenantId]
     );
 
@@ -176,6 +183,7 @@ router.get("/subscription", checkScope("settings:read"), async (req, res) => {
         has_stripe_subscription: !!tenantData.stripe_subscription_id,
         is_trial_expired: isTrialExpired,
         days_remaining: daysRemaining,
+        features: Array.isArray(tenantData.plan_features) ? tenantData.plan_features : (typeof tenantData.plan_features === 'string' ? JSON.parse(tenantData.plan_features || '[]') : []),
       },
     });
   } catch (error) {

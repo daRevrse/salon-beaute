@@ -114,6 +114,98 @@ const roleMiddleware = (allowedRoles) => {
 };
 
 /**
+ * Middleware de vérification de fonctionnalité technique
+ * Vérifie que le plan du tenant possède la fonctionnalité demandée
+ *
+ * @param {String} featureKey - La clé technique (ex: 'shop', 'wallet', 'api_access')
+ */
+const featureMiddleware = (featureKey) => {
+  const db = require("../config/database");
+
+  return async (req, res, next) => {
+    try {
+      if (!req.user || !req.user.tenant_id) {
+        return res.status(401).json({
+          success: false,
+          error: "Non authentifié",
+        });
+      }
+
+      const tenantId = req.user.tenant_id;
+
+      // Récupérer les features du plan du tenant et son statut
+      const results = await db.query(
+        `SELECT t.subscription_status, t.trial_ends_at, sp.technical_features
+         FROM tenants t
+         LEFT JOIN subscription_plans sp ON t.subscription_plan = sp.name
+         WHERE t.id = ?`,
+        [tenantId]
+      );
+
+      if (results.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Tenant introuvable",
+        });
+      }
+
+      const { subscription_status, trial_ends_at, technical_features } = results[0];
+
+      // Vérifier le statut de l'abonnement
+      if (subscription_status === "expired" || subscription_status === "suspended" || subscription_status === "cancelled") {
+        return res.status(403).json({
+          success: false,
+          error: "Abonnement inactif",
+          message: "Votre abonnement n'est plus actif. Veuillez régulariser votre situation.",
+        });
+      }
+
+      // Cas du trial
+      if (subscription_status === "trial" && trial_ends_at) {
+        if (new Date(trial_ends_at) < new Date()) {
+          return res.status(403).json({
+            success: false,
+            error: "Période d'essai expirée",
+            message: "Votre période d'essai est terminée. Veuillez choisir un plan.",
+          });
+        }
+        // En trial, on autorise tout par défaut ou on suit le plan par défaut
+      }
+
+      // Si pas de features définies (plan inconnu ou error), on bloque par sécurité
+      if (!technical_features) {
+        // Optionnel: autoriser certaines features de base même sans plan
+        return res.status(403).json({
+          success: false,
+          error: "Aucun plan actif",
+          message: "Aucun plan d'abonnement n'est associé à votre compte.",
+        });
+      }
+
+      const features = Array.isArray(technical_features)
+        ? technical_features
+        : (typeof technical_features === 'string' ? JSON.parse(technical_features || '[]') : []);
+
+      if (!features.includes(featureKey)) {
+        return res.status(403).json({
+          success: false,
+          error: "Fonctionnalité restreinte",
+          message: `La fonctionnalité '${featureKey}' n'est pas incluse dans votre offre actuelle.`,
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error("Erreur featureMiddleware:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  };
+};
+
+/**
  * Helper: Générer un token JWT
  *
  * @param {Object} user - Données utilisateur
@@ -149,6 +241,7 @@ const decodeToken = (token) => {
 module.exports = {
   authMiddleware,
   roleMiddleware,
+  featureMiddleware,
   generateToken,
   decodeToken,
 };

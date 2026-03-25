@@ -1,26 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, featureMiddleware } = require('../middleware/auth');
 const { tenantMiddleware } = require('../middleware/tenant');
 
-// Basic isPro middleware
-const isPro = async (req, res, next) => {
-    const { query } = require("../config/database");
-    try {
-        const [tenant] = await query("SELECT subscription_plan FROM tenants WHERE id = ?", [req.user?.tenant_id || req.tenantId]);
-        if (tenant && !['pro', 'professional', 'custom', 'enterprise', 'PRO', 'CUSTOM'].includes(tenant.subscription_plan)) {
-            return res.status(403).json({ error: 'Upgrade to PRO required' });
-        }
-    } catch (e) {
-        // tolerate missing column
-    }
-    next();
-};
+const walletFeatureGate = featureMiddleware('wallet');
 
 const auth = [authMiddleware, tenantMiddleware];
 // Get wallet details for the current tenant
-router.get('/', auth, async (req, res) => {
+router.get('/', walletFeatureGate, async (req, res) => {
     try {
         const wallets = await query("SELECT * FROM wallets WHERE tenant_id = ?", [req.tenantId]);
         let wallet = wallets ? wallets[0] : null;
@@ -38,7 +26,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Get recent transactions for the tenant
-router.get('/transactions', auth, async (req, res) => {
+router.get('/transactions', walletFeatureGate, async (req, res) => {
     try {
         const transactions = await query(
             "SELECT * FROM transactions WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 100", 
@@ -58,7 +46,7 @@ router.get('/transactions', auth, async (req, res) => {
 });
 
 // Request a withdrawal
-router.post('/withdrawals', auth, isPro, async (req, res) => {
+router.post('/withdrawals', walletFeatureGate, async (req, res) => {
     try {
         const { amount, payoutMethod, payoutDetails } = req.body;
         
@@ -87,7 +75,7 @@ router.post('/withdrawals', auth, isPro, async (req, res) => {
 });
 
 // Get withdrawal history
-router.get('/withdrawals', auth, async (req, res) => {
+router.get('/withdrawals', walletFeatureGate, async (req, res) => {
     try {
         const withdrawals = await query(
             "SELECT * FROM withdrawal_requests WHERE tenant_id = ? ORDER BY created_at DESC", 

@@ -61,7 +61,7 @@ const DAYS = [
 const Settings = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { tenant, refreshTenant, refreshUser } = useAuth();
+  const { tenant, refreshTenant, refreshUser, hasFeature } = useAuth();
   const { currency, changeCurrency, formatPrice } = useCurrency();
   const { toast, success, error: toastError, hideToast } = useToast();
 
@@ -156,7 +156,9 @@ const Settings = () => {
     { value: "Montserrat", label: "Montserrat (Sans-serif)" },
   ];
 
-  const isProPlan = tenant?.subscription_plan === "professional" || tenant?.subscription_plan === "enterprise" || tenant?.subscription_plan === "pro" || tenant?.subscription_plan === "custom";
+  const canAccessAPI = hasFeature("api_access");
+  const canAccessWebhooks = hasFeature("webhooks");
+  const isProPlan = hasFeature("multi_staff") || hasFeature("sms_reminders") || hasFeature("statistics_advanced");
 
   const PlanRestrictionOverlay = ({ title, description }) => (
     <div className="relative overflow-hidden bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-8 sm:p-12 text-center">
@@ -681,14 +683,8 @@ const Settings = () => {
                 { id: "promotions", label: "Promotions", icon: TagIcon },
                 { id: "theme", label: "Thème", icon: PaintBrushIcon },
                 { id: "pwa", label: "Notifications", icon: BellIcon },
-                ...(tenant?.subscription_plan === "developer" ||
-                tenant?.subscription_plan === "custom" ||
-                tenant?.subscription_status === "trial"
-                  ? [
-                      { id: "api", label: "API", icon: CodeBracketIcon },
-                      { id: "webhooks", label: "Webhooks", icon: SignalIcon },
-                    ]
-                  : []),
+                ...(canAccessAPI ? [{ id: "api", label: "API", icon: CodeBracketIcon }] : []),
+                ...(canAccessWebhooks ? [{ id: "webhooks", label: "Webhooks", icon: SignalIcon }] : []),
               ].map((tab) => {
                 const TabIcon = tab.icon;
                 return (

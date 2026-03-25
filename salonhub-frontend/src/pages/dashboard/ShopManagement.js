@@ -17,8 +17,8 @@ const ProBanner = () => (
 );
 
 const ShopManagement = () => {
-    const { user, tenant } = useAuth();
-    const isPro = ['pro', 'professional', 'custom', 'enterprise', 'PRO', 'CUSTOM'].includes(tenant?.subscription_plan);
+    const { user, tenant, hasFeature } = useAuth();
+    const isPro = hasFeature('shop');
     const businessType = tenant?.business_type || "beauty";
     const config = getBusinessTypeConfig(businessType);
     

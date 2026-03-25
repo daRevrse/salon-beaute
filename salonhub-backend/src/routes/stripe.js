@@ -36,11 +36,36 @@ router.use((req, res, next) => {
 // ==========================================
 // GET - Plans disponibles
 // ==========================================
-router.get("/plans", (req, res) => {
-  res.json({
-    success: true,
-    data: PLANS,
-  });
+router.get("/plans", async (req, res) => {
+  try {
+    const dbPlans = await query("SELECT name, features, technical_features FROM subscription_plans WHERE is_active = TRUE");
+    
+    const mergedPlans = { ...PLANS };
+    
+    dbPlans.forEach(dbPlan => {
+      if (mergedPlans[dbPlan.name]) {
+        // Fusionner les features d'affichage (listes à puces)
+        if (dbPlan.features) {
+          mergedPlans[dbPlan.name].features = typeof dbPlan.features === 'string'
+            ? JSON.parse(dbPlan.features)
+            : dbPlan.features;
+        }
+
+        // Fusionner les features techniques (gating)
+        mergedPlans[dbPlan.name].technical_features = typeof dbPlan.technical_features === 'string' 
+          ? JSON.parse(dbPlan.technical_features || '[]') 
+          : (dbPlan.technical_features || []);
+      }
+    });
+
+    res.json({
+      success: true,
+      data: mergedPlans,
+    });
+  } catch (error) {
+    console.error("Erreur fetch plans:", error);
+    res.json({ success: true, data: PLANS }); // Fallback
+  }
 });
 
 // ==========================================
@@ -232,9 +257,11 @@ router.get("/subscription", async (req, res) => {
         stripe_subscription_id,
         stripe_customer_id,
         trial_ends_at,
-        subscription_started_at
-      FROM tenants
-      WHERE id = ?`,
+        subscription_started_at,
+        sp.technical_features
+      FROM tenants t
+      LEFT JOIN subscription_plans sp ON t.subscription_plan = sp.name
+      WHERE t.id = ?`,
       [req.tenantId]
     );
 
@@ -268,6 +295,7 @@ router.get("/subscription", async (req, res) => {
         trialEndsAt: tenant.trial_ends_at,
         subscriptionStartedAt: tenant.subscription_started_at,
         stripeInfo: subscriptionInfo,
+        features: tenant.technical_features ? (typeof tenant.technical_features === 'string' ? JSON.parse(tenant.technical_features) : tenant.technical_features) : [],
       },
     });
   } catch (error) {

@@ -267,9 +267,11 @@ router.post("/login", async (req, res) => {
         t.subscription_plan,
         t.trial_ends_at,
         t.logo_url as logo_url,
-        t.business_type
+        t.business_type,
+        sp.technical_features as plan_features
       FROM users u
       JOIN tenants t ON u.tenant_id = t.id
+      LEFT JOIN subscription_plans sp ON t.subscription_plan = sp.name
       WHERE u.email = ?`,
       [email]
     );
@@ -373,6 +375,7 @@ router.post("/login", async (req, res) => {
           trial_ends_at: user.trial_ends_at,
           logo_url: user.logo_url,
           business_type: user.business_type,
+          features: Array.isArray(user.plan_features) ? user.plan_features : (typeof user.plan_features === 'string' ? JSON.parse(user.plan_features || '[]') : []),
         },
         salons,
       },
@@ -404,9 +407,11 @@ router.get("/me", authMiddleware, async (req, res) => {
         t.subscription_plan,
         t.subscription_status,
         t.trial_ends_at,
-        t.business_type
+        t.business_type,
+        sp.technical_features as plan_features
       FROM users u
       JOIN tenants t ON t.id = ?
+      LEFT JOIN subscription_plans sp ON t.subscription_plan = sp.name
       WHERE u.id = ?`,
       [activeTenantId, req.user.id]
     );
@@ -442,6 +447,7 @@ router.get("/me", authMiddleware, async (req, res) => {
       success: true,
       data: {
         ...user,
+        plan_features: Array.isArray(user.plan_features) ? user.plan_features : (typeof user.plan_features === 'string' ? JSON.parse(user.plan_features || '[]') : []),
         salons,
       },
     });

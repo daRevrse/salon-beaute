@@ -17,10 +17,7 @@ const isApiKey = (token) => {
   return token && token.startsWith(API_KEY_PREFIX);
 };
 
-/**
- * Plans autorisés à utiliser l'API via clés API
- */
-const API_ALLOWED_PLANS = ["developer", "custom"];
+// L'accès API est désormais géré via la colonne technical_features de la table subscription_plans
 
 /**
  * Middleware d'authentification par clé API
@@ -61,9 +58,11 @@ const apiKeyMiddleware = async (req, res, next) => {
 
     // Chercher la clé dans la base
     const keys = await query(
-      `SELECT ak.*, t.subscription_plan, t.subscription_status, t.trial_ends_at
+      `SELECT ak.*, t.subscription_plan, t.subscription_status, t.trial_ends_at,
+              sp.technical_features
        FROM api_keys ak
        JOIN tenants t ON t.id = ak.tenant_id
+       LEFT JOIN subscription_plans sp ON t.subscription_plan = sp.name
        WHERE ak.key_prefix = ? AND ak.is_active = TRUE`,
       [keyPrefix]
     );
@@ -97,8 +96,12 @@ const apiKeyMiddleware = async (req, res, next) => {
       });
     }
 
-    // Vérifier le plan du tenant
-    const { subscription_plan, subscription_status, trial_ends_at } = keyRecord;
+    // Vérifier si le plan contient la fonctionnalité api_access
+    const features = Array.isArray(keyRecord.technical_features) 
+      ? keyRecord.technical_features 
+      : (typeof keyRecord.technical_features === 'string' ? JSON.parse(keyRecord.technical_features || '[]') : []);
+    
+    const hasApiAccess = features.includes('api_access');
 
     if (subscription_status === "trial") {
       // Vérifier si le trial n'est pas expiré
@@ -107,17 +110,16 @@ const apiKeyMiddleware = async (req, res, next) => {
           success: false,
           error: "Période d'essai expirée",
           message:
-            "Votre période d'essai est terminée. Passez au plan Developer ou Custom pour continuer à utiliser l'API.",
+            "Votre période d'essai est terminée. Passez à un plan incluant l'accès API pour continuer.",
         });
       }
-      // Trial actif → accès autorisé
-    } else if (!API_ALLOWED_PLANS.includes(subscription_plan)) {
+      // Trial actif → accès autorisé par défaut (ou on peut aussi checker features)
+    } else if (!hasApiAccess) {
       return res.status(403).json({
         success: false,
-        error: "Plan insuffisant",
+        error: "Fonctionnalité non incluse",
         message:
-          "L'accès API nécessite un plan Developer (14,99€/mois) ou Custom. Votre plan actuel: " +
-          subscription_plan,
+          "L'accès API n'est pas inclus dans votre plan actuel (" + subscription_plan + "). Veuillez contacter le support ou changer de plan.",
       });
     }
 
@@ -197,5 +199,4 @@ module.exports = {
   isApiKey,
   apiKeyMiddleware,
   API_KEY_PREFIX,
-  API_ALLOWED_PLANS,
 };

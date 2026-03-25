@@ -435,6 +435,17 @@ export const AuthProvider = ({ children }) => {
     return Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   };
 
+  // Vérifier si une fonctionnalité technique est disponible
+  const hasFeature = (featureKey) => {
+    if (!tenant) return false;
+    
+    // Si l'abonnement n'est pas actif, on bloque tout sauf si c'est un check de base (optionnel)
+    if (!isSubscriptionActive()) return false;
+
+    const features = tenant.features || [];
+    return features.includes(featureKey);
+  };
+
   const value = {
     user,
     tenant,
@@ -458,7 +469,9 @@ export const AuthProvider = ({ children }) => {
     changePassword,
     refreshTenant,
     refreshUser,
+    refreshUser,
     refreshSubscription,
+    hasFeature,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

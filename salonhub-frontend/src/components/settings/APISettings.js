@@ -51,7 +51,7 @@ const AVAILABLE_SCOPES = [
 ];
 
 const APISettings = () => {
-  const { tenant } = useAuth();
+  const { tenant, hasFeature } = useAuth();
   const [apiKeys, setApiKeys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -218,10 +218,7 @@ const APISettings = () => {
   };
 
   // Vérifier le plan
-  const planAllowed =
-    tenant?.subscription_plan === "developer" ||
-    tenant?.subscription_plan === "custom" ||
-    tenant?.subscription_status === "trial";
+  const planAllowed = hasFeature("api_access");
 
   if (loading) {
     return (
