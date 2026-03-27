@@ -160,7 +160,7 @@ const featureMiddleware = (featureKey) => {
         });
       }
 
-      // Cas du trial
+      // Cas du trial : On autorise TOUTES les fonctionnalités par défaut pendant l'essai
       if (subscription_status === "trial" && trial_ends_at) {
         if (new Date(trial_ends_at) < new Date()) {
           return res.status(403).json({
@@ -169,7 +169,8 @@ const featureMiddleware = (featureKey) => {
             message: "Votre période d'essai est terminée. Veuillez choisir un plan.",
           });
         }
-        // En trial, on autorise tout par défaut ou on suit le plan par défaut
+        // En période d'essai active, on laisse passer sans vérifier les technical_features
+        return next();
       }
 
       // Si pas de features définies (plan inconnu ou error), on bloque par sécurité
@@ -206,12 +207,59 @@ const featureMiddleware = (featureKey) => {
 };
 
 /**
+ * Middleware de vérification de permission spécifique
+ * Vérifie qu'un utilisateur a un droit spécifique (colonne en BDD)
+ * 
+ * @param {String} permissionKey - La colonne à vérifier (ex: 'can_confirm_appointments')
+ */
+const permissionMiddleware = (permissionKey) => {
+  const db = require("../config/database");
+
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          error: "Non authentifié",
+        });
+      }
+
+      // Le propriétaire a toujours tous les droits
+      if (req.user.role === "owner") {
+        return next();
+      }
+
+      const results = await db.query(
+        `SELECT ${permissionKey} FROM users WHERE id = ?`,
+        [req.user.id]
+      );
+
+      if (results.length === 0 || !results[0][permissionKey]) {
+        return res.status(403).json({
+          success: false,
+          error: "Permission refusée",
+          message: "Vous n'avez pas les droits nécessaires pour cette action.",
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error("Erreur permissionMiddleware:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erreur serveur",
+      });
+    }
+  };
+};
+/**
  * Helper: Générer un token JWT
  *
  * @param {Object} user - Données utilisateur
  * @returns {String} Token JWT
  */
 const generateToken = (user, expiresIn = "7d") => {
+  const jwt = require("jsonwebtoken");
   return jwt.sign(
     {
       id: user.id,
@@ -231,6 +279,7 @@ const generateToken = (user, expiresIn = "7d") => {
  * Utile pour débugger
  */
 const decodeToken = (token) => {
+  const jwt = require("jsonwebtoken");
   try {
     return jwt.decode(token);
   } catch (error) {
@@ -242,6 +291,7 @@ module.exports = {
   authMiddleware,
   roleMiddleware,
   featureMiddleware,
+  permissionMiddleware,
   generateToken,
   decodeToken,
 };

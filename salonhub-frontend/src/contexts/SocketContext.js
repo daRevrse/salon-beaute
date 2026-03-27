@@ -21,30 +21,40 @@ export const SocketProvider = ({ children }) => {
       const apiUrl =
         process.env.REACT_APP_API_URL.replace("/api", "") ||
         "http://localhost:5000";
-      // console.log("📡 Connexion WebSocket à:", apiUrl);
+      
+      const token = localStorage.getItem('token');
+      
+      console.log("📡 Tentative de connexion WebSocket à:", apiUrl);
 
-      const newSocket = io(apiUrl);
+      const newSocket = io(apiUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        auth: {
+          token: token
+        }
+      });
 
       newSocket.on("connect", () => {
-        // console.log(
-        //   "🟢 Connecté au serveur WebSocket - Socket ID:",
-        //   newSocket.id
-        // );
-        // Rejoindre la room du salon
+        console.log("🟢 WebSocket Connecté - ID:", newSocket.id);
         newSocket.emit("join_tenant", user.tenant_id);
-        // console.log("📤 Demande de rejoindre tenant:", user.tenant_id);
       });
 
       newSocket.on("joined", (data) => {
-        // console.log("✅ Rejoint la room avec succès:", data);
+        console.log("✅ Room tenant rejointe:", data);
       });
 
-      newSocket.on("disconnect", () => {
-        // console.log("🔴 Déconnecté du serveur WebSocket");
+      newSocket.on("reconnect_attempt", () => {
+        console.log("🟠 Tentative de reconnexion WebSocket...");
+      });
+
+      newSocket.on("disconnect", (reason) => {
+        console.log("🔴 WebSocket Déconnecté:", reason);
       });
 
       newSocket.on("error", (error) => {
-        // console.error("❌ Erreur WebSocket:", error);
+        console.error("❌ Erreur WebSocket:", error);
       });
 
       setSocket(newSocket);

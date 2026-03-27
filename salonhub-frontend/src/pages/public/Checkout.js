@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../services/api';
 import { usePublicTheme } from '../../contexts/PublicThemeContext';
-import { ChevronLeft, Lock, CheckCircle2, CreditCard, Smartphone } from 'lucide-react';
+import { ChevronLeft, Lock, CheckCircle2, ShoppingBag } from 'lucide-react';
 
 const Checkout = () => {
     const { slug } = useParams();
@@ -14,13 +14,13 @@ const Checkout = () => {
     const totalAmount = location.state?.total || 0;
 
     const [guestInfo, setGuestInfo] = useState({ name: '', phone: '', address: '' });
-    const [paymentMethod, setPaymentMethod] = useState('card');
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [orderNumber, setOrderNumber] = useState(null);
     const [error, setError] = useState(null);
 
     const formatAmount = (amount) => {
-        return new Intl.NumberFormat('fr-TN', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(amount);
+        return new Intl.NumberFormat('fr-TG', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(amount);
     };
 
     if (cart.length === 0 && !success) {
@@ -40,43 +40,18 @@ const Checkout = () => {
         setError(null);
 
         try {
-            // 1. Create Order
-            const orderRes = await axios.post(`/api/shop/${salon.id}/orders`, {
+            // Create order directly without payment processing
+            const orderRes = await api.post(`/shop/${salon.id}/orders`, {
                 items: cart.map(item => ({ productId: item.id, quantity: item.quantity })),
                 guestInfo,
-                paymentMethod: paymentMethod === 'card' ? 'STRIPE' : 'PAYGATE'
+                paymentMethod: 'EN_ATTENTE'
             });
 
-            const order = orderRes.data;
-
-            if (paymentMethod === 'mobile_money') {
-                // 2a. Mobile Money flow (Paygate)
-                const paygateRes = await axios.post('/api/payments/paygate/init', {
-                    orderId: order.id,
-                    phone: guestInfo.phone,
-                    amount: totalAmount
-                });
-
-                if (paygateRes.data.success) {
-                    setSuccess(true);
-                }
-            } else if (paymentMethod === 'card') {
-                // 2b. Card payment flow (Stripe Checkout)
-                const stripeRes = await axios.post('/api/payments/stripe/init-order', {
-                    orderId: order.id,
-                    amount: totalAmount,
-                    tenantSlug: slug
-                });
-
-                if (stripeRes.data.success && stripeRes.data.url) {
-                    window.location.href = stripeRes.data.url;
-                    return;
-                }
-            }
-
+            setOrderNumber(orderRes.data.id);
+            setSuccess(true);
         } catch (err) {
             console.error(err);
-            setError(err.response?.data?.error || "Une erreur est survenue lors du paiement. Veuillez réessayer.");
+            setError(err.response?.data?.error || "Une erreur est survenue lors de la commande. Veuillez réessayer.");
         } finally {
             setLoading(false);
         }
@@ -88,11 +63,16 @@ const Checkout = () => {
                  <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
                      <CheckCircle2 className="w-10 h-10" />
                  </div>
-                 <h2 className="text-3xl font-black text-gray-900 mb-2">Commande confirmée !</h2>
-                 <p className="text-gray-500 max-w-sm mx-auto mb-8">
-                     Une demande de paiement a été envoyée sur votre téléphone ({guestInfo.phone}).
-                     Veuillez composer le code USSD pour valider.
+                 <h2 className="text-3xl font-black text-gray-900 mb-2">Commande envoyée !</h2>
+                 <p className="text-gray-500 max-w-md mx-auto mb-3">
+                     Votre commande <span className="font-bold text-gray-900">#{String(orderNumber).padStart(6, '0')}</span> a été transmise à <span className="font-semibold">{salon?.name}</span>.
                  </p>
+                 <p className="text-gray-500 max-w-md mx-auto mb-8">
+                     Le salon vous contactera au <span className="font-semibold text-gray-900">{guestInfo.phone}</span> pour confirmer et organiser le retrait ou la livraison.
+                 </p>
+                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 max-w-md mx-auto mb-8">
+                     <p className="text-sm text-amber-800 font-medium">💳 Le paiement se fera directement auprès du salon (espèces, mobile money, etc.)</p>
+                 </div>
                  <button onClick={() => navigate(`/book/${slug}/shop`)} className="px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold rounded-xl transition-colors">
                      Retour à la boutique
                  </button>
@@ -123,9 +103,17 @@ const Checkout = () => {
                              </div>
                          )}
 
+                         {/* Payment note */}
+                         <div className="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                             <p className="text-sm text-indigo-800 flex items-center gap-2">
+                                 <ShoppingBag className="w-4 h-4 flex-shrink-0" />
+                                 Votre commande sera envoyée au salon. Le paiement se fera directement sur place ou par téléphone.
+                             </p>
+                         </div>
+
                          <form onSubmit={handleSubmit} className="space-y-5">
                              <div>
-                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nom complet</label>
+                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nom complet <span className="text-red-500">*</span></label>
                                  <input
                                      required
                                      type="text"
@@ -136,69 +124,17 @@ const Checkout = () => {
                                  />
                              </div>
 
-                             {/* Payment Method Selection */}
-                             <div className="pt-2">
-                                 <label className="block text-sm font-semibold text-gray-700 mb-3">Mode de paiement</label>
-                                 <div className="grid grid-cols-2 gap-3">
-                                     {/* Mobile Money payment option temporarily disabled */}
-                                     <button
-                                         type="button"
-                                         onClick={() => setPaymentMethod('card')}
-                                         className={`flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all ${
-                                             paymentMethod === 'card'
-                                                 ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                                                 : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                                         }`}
-                                     >
-                                         <CreditCard className="w-6 h-6 mb-2" />
-                                         <span className="font-bold text-sm">Carte bancaire</span>
-                                         <span className="text-xs text-gray-500 mt-0.5">Visa, Mastercard</span>
-                                     </button>
-                                 </div>
+                             <div>
+                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Téléphone <span className="text-red-500">*</span></label>
+                                 <input
+                                     required
+                                     type="tel"
+                                     placeholder="Ex: 90 00 00 00"
+                                     value={guestInfo.phone}
+                                     onChange={(e) => setGuestInfo({...guestInfo, phone: e.target.value})}
+                                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                 />
                              </div>
-
-                             {/* Phone input - only for Mobile Money */}
-                             {paymentMethod === 'mobile_money' && (
-                                 <div>
-                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Numéro Mobile Money</label>
-                                     <input
-                                         required
-                                         type="tel"
-                                         placeholder="Ex: 90 00 00 00"
-                                         value={guestInfo.phone}
-                                         onChange={(e) => setGuestInfo({...guestInfo, phone: e.target.value})}
-                                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                     />
-                                     <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                         <Lock className="w-3 h-3" /> Paiement sécurisé via Paygate Global
-                                     </p>
-                                 </div>
-                             )}
-
-                             {/* Card info notice */}
-                             {paymentMethod === 'card' && (
-                                 <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
-                                     <p className="text-sm text-indigo-800 flex items-center gap-2">
-                                         <Lock className="w-4 h-4 flex-shrink-0" />
-                                         Vous serez redirigé vers une page de paiement sécurisée Stripe pour saisir vos informations de carte.
-                                     </p>
-                                 </div>
-                             )}
-
-                             {/* Phone for contact (when card) */}
-                             {paymentMethod === 'card' && (
-                                 <div>
-                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Téléphone (contact)</label>
-                                     <input
-                                         required
-                                         type="tel"
-                                         placeholder="Ex: 90 00 00 00"
-                                         value={guestInfo.phone}
-                                         onChange={(e) => setGuestInfo({...guestInfo, phone: e.target.value})}
-                                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                     />
-                                 </div>
-                             )}
 
                               <div>
                                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Adresse de livraison (Optionnel)</label>
@@ -214,15 +150,13 @@ const Checkout = () => {
                              <div className="pt-4">
                                 <button
                                     type="submit"
-                                    disabled={loading}
+                                    disabled={loading || !guestInfo.name?.trim() || !guestInfo.phone?.trim()}
                                     className="w-full flex items-center justify-center py-4 px-8 border border-transparent rounded-xl shadow-sm text-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
                                 >
                                     {loading ? (
                                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                                    ) : paymentMethod === 'card' ? (
-                                        <>Payer par carte {formatAmount(totalAmount)}</>
                                     ) : (
-                                        <>Payer {formatAmount(totalAmount)}</>
+                                        <>Envoyer ma commande — {formatAmount(totalAmount)}</>
                                     )}
                                 </button>
                              </div>

@@ -365,6 +365,8 @@ router.post("/login", async (req, res) => {
           role: user.role,
           tenant_id: user.tenant_id,
           avatar_url: user.avatar_url,
+          can_confirm_appointments: !!user.can_confirm_appointments,
+          can_manage_shop: !!user.can_manage_shop,
         },
         tenant: {
           id: user.tenant_id,
@@ -401,6 +403,7 @@ router.get("/me", authMiddleware, async (req, res) => {
       `SELECT
         u.id, u.email, u.first_name, u.last_name, u.phone,
         u.is_active, u.last_login_at, u.created_at, u.avatar_url,
+        u.can_confirm_appointments, u.can_manage_shop,
         t.id as tenant_id,
         t.name as tenant_name,
         t.slug as tenant_slug,
@@ -545,7 +548,8 @@ router.get("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
     const staff = await query(
       `SELECT 
         id, email, first_name, last_name, phone, role,
-        is_active, last_login_at, created_at, avatar_url
+        is_active, last_login_at, created_at, avatar_url,
+        can_confirm_appointments, can_manage_shop
       FROM users
       WHERE tenant_id = ?
       ORDER BY role, last_name`,
@@ -578,7 +582,7 @@ router.post("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
       });
     }
 
-    const { email, password, first_name, last_name, phone, role } = req.body;
+    const { email, password, first_name, last_name, phone, role, can_confirm_appointments, can_manage_shop } = req.body;
 
     // Validation
     if (!email || !password || !first_name || !last_name) {
@@ -616,8 +620,8 @@ router.post("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
     // Créer
     const result = await query(
       `INSERT INTO users (
-        tenant_id, email, password_hash, first_name, last_name, phone, role
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        tenant_id, email, password_hash, first_name, last_name, phone, role, can_confirm_appointments, can_manage_shop
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.tenantId,
         email,
@@ -626,6 +630,8 @@ router.post("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
         last_name,
         phone || null,
         role || "staff",
+        can_confirm_appointments ? 1 : 0,
+        can_manage_shop ? 1 : 0,
       ]
     );
 
@@ -666,7 +672,7 @@ router.put("/staff/:id", authMiddleware, tenantMiddleware, async (req, res) => {
     }
 
     const { id } = req.params;
-    const { first_name, last_name, phone, role, is_active } = req.body;
+    const { first_name, last_name, phone, role, is_active, can_confirm_appointments, can_manage_shop } = req.body;
 
     // Vérifier que le staff existe et appartient au même tenant
     const [staff] = await query(
@@ -719,6 +725,14 @@ router.put("/staff/:id", authMiddleware, tenantMiddleware, async (req, res) => {
     if (is_active !== undefined) {
       updates.push("is_active = ?");
       params.push(is_active ? 1 : 0);
+    }
+    if (can_confirm_appointments !== undefined) {
+      updates.push("can_confirm_appointments = ?");
+      params.push(can_confirm_appointments ? 1 : 0);
+    }
+    if (can_manage_shop !== undefined) {
+      updates.push("can_manage_shop = ?");
+      params.push(can_manage_shop ? 1 : 0);
     }
 
     if (updates.length === 0) {
@@ -949,7 +963,7 @@ router.get("/profile", authMiddleware, tenantMiddleware, async (req, res) => {
     const userId = req.userId;
 
     const user = await query(
-      `SELECT id, tenant_id, email, first_name, last_name, phone, role, avatar_url, working_hours, is_active, created_at
+      `SELECT id, tenant_id, email, first_name, last_name, phone, role, avatar_url, working_hours, is_active, created_at, can_confirm_appointments, can_manage_shop
        FROM users
        WHERE id = ?`,
       [userId]
@@ -1037,7 +1051,7 @@ router.put("/profile", authMiddleware, tenantMiddleware, async (req, res) => {
 
     // Récupérer le profil mis à jour
     const updatedUser = await query(
-      `SELECT id, tenant_id, email, first_name, last_name, phone, role, avatar_url, is_active, created_at
+      `SELECT id, tenant_id, email, first_name, last_name, phone, role, avatar_url, is_active, created_at, can_confirm_appointments, can_manage_shop
        FROM users
        WHERE id = ?`,
       [userId]

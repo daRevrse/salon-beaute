@@ -10,6 +10,7 @@ import { PublicThemeProvider, usePublicTheme } from "../../contexts/PublicThemeC
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import pwaService from "../../services/pwaService";
 
 const PublicBookingLayoutContent = () => {
   const { slug } = useParams();
@@ -26,11 +27,21 @@ const PublicBookingLayoutContent = () => {
   } = usePublicBooking(slug);
 
   useEffect(() => {
+    // Empêcher l'installation PWA sur les pages de réservation publique
+    const preventInstall = (e) => {
+      e.preventDefault();
+    };
+    window.addEventListener('beforeinstallprompt', preventInstall);
+
     const loadData = async () => {
       try {
         const salonData = await fetchSalon();
-        if (salonData?.currency) {
-          changeCurrency(salonData.currency);
+        if (salonData) {
+          if (salonData.currency) {
+            changeCurrency(salonData.currency);
+          }
+          // Initialiser le tenant ID pour la PWA (clients publics)
+          pwaService.setTenantId(salonData.id);
         }
         await fetchSettings();
       } catch (err) {
@@ -38,6 +49,10 @@ const PublicBookingLayoutContent = () => {
       }
     };
     loadData();
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', preventInstall);
+    };
   }, [slug, fetchSalon, fetchSettings, changeCurrency]);
 
   // Mettre à jour le contexte quand les données arrivent

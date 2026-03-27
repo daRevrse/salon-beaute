@@ -5,6 +5,7 @@
 
 const webPush = require("web-push");
 const db = require("../config/database");
+const fcmService = require("./fcmService");
 
 class PushService {
   constructor() {
@@ -67,60 +68,70 @@ class PushService {
     tenantId,
     clientId = null,
     userId = null,
-    subscription,
+    subscription = null,
+    fcmToken = null,
     userAgent = null,
     ipAddress = null,
   }) {
     try {
-      // Vérifier que l'abonnement a le bon format
-      if (!subscription || !subscription.endpoint || !subscription.keys) {
-        throw new Error("Format d'abonnement invalide");
+      // 1. Gérer l'abonnement VAPID (si présent)
+      let endpoint = null;
+      let p256dh = null;
+      let auth = null;
+
+      if (subscription && subscription.endpoint && subscription.keys) {
+        endpoint = subscription.endpoint;
+        p256dh = subscription.keys.p256dh;
+        auth = subscription.keys.auth;
       }
 
-      const { endpoint, keys } = subscription;
-      const { p256dh, auth } = keys;
-
-      if (!p256dh || !auth) {
-        throw new Error("Clés de chiffrement manquantes");
+      // 2. Si on n'a ni endpoint (VAPID) ni token (FCM), erreur
+      if (!endpoint && !fcmToken) {
+        throw new Error("Abonnement ou Token FCM requis");
       }
 
-      // Vérifier si cet endpoint existe déjà
-      const existing = await db.query(
-        "SELECT id FROM push_subscriptions WHERE endpoint = ?",
-        [endpoint]
-      );
+      // 3. Vérifier si cet abonnement existe déjà (via endpoint ou fcm_token)
+      let existing = [];
+      if (endpoint) {
+        existing = await db.query(
+          "SELECT id FROM push_subscriptions WHERE endpoint = ?",
+          [endpoint]
+        );
+      } else if (fcmToken) {
+        existing = await db.query(
+          "SELECT id FROM push_subscriptions WHERE fcm_token = ?",
+          [fcmToken]
+        );
+      }
 
       if (existing.length > 0) {
-        // Mettre à jour la date de dernière utilisation
+        // Mettre à jour
         await db.query(
           `UPDATE push_subscriptions
            SET client_id = COALESCE(?, client_id), 
                user_id = COALESCE(?, user_id), 
                tenant_id = ?, 
-               p256dh_key = ?, 
-               auth_key = ?, 
+               p256dh_key = COALESCE(?, p256dh_key), 
+               auth_key = COALESCE(?, auth_key), 
+               fcm_token = COALESCE(?, fcm_token),
                user_agent = ?, 
                last_used_at = NOW()
-           WHERE endpoint = ?`,
-          [clientId, userId, tenantId, p256dh, auth, userAgent, endpoint]
+           WHERE id = ?`,
+          [clientId, userId, tenantId, p256dh, auth, fcmToken, userAgent, existing[0].id]
         );
-        console.log(
-          `✅ Abonnement push mis à jour (ID: ${existing[0].id})`
-        );
+        console.log(`✅ Abonnement push mis à jour (ID: ${existing[0].id})`);
         return { subscriptionId: existing[0].id, updated: true };
       }
 
-      // Créer un nouvel abonnement
+      // 4. Créer un nouvel abonnement
       const result = await db.query(
         `INSERT INTO push_subscriptions
-         (tenant_id, client_id, user_id, endpoint, p256dh_key, auth_key, user_agent, ip_address, created_at, last_used_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-        [tenantId, clientId, userId, endpoint, p256dh, auth, userAgent, ipAddress]
+         (tenant_id, client_id, user_id, endpoint, p256dh_key, auth_key, fcm_token, user_agent, ip_address, created_at, last_used_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        [tenantId, clientId, userId, endpoint || null, p256dh || null, auth || null, fcmToken || null, userAgent, ipAddress]
       );
 
-      console.log(
-        `✅ Nouvel abonnement push enregistré (ID: ${result.insertId})`
-      );
+      console.log(`✅ Nouvel abonnement push enregistré (ID: ${result.insertId})`);
       return { subscriptionId: result.insertId, updated: false };
     } catch (error) {
       console.error("❌ Erreur enregistrement abonnement push:", error);
@@ -150,7 +161,7 @@ class PushService {
   async getClientSubscriptions(clientId) {
     try {
       const subscriptions = await db.query(
-        `SELECT id, endpoint, p256dh_key, auth_key
+        `SELECT id, endpoint, p256dh_key, auth_key, fcm_token
          FROM push_subscriptions
          WHERE client_id = ?`,
         [clientId]
@@ -168,7 +179,7 @@ class PushService {
   async getTenantSubscriptions(tenantId) {
     try {
       const subscriptions = await db.query(
-        `SELECT id, endpoint, p256dh_key, auth_key, client_id, user_id
+        `SELECT id, endpoint, p256dh_key, auth_key, fcm_token, client_id, user_id
          FROM push_subscriptions
          WHERE tenant_id = ?`,
         [tenantId]
@@ -188,43 +199,67 @@ class PushService {
       this.initialize();
     }
 
-    if (!this.initialized) {
-      console.warn("⚠️  Service push non initialisé, notification ignorée");
-      return { success: false, reason: "not_initialized" };
+    const { fcm_token, endpoint, p256dh_key, auth_key } = subscription;
+    let success = false;
+    let errorMsg = null;
+
+    // 1. Essayer FCM si le token est présent
+    if (fcm_token) {
+      try {
+        const result = await fcmService.sendNotification(fcm_token, payload);
+        if (result.success) {
+          success = true;
+          console.log(`✅ FCM envoyé avec succès pour sub ID: ${subscription.id}`);
+        } else {
+          console.error(`❌ Échec FCM pour sub ID ${subscription.id}:`, result.error);
+        }
+      } catch (fcmError) {
+        console.error(`❌ Erreur critique FCM:`, fcmError.message);
+      }
     }
 
-    try {
-      const pushSubscription = {
-        endpoint: subscription.endpoint,
-        keys: {
-          p256dh: subscription.p256dh_key,
-          auth: subscription.auth_key,
-        },
-      };
+    // 2. Toujours essayer Web Push (VAPID) si les clés sont présentes
+    // Cela sert de fallback et assure la compatibilité avec les anciens abonnements
+    if (endpoint && p256dh_key && auth_key) {
+      if (!this.initialized) {
+        console.warn("⚠️ Service push non initialisé, Web Push ignoré");
+      } else {
+        try {
+          const pushSubscription = {
+            endpoint: endpoint,
+            keys: {
+              p256dh: p256dh_key,
+              auth: auth_key,
+            },
+          };
 
-      const payloadString = JSON.stringify(payload);
+          const payloadString = JSON.stringify(payload);
+          await webPush.sendNotification(pushSubscription, payloadString);
+          success = true; // Si l'un des deux réussit, on considère que c'est bon
+          console.log(`✅ Web Push envoyé avec succès pour sub ID: ${subscription.id}`);
+        } catch (error) {
+          console.error("❌ Erreur envoi Web Push:", error.message);
+          errorMsg = error.message;
 
-      await webPush.sendNotification(pushSubscription, payloadString);
+          // Si l'abonnement Web Push est expiré, on le supprime
+          if (error.statusCode === 410 || error.statusCode === 404) {
+            console.log("🗑️ Abonnement Web Push expiré, suppression...");
+            await this.removeSubscription(endpoint);
+          }
+        }
+      }
+    }
 
+    if (success) {
       // Mettre à jour last_used_at
       await db.query(
         "UPDATE push_subscriptions SET last_used_at = NOW() WHERE id = ?",
         [subscription.id]
-      );
-
+      ).catch(() => {});
       return { success: true };
-    } catch (error) {
-      console.error("❌ Erreur envoi notification push:", error.message);
-
-      // Si l'abonnement est expiré ou invalide, le supprimer
-      if (error.statusCode === 410 || error.statusCode === 404) {
-        console.log("🗑️  Abonnement expiré, suppression...");
-        await this.removeSubscription(subscription.endpoint);
-        return { success: false, reason: "subscription_expired" };
-      }
-
-      return { success: false, reason: error.message };
     }
+
+    return { success: false, reason: errorMsg || "No delivery channel succeeded" };
   }
 
   /**
@@ -269,9 +304,8 @@ class PushService {
       let subscriptions;
 
       if (onlyStaff) {
-        // Uniquement le staff (user_id NOT NULL)
         subscriptions = await db.query(
-          `SELECT id, endpoint, p256dh_key, auth_key
+          `SELECT id, endpoint, p256dh_key, auth_key, fcm_token
            FROM push_subscriptions
            WHERE tenant_id = ? AND user_id IS NOT NULL`,
           [tenantId]

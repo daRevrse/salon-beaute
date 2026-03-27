@@ -46,6 +46,7 @@ export const PermissionProvider = ({ children }) => {
     editAllAppointments: isAdminOrOwner(), // Modifier n'importe quel RDV
     deleteOwnAppointment: true, // Annuler ses propres RDV (tous les rôles)
     deleteAllAppointments: isAdminOrOwner(), // Annuler n'importe quel RDV
+    canConfirmAppointments: isOwner() || !!user?.can_confirm_appointments,
 
     // Clients
     viewClients: true, // Tous les rôles
@@ -83,6 +84,9 @@ export const PermissionProvider = ({ children }) => {
     editProfile: true, // Tous
     changePassword: true, // Tous
     deleteAccount: true, // Tous (mais comportement différent)
+    
+    // Boutique
+    canManageShop: isOwner() || !!user?.can_manage_shop,
   };
 
   const value = {

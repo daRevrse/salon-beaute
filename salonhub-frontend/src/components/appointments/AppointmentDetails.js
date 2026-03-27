@@ -4,7 +4,7 @@
  * CORRECTION : Ordre d'affichage des modales (Z-Index)
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import api from "../../services/api";
 import {
@@ -17,21 +17,49 @@ import {
   ChatBubbleLeftRightIcon,
   PaperAirplaneIcon,
   CheckCircleIcon,
-  XCircleIcon,
   EnvelopeIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
+import { usePermissions } from "../../contexts/PermissionContext";
 
 import { useToast } from "../../hooks/useToast";
 import Toast from "../common/Toast";
 import ConfirmModal from "../common/ConfirmModal";
+import ReceiptModal from "./ReceiptModal";
+import { DocumentTextIcon } from "@heroicons/react/24/outline";
 
 const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
   const { formatPrice } = useCurrency();
   const { toast, success, error, hideToast } = useToast();
+  const { can } = usePermissions();
 
   const [loading, setLoading] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState("");
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [staffList, setStaffList] = useState([]);
+  const [selectedStaffId, setSelectedStaffId] = useState(appointment.staff_id || "");
+  const [isMultiStaff, setIsMultiStaff] = useState(false);
+
+  useEffect(() => {
+    const loadStaff = async () => {
+      try {
+        const response = await api.get("/auth/staff");
+        if (response.data.success) {
+          const activeStaff = response.data.data.filter(s => s.is_active);
+          setStaffList(activeStaff);
+          setIsMultiStaff(activeStaff.length > 1);
+        }
+      } catch (err) {
+        console.error("Erreur chargement staff:", err);
+      }
+    };
+    loadStaff();
+  }, []);
+
+  useEffect(() => {
+    setSelectedStaffId(appointment.staff_id || "");
+  }, [appointment.staff_id]);
 
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
@@ -82,9 +110,13 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
   const processStatusChange = async (newStatus) => {
     setLoading(true);
     try {
-      const response = await api.put(`/appointments/${appointment.id}`, {
-        status: newStatus,
-      });
+      // Si on confirme, on s'assure que le staff_id est envoyé si on vient de le sélectionner
+      const payload = { status: newStatus };
+      if (newStatus === "confirmed" && selectedStaffId) {
+        payload.staff_id = selectedStaffId;
+      }
+
+      const response = await api.patch(`/appointments/${appointment.id}/status`, payload);
 
       if (response.data.success) {
         success("Statut mis à jour avec succès !");
@@ -95,6 +127,22 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
       }
     } catch (err) {
       error(err.response?.data?.error || "Erreur lors de la mise à jour");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignStaff = async (staffId) => {
+    setSelectedStaffId(staffId);
+    setLoading(true);
+    try {
+      await api.put(`/appointments/${appointment.id}`, {
+        staff_id: staffId || null
+      });
+      success("Personnel assigné avec succès !");
+      onUpdate();
+    } catch (err) {
+      error(err.response?.data?.error || "Erreur lors de l'assignation");
     } finally {
       setLoading(false);
     }
@@ -314,6 +362,39 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
                   {formatPrice(appointment.service_price)}
                 </p>
               </div>
+
+              {/* Staff Assignment */}
+              <div className={`rounded-lg p-4 col-span-1 md:col-span-2 ${appointment.status === 'pending' ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center">
+                    <UserIcon className="h-5 w-5 text-indigo-600 mr-2" />
+                    <p className="text-sm font-medium text-gray-600">Personnel assigné</p>
+                  </div>
+                  {appointment.status === 'pending' && isMultiStaff && !appointment.staff_id && (
+                    <span className="text-xs font-bold text-amber-600 uppercase">Assignation requise pour confirmer</span>
+                  )}
+                </div>
+                
+                {appointment.status === 'pending' ? (
+                  <select
+                    value={selectedStaffId}
+                    onChange={(e) => handleAssignStaff(e.target.value)}
+                    disabled={loading}
+                    className="w-full mt-1 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  >
+                    <option value="">-- Sélectionner un membre --</option>
+                    {staffList.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.first_name} {s.last_name} ({s.role})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-lg font-semibold text-gray-900">
+                    {appointment.staff_first_name ? `${appointment.staff_first_name} ${appointment.staff_last_name}` : "Non assigné"}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Notes */}
@@ -335,8 +416,9 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
                   <>
                     <button
                       onClick={() => initiateStatusChange("confirmed")}
-                      disabled={loading}
-                      className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium transition-colors shadow-sm"
+                      disabled={loading || (isMultiStaff && !selectedStaffId) || !can.canConfirmAppointments}
+                      className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors shadow-sm"
+                      title={!can.canConfirmAppointments ? "Vous n'avez pas la permission de confirmer les rendez-vous" : (isMultiStaff && !selectedStaffId ? "Veuillez assigner un membre du personnel avant de confirmer" : "")}
                     >
                       <CheckCircleIcon className="h-5 w-5 mr-2" />
                       Confirmer
@@ -405,8 +487,19 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
                     </button>
                   )}
 
+                {/* Voir le reçu */}
+                {appointment.status === "completed" && (
+                  <button
+                    onClick={() => setShowReceiptModal(true)}
+                    className="flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors shadow-sm col-span-1 md:col-span-2"
+                  >
+                    <DocumentTextIcon className="h-5 w-5 mr-2" />
+                    Voir le reçu
+                  </button>
+                )}
+
                 {/* Contact */}
-                {(appointment.client_email || appointment.client_phone) && (
+                {(appointment.client_email || appointment.client_phone) && appointment.status !== "completed" && (
                   <button
                     onClick={() => setShowNotificationModal(true)}
                     className="flex items-center justify-center px-4 py-3 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 font-medium col-span-1 md:col-span-2 transition-colors"
@@ -477,6 +570,14 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODALE DE REÇU */}
+      {showReceiptModal && (
+        <ReceiptModal
+          appointmentId={appointment.id}
+          onClose={() => setShowReceiptModal(false)}
+        />
       )}
     </>
   );

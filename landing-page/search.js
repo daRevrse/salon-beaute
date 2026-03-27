@@ -87,8 +87,6 @@ async function performSearch() {
     const response = await fetch(url);
     const data = await response.json();
 
-    console.log("Search results:", data);
-
     if (data.success && data.data && data.data.length > 0) {
       const resultsHTML = data.data
         .map((tenant) => {

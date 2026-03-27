@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { Plus, Edit2, Trash2, Package, Tag, ShoppingBag, LayoutDashboard } from 'lucide-react';
+import { Plus, Edit2, Trash2, Package, Tag, ShoppingBag, LayoutDashboard, Camera, X } from 'lucide-react';
+import { getImageUrl } from '../../utils/imageUtils';
 import { useAuth } from '../../contexts/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { getBusinessTypeConfig } from '../../utils/businessTypeConfig';
-// import Button removed
-// Mock Pro Banner Component - You can create a real one later
+
 const ProBanner = () => (
     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-8 text-white mb-8 text-center shadow-lg">
         <h2 className="text-3xl font-bold mb-4">Passez au niveau supérieur avec SalonHub PRO</h2>
@@ -22,8 +22,7 @@ const ShopManagement = () => {
     const businessType = tenant?.business_type || "beauty";
     const config = getBusinessTypeConfig(businessType);
     
-    // Quick mock state for UI before full API wiring
-    const [activeTab, setActiveTab] = useState('products'); // products, categories, orders
+    const [activeTab, setActiveTab] = useState('products');
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [orders, setOrders] = useState([]);
@@ -35,7 +34,9 @@ const ShopManagement = () => {
     
     // Product States
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-    const [currentProduct, setCurrentProduct] = useState({ name: '', price: 0, stock: 0, categoryId: '', description: '' });
+    const [currentProduct, setCurrentProduct] = useState({ name: '', price: 0, stock: 0, categoryId: '', description: '', images: [] });
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
 
     useEffect(() => {
         if(isPro) {
@@ -69,13 +70,12 @@ const ShopManagement = () => {
     // Category Handlers
     const handleSaveCategory = async () => {
         try {
-            if (currentCategory._id) {
-                const res = await api.put(`/shop/admin/categories/${currentCategory._id}`, currentCategory);
-                setCategories(categories.map(c => c._id === res.data._id ? res.data : c));
+            if (currentCategory.id) {
+                await api.put(`/shop/admin/categories/${currentCategory.id}`, currentCategory);
             } else {
-                const res = await api.post('/shop/admin/categories', currentCategory);
-                setCategories([...categories, res.data]);
+                await api.post('/shop/admin/categories', currentCategory);
             }
+            fetchCategories();
             setIsCategoryModalOpen(false);
             setCurrentCategory({ name: '' });
         } catch(err) { console.error('Failed to save category:', err); }
@@ -85,40 +85,76 @@ const ShopManagement = () => {
         if(!window.confirm('Voulez-vous vraiment supprimer cette catégorie ?')) return;
         try {
             await api.delete(`/shop/admin/categories/${id}`);
-            setCategories(categories.filter(c => c._id !== id));
+            setCategories(categories.filter(c => c.id !== id));
         } catch(err) { console.error('Failed to delete category:', err); }
     };
 
     // Product Handlers
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setImageFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleSaveProduct = async () => {
         try {
-            if (currentProduct._id) {
-                const res = await api.put(`/shop/admin/products/${currentProduct._id}`, currentProduct);
-                // The API might not populate categoryId immediately on PUT, so we trigger a refetch or replace manually
-                fetchProducts();
-            } else {
-                await api.post('/shop/admin/products', currentProduct);
-                fetchProducts(); 
+            setLoading(true);
+            let imageUrls = currentProduct.images || [];
+
+            // 1. Upload image if selected
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                const uploadRes = await api.post('/uploads/product-image', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                if (uploadRes.data.success) {
+                    // Replace or add to images array
+                    imageUrls = [uploadRes.data.data.url];
+                }
             }
+
+            const productData = { 
+                ...currentProduct, 
+                images: imageUrls 
+            };
+
+            if (currentProduct.id) {
+                await api.put(`/shop/admin/products/${currentProduct.id}`, productData);
+            } else {
+                await api.post('/shop/admin/products', productData);
+            }
+            fetchProducts();
             setIsProductModalOpen(false);
-            setCurrentProduct({ name: '', price: 0, stock: 0, categoryId: '', description: '' });
-        } catch(err) { console.error('Failed to save product:', err); }
+            setCurrentProduct({ name: '', price: 0, stock: 0, categoryId: '', description: '', images: [] });
+            setImageFile(null);
+            setImagePreview(null);
+        } catch(err) { 
+            console.error('Failed to save product:', err); 
+            alert('Erreur lors de l\'enregistrement du produit');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleDeleteProduct = async (id) => {
         if(!window.confirm('Voulez-vous vraiment supprimer ce produit ?')) return;
         try {
             await api.delete(`/shop/admin/products/${id}`);
-            setProducts(products.filter(p => p._id !== id));
+            setProducts(products.filter(p => p.id !== id));
         } catch(err) { console.error('Failed to delete product:', err); }
     };
 
     // Order Handlers
     const handleUpdateOrderStatus = async (id, status) => {
         try {
-            const res = await api.put(`/shop/admin/orders/${id}/status`, { status });
-            // Update order in state
-            // The API response might not be fully populated, so let's refetch or update strictly
+            await api.put(`/shop/admin/orders/${id}/status`, { status });
             fetchOrders();
         } catch(err) { console.error('Failed to update order status:', err); }
     };
@@ -176,7 +212,12 @@ const ShopManagement = () => {
                     </div>
                 {activeTab === 'products' && (
                     <button 
-                        onClick={() => { setCurrentProduct({ name: '', price: 0, stock: 0, categoryId: '', description: '' }); setIsProductModalOpen(true); }}
+                        onClick={() => { 
+                            setCurrentProduct({ name: '', price: 0, stock: 0, categoryId: '', description: '', images: [] }); 
+                            setImageFile(null);
+                            setImagePreview(null);
+                            setIsProductModalOpen(true); 
+                        }}
                         className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 font-medium">
                         <Plus className="w-4 h-4" /> Nouveau Produit
                     </button>
@@ -244,9 +285,9 @@ const ShopManagement = () => {
                                             </thead>
                                             <tbody>
                                                 {products.map(prod => (
-                                                    <tr key={prod._id} className="border-b border-gray-50 hover:bg-gray-50">
+                                                    <tr key={prod.id} className="border-b border-gray-50 hover:bg-gray-50">
                                                         <td className="py-4 px-4 font-medium text-gray-900">{prod.name}</td>
-                                                        <td className="py-4 px-4 text-gray-600">{prod.categoryId?.name || '---'}</td>
+                                                        <td className="py-4 px-4 text-gray-600">{prod.category_name || '---'}</td>
                                                         <td className="py-4 px-4 text-gray-900 font-medium">{new Intl.NumberFormat('fr-TG', { style: 'currency', currency: 'XOF' }).format(prod.price)}</td>
                                                         <td className="py-4 px-4">
                                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${prod.stock > 10 ? 'bg-green-100 text-green-800' : prod.stock > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
@@ -256,12 +297,17 @@ const ShopManagement = () => {
                                                         <td className="py-4 px-4 text-right">
                                                             <div className="flex justify-end gap-2">
                                                                 <button 
-                                                                    onClick={() => { setCurrentProduct({...prod, categoryId: prod.categoryId?._id || ''}); setIsProductModalOpen(true); }}
+                                                                    onClick={() => { 
+                                                                        setCurrentProduct({...prod, categoryId: prod.category_id || ''}); 
+                                                                        setImageFile(null);
+                                                                        setImagePreview(prod.images?.[0] ? getImageUrl(prod.images[0]) : null);
+                                                                        setIsProductModalOpen(true); 
+                                                                    }}
                                                                     className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
                                                                     <Edit2 className="w-4 h-4" />
                                                                 </button>
                                                                 <button 
-                                                                    onClick={() => handleDeleteProduct(prod._id)}
+                                                                    onClick={() => handleDeleteProduct(prod.id)}
                                                                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
                                                                     <Trash2 className="w-4 h-4" />
                                                                 </button>
@@ -296,7 +342,7 @@ const ShopManagement = () => {
                                             </thead>
                                             <tbody>
                                                 {categories.map(cat => (
-                                                    <tr key={cat._id} className="border-b border-gray-50 hover:bg-gray-50">
+                                                    <tr key={cat.id} className="border-b border-gray-50 hover:bg-gray-50">
                                                         <td className="py-4 px-4 font-medium text-gray-900">{cat.name}</td>
                                                         <td className="py-4 px-4 text-right">
                                                             <div className="flex justify-end gap-2">
@@ -306,7 +352,7 @@ const ShopManagement = () => {
                                                                     <Edit2 className="w-4 h-4" />
                                                                 </button>
                                                                 <button 
-                                                                    onClick={() => handleDeleteCategory(cat._id)}
+                                                                    onClick={() => handleDeleteCategory(cat.id)}
                                                                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
                                                                     <Trash2 className="w-4 h-4" />
                                                                 </button>
@@ -344,30 +390,31 @@ const ShopManagement = () => {
                                             </thead>
                                             <tbody>
                                                 {orders.map(order => (
-                                                    <tr key={order._id} className="border-b border-gray-50 hover:bg-gray-50">
+                                                    <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50">
                                                         <td className="py-4 px-4">
-                                                            <div className="font-medium text-gray-900">#{order._id.substring(order._id.length - 6).toUpperCase()}</div>
-                                                            <div className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</div>
+                                                            <div className="font-medium text-gray-900">#{String(order.id).padStart(6, '0')}</div>
+                                                            <div className="text-xs text-gray-500">{new Date(order.created_at).toLocaleDateString('fr-FR')}</div>
                                                         </td>
                                                         <td className="py-4 px-4 text-gray-700">
-                                                            {order.clientId ? 'Client existant' : (order.guestInfo?.name || 'Client non inscrit')}
+                                                            <div className="font-medium">{order.client_name || 'Client anonyme'}</div>
+                                                            {order.client_phone && <div className="text-xs text-gray-500">{order.client_phone}</div>}
                                                         </td>
                                                         <td className="py-4 px-4">
                                                             <div className="text-sm text-gray-600">
-                                                                {order.items.map((item, idx) => (
+                                                                {order.items?.map((item, idx) => (
                                                                     <div key={idx}>
-                                                                        {item.quantity}x {item.productId?.name || 'Produit supprimé'}
+                                                                        {item.quantity}x {item.product_name || 'Produit supprimé'}
                                                                     </div>
                                                                 ))}
                                                             </div>
                                                         </td>
                                                         <td className="py-4 px-4 font-medium text-gray-900">
-                                                            {new Intl.NumberFormat('fr-TG', { style: 'currency', currency: 'XOF' }).format(order.totalAmount)}
+                                                            {new Intl.NumberFormat('fr-TG', { style: 'currency', currency: 'XOF' }).format(order.total_amount)}
                                                         </td>
                                                         <td className="py-4 px-4 text-right">
                                                             <select 
                                                                 value={order.status}
-                                                                onChange={(e) => handleUpdateOrderStatus(order._id, e.target.value)}
+                                                                onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
                                                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium border-0 outline-none cursor-pointer
                                                                     ${order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
                                                                       order.status === 'PREPARING' ? 'bg-blue-100 text-blue-800' :
@@ -399,7 +446,7 @@ const ShopManagement = () => {
         {isCategoryModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm">
                 <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">{currentCategory._id ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">{currentCategory.id ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</h3>
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la catégorie</label>
@@ -433,7 +480,7 @@ const ShopManagement = () => {
         {isProductModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm">
                 <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">{currentProduct._id ? 'Modifier le produit' : 'Nouveau produit'}</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">{currentProduct.id ? 'Modifier le produit' : 'Nouveau produit'}</h3>
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Nom du produit <span className="text-red-500">*</span></label>
@@ -457,7 +504,7 @@ const ShopManagement = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Stock disponble</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Stock disponible</label>
                                 <input
                                     type="number"
                                     min="0"
@@ -476,7 +523,7 @@ const ShopManagement = () => {
                             >
                                 <option value="">-- Sans catégorie --</option>
                                 {categories.map(cat => (
-                                    <option key={cat._id} value={cat._id}>{cat.name}</option>
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                                 ))}
                             </select>
                         </div>
@@ -490,9 +537,37 @@ const ShopManagement = () => {
                                 placeholder="Détails du produit..."
                             />
                         </div>
-                        {/* Note on Image uploads disabled */}
-                        <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100 italic">
-                            Les images de produits seront générées automatiquement selon le nom ou pourront être envoyées plus tard. L'upload libre est temporairement suspendu.
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Image du produit</label>
+                            <div className="flex items-start gap-4">
+                                <div className="relative group">
+                                    <div className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden bg-gray-50 group-hover:border-indigo-300 transition-colors">
+                                        {imagePreview ? (
+                                            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Camera className="w-8 h-8 text-gray-300" />
+                                        )}
+                                    </div>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImageChange}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                    />
+                                    {imagePreview && (
+                                        <button 
+                                            onClick={() => { setImageFile(null); setImagePreview(null); setCurrentProduct({...currentProduct, images: []}); }}
+                                            className="absolute -top-2 -right-2 bg-red-100 text-red-600 p-1 rounded-full hover:bg-red-200 transition-colors shadow-sm"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="text-xs text-gray-500 max-w-[200px]">
+                                    <p className="font-medium text-gray-700 mb-1">Conseil :</p>
+                                    <p>Utilisez une image carrée de haute qualité (PNG, JPG, max 5Mo). L'image apparaîtra sur votre boutique publique.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div className="mt-8 flex justify-end gap-3">

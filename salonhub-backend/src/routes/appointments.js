@@ -14,6 +14,7 @@ const whatsappService = require("../services/whatsappService");
 const emailService = require("../services/emailService");
 const pushService = require("../services/pushService");
 const expoPushService = require("../services/expoPushService");
+const receiptService = require("../services/receiptService");
 
 // Appliquer middlewares
 router.use(authMiddleware);
@@ -297,11 +298,26 @@ router.post("/", checkScope("appointments:write"), async (req, res) => {
       });
     }
 
-    // Vérifier que le staff existe (si spécifié)
-    if (staff_id) {
+    // --- NOUVELLE LOGIQUE D'ASSIGNATION AUTOMATIQUE ---
+    let finalStaffId = staff_id;
+    
+    if (!finalStaffId) {
+      const activeStaff = await query(
+        "SELECT id FROM users WHERE tenant_id = ? AND is_active = TRUE",
+        [req.tenantId]
+      );
+      
+      if (activeStaff.length === 1) {
+        finalStaffId = activeStaff[0].id;
+        console.log(`Auto-assignation du staff unique (ID: ${finalStaffId})`);
+      }
+    }
+
+    // Vérifier que le staff existe (si spécifié ou auto-assigné)
+    if (finalStaffId) {
       const [staff] = await query(
         "SELECT id FROM users WHERE id = ? AND tenant_id = ? AND is_active = TRUE",
-        [staff_id, req.tenantId]
+        [finalStaffId, req.tenantId]
       );
 
       if (!staff) {
@@ -315,7 +331,7 @@ router.post("/", checkScope("appointments:write"), async (req, res) => {
     // Vérifier conflit horaire
     const hasConflict = await checkTimeConflict(
       req.tenantId,
-      staff_id,
+      finalStaffId,
       appointment_date,
       start_time,
       end_time
@@ -340,7 +356,7 @@ router.post("/", checkScope("appointments:write"), async (req, res) => {
         req.tenantId,
         client_id,
         service_id,
-        staff_id || null,
+        finalStaffId || null,
         appointment_date,
         start_time,
         end_time,
@@ -401,7 +417,7 @@ router.post("/", checkScope("appointments:write"), async (req, res) => {
       appointment_id: result.insertId,
       client_id,
       service_id,
-      staff_id: staff_id || null,
+      staff_id: finalStaffId || null,
       appointment_date,
       start_time,
       end_time,
@@ -411,6 +427,19 @@ router.post("/", checkScope("appointments:write"), async (req, res) => {
         : null,
       service_name: newAppointment?.service_name || null,
     });
+
+    // Si un staff a été assigné, lui envoyer une notification
+    if (finalStaffId) {
+      try {
+        await pushService.sendToUser(finalStaffId, {
+          title: "Nouveau RDV assigné !",
+          body: `Vous avez un nouveau rendez-vous avec ${newAppointment.client_first_name} pour : ${newAppointment.service_name}`,
+          data: { url: `/dashboard/appointments/${result.insertId}` }
+        });
+      } catch (e) {
+        console.error("Erreur notification staff assigné:", e.message);
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -586,6 +615,47 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
       });
     }
 
+    // --- NOUVELLE LOGIQUE DE PERMISSION ET ASSIGNATION ---
+    if (status === "confirmed") {
+      // 1. Vérifier la permission de confirmer
+      const [userPerms] = await query(
+        "SELECT role, can_confirm_appointments FROM users WHERE id = ?",
+        [req.user.id]
+      );
+
+      if (userPerms && userPerms.role !== "owner" && !userPerms.can_confirm_appointments) {
+        return res.status(403).json({
+          success: false,
+          error: "Permission refusée",
+          message: "Vous n'avez pas le droit de confirmer les rendez-vous."
+        });
+      }
+
+      // 2. Gérer l'assignation staff
+      if (!appointment.staff_id) {
+        const activeStaff = await query(
+          "SELECT id FROM users WHERE tenant_id = ? AND is_active = TRUE",
+          [req.tenantId]
+        );
+
+        if (activeStaff.length === 1) {
+          // Auto-assignation si un seul staff existant
+          await query("UPDATE appointments SET staff_id = ? WHERE id = ?", [
+            activeStaff[0].id,
+            id
+          ]);
+          appointment.staff_id = activeStaff[0].id;
+        } else if (activeStaff.length > 1) {
+          // Bloquer si plusieurs staff et aucun assigné
+          return res.status(400).json({
+            success: false,
+            error: "Assignation requise",
+            message: "Veuillez assigner un membre du personnel avant de confirmer."
+          });
+        }
+      }
+    }
+
     // Préparer la requête
     let updateSql = "UPDATE appointments SET status = ?";
     const params = [status];
@@ -602,147 +672,162 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
 
     // Si le rendez-vous est confirmé ou annulé, envoyer une notification au client
     if (status === "confirmed" || status === "cancelled") {
-      try {
-        // Récupérer les détails complets du rendez-vous avec infos client
-        const [fullAppointment] = await query(
-          `SELECT
-            a.*,
-            c.first_name as client_first_name,
-            c.last_name as client_last_name,
-            c.email as client_email,
-            c.phone as client_phone,
-            c.preferred_contact_method,
-            s.name as service_name,
-            s.duration as service_duration,
-            t.name as salon_name
-          FROM appointments a
-          JOIN clients c ON a.client_id = c.id
-          JOIN services s ON a.service_id = s.id
-          JOIN tenants t ON a.tenant_id = t.id
-          WHERE a.id = ?`,
-          [id]
-        );
+      // Exécuter les notifications en arrière-plan pour ne pas bloquer la réponse API
+      setImmediate(async () => {
+        try {
+          // Récupérer les détails complets du rendez-vous avec infos client
+          const [fullAppointment] = await query(
+            `SELECT
+              a.*,
+              c.first_name as client_first_name,
+              c.last_name as client_last_name,
+              c.email as client_email,
+              c.phone as client_phone,
+              c.preferred_contact_method,
+              s.name as service_name,
+              s.duration as service_duration,
+              t.name as salon_name
+            FROM appointments a
+            JOIN clients c ON a.client_id = c.id
+            JOIN services s ON a.service_id = s.id
+            JOIN tenants t ON a.tenant_id = t.id
+            WHERE a.id = ?`,
+            [id]
+          );
 
-        if (fullAppointment) {
-          // Formater la date
-          const appointmentDate = new Date(
-            fullAppointment.appointment_date
-          ).toLocaleDateString("fr-FR", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          });
-
-          // Envoyer par WhatsApp si c'est la méthode préférée ou si le client a un téléphone
-          if (
-            fullAppointment.client_phone &&
-            (fullAppointment.preferred_contact_method === "sms" ||
-              fullAppointment.preferred_contact_method === "both")
-          ) {
-            try {
-              await whatsappService.sendAppointmentConfirmation({
-                to: fullAppointment.client_phone,
-                firstName: fullAppointment.client_first_name,
-                serviceName: fullAppointment.service_name,
-                date: appointmentDate,
-                time: fullAppointment.start_time,
-                salonName: fullAppointment.salon_name,
-              });
-              console.log(
-                `✓ Confirmation WhatsApp envoyée à ${fullAppointment.client_phone}`
-              );
-            } catch (error) {
-              console.error(
-                `❌ Erreur envoi confirmation WhatsApp:`,
-                error.message
-              );
-            }
-          }
-
-          // Envoyer par Email si c'est la méthode préférée ou si pas de téléphone
-          if (
-            fullAppointment.client_email &&
-            (fullAppointment.preferred_contact_method === "email" ||
-              fullAppointment.preferred_contact_method === "both" ||
-              !fullAppointment.client_phone)
-          ) {
-            try {
-              await emailService.sendAppointmentConfirmation({
-                to: fullAppointment.client_email,
-                firstName: fullAppointment.client_first_name,
-                appointmentDate: appointmentDate,
-                appointmentTime: fullAppointment.start_time,
-                serviceName: fullAppointment.service_name,
-                salonName: fullAppointment.salon_name,
-              });
-              console.log(
-                `✓ Confirmation email envoyée à ${fullAppointment.client_email}`
-              );
-            } catch (error) {
-              console.error(
-                `❌ Erreur envoi confirmation email:`,
-                error.message
-              );
-            }
-          }
-
-          // Notification Push Client
-          try {
-            let pushTitle = "Modification de rendez-vous";
-            let pushBody = `Votre rendez-vous chez ${fullAppointment.salon_name} a été mis à jour.`;
-
-            if (status === "confirmed") {
-              pushTitle = "Rendez-vous confirmé ! ✅";
-              pushBody = `Votre séance de ${fullAppointment.service_name} chez ${fullAppointment.salon_name} est confirmée pour le ${appointmentDate} à ${fullAppointment.start_time.substring(0, 5)}.`;
-            } else if (status === "cancelled") {
-              pushTitle = "Rendez-vous annulé ❌";
-              pushBody = `Votre rendez-vous de ${fullAppointment.service_name} chez ${fullAppointment.salon_name} pour le ${appointmentDate} a été annulé.`;
-            }
-
-            await pushService.sendToClient(fullAppointment.client_id, {
-              title: pushTitle,
-              body: pushBody,
-              icon: "/logo192.png",
-              data: {
-                url: `/appointments/${fullAppointment.id}`,
-                appointmentId: fullAppointment.id
-              }
+          if (fullAppointment) {
+            // Formater la date
+            const appointmentDate = new Date(
+              fullAppointment.appointment_date
+            ).toLocaleDateString("fr-FR", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
             });
-          } catch (pushError) {
-            console.error("Erreur push client status:", pushError.message);
-          }
-          
-          // Notification Push Staff (si annulé — Web + Mobile)
-          if (status === "cancelled") {
+
+            // Envoyer par WhatsApp si c'est la méthode préférée ou si le client a un téléphone
+            if (
+              fullAppointment.client_phone &&
+              (fullAppointment.preferred_contact_method === "sms" ||
+                fullAppointment.preferred_contact_method === "both")
+            ) {
+              try {
+                await whatsappService.sendAppointmentConfirmation({
+                  to: fullAppointment.client_phone,
+                  firstName: fullAppointment.client_first_name,
+                  serviceName: fullAppointment.service_name,
+                  date: appointmentDate,
+                  time: fullAppointment.start_time,
+                  salonName: fullAppointment.salon_name,
+                });
+                console.log(
+                  `✓ Confirmation WhatsApp envoyée à ${fullAppointment.client_phone}`
+                );
+              } catch (error) {
+                console.error(
+                  `❌ Erreur envoi confirmation WhatsApp:`,
+                  error.message
+                );
+              }
+            }
+
+            // Envoyer par Email si c'est la méthode préférée ou si pas de téléphone
+            if (
+              fullAppointment.client_email &&
+              (fullAppointment.preferred_contact_method === "email" ||
+                fullAppointment.preferred_contact_method === "both" ||
+                !fullAppointment.client_phone)
+            ) {
+              try {
+                await emailService.sendAppointmentConfirmation({
+                  to: fullAppointment.client_email,
+                  firstName: fullAppointment.client_first_name,
+                  appointmentDate: appointmentDate,
+                  appointmentTime: fullAppointment.start_time,
+                  serviceName: fullAppointment.service_name,
+                  salonName: fullAppointment.salon_name,
+                });
+                console.log(
+                  `✓ Confirmation email envoyée à ${fullAppointment.client_email}`
+                );
+              } catch (error) {
+                console.error(
+                  `❌ Erreur envoi confirmation email:`,
+                  error.message
+                );
+              }
+            }
+
+            // Notification Push Client
             try {
-              await pushService.sendToTenant(req.tenantId, {
-                title: "Rendez-vous annulé",
-                body: `Le rendez-vous de ${fullAppointment.client_first_name} ${fullAppointment.client_last_name} (${fullAppointment.service_name}) a été annulé.`,
+              let pushTitle = "Modification de rendez-vous";
+              let pushBody = `Votre rendez-vous chez ${fullAppointment.salon_name} a été mis à jour.`;
+
+              if (status === "confirmed") {
+                pushTitle = "Rendez-vous confirmé ! ✅";
+                pushBody = `Votre séance de ${fullAppointment.service_name} chez ${fullAppointment.salon_name} est confirmée pour le ${appointmentDate} à ${fullAppointment.start_time.substring(0, 5)}.`;
+              } else if (status === "cancelled") {
+                pushTitle = "Rendez-vous annulé ❌";
+                pushBody = `Votre rendez-vous de ${fullAppointment.service_name} chez ${fullAppointment.salon_name} pour le ${appointmentDate} a été annulé.`;
+              }
+
+              await pushService.sendToClient(fullAppointment.client_id, {
+                title: pushTitle,
+                body: pushBody,
                 icon: "/logo192.png",
                 data: {
-                  url: `/dashboard/appointments/${fullAppointment.id}`,
+                  url: `/appointments/${fullAppointment.id}`,
                   appointmentId: fullAppointment.id
                 }
-              }, true);
-            } catch (staffPushError) {
-              console.error("Erreur web push staff status:", staffPushError.message);
-            }
-            try {
-              await expoPushService.sendToTenant(req.tenantId, {
-                title: "Rendez-vous annulé",
-                body: `Le rendez-vous de ${fullAppointment.client_first_name} ${fullAppointment.client_last_name} (${fullAppointment.service_name}) a été annulé.`,
-                data: { type: "appointment_cancelled", appointmentId: fullAppointment.id },
               });
-            } catch (expoStaffPushError) {
-              console.error("Erreur expo push staff status:", expoStaffPushError.message);
+            } catch (pushError) {
+              console.error("Erreur push client status:", pushError.message);
+            }
+            
+            // Notification Push Staff (si annulé — Web + Mobile)
+            if (status === "cancelled") {
+              try {
+                await pushService.sendToTenant(req.tenantId, {
+                  title: "Rendez-vous annulé",
+                  body: `Le rendez-vous de ${fullAppointment.client_first_name} ${fullAppointment.client_last_name} (${fullAppointment.service_name}) a été annulé.`,
+                  icon: "/logo192.png",
+                  data: {
+                    url: `/dashboard/appointments/${fullAppointment.id}`,
+                    appointmentId: fullAppointment.id
+                  }
+                }, true);
+              } catch (staffPushError) {
+                console.error("Erreur web push staff status:", staffPushError.message);
+              }
+              try {
+                await expoPushService.sendToTenant(req.tenantId, {
+                  title: "Rendez-vous annulé",
+                  body: `Le rendez-vous de ${fullAppointment.client_first_name} ${fullAppointment.client_last_name} (${fullAppointment.service_name}) a été annulé.`,
+                  data: { type: "appointment_cancelled", appointmentId: fullAppointment.id },
+                });
+              } catch (expoStaffPushError) {
+                console.error("Erreur expo push staff status:", expoStaffPushError.message);
+              }
+            }
+
+            // Notification au staff assigné lors de la confirmation
+            if (status === "confirmed" && fullAppointment.staff_id) {
+              try {
+                await pushService.sendToUser(fullAppointment.staff_id, {
+                  title: "RDV Confirmé !",
+                  body: `Le rendez-vous de ${fullAppointment.client_first_name} (${fullAppointment.service_name}) est confirmé.`,
+                  data: { url: `/dashboard/appointments/${fullAppointment.id}` }
+                });
+              } catch (pushError) {
+                console.error("Erreur notification staff confirmation:", pushError.message);
+              }
             }
           }
+        } catch (error) {
+          console.error("Erreur process notifications en arrière-plan:", error);
         }
-      } catch (error) {
-        // On log l'erreur mais on ne bloque pas la réponse
-        console.error("Erreur envoi notification confirmation:", error);
-      }
+      });
     }
 
     // Notification temps réel
@@ -787,6 +872,14 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
         start_time: appointment.start_time,
         end_time: appointment.end_time,
       });
+
+      // Générer le reçu automatiquement
+      try {
+        await receiptService.generateReceipt(id, req.tenantId);
+        console.log(`🧾 Reçu généré pour le RDV ${id}`);
+      } catch (receiptError) {
+        console.error("Erreur génération reçu automatique:", receiptError.message);
+      }
     }
 
     res.json({
@@ -1103,6 +1196,34 @@ Nous vous attendons avec plaisir ! 😊
     res.status(500).json({
       success: false,
       error: "Erreur lors de l'envoi de la confirmation",
+    });
+  }
+});
+
+// ==========================================
+// GET - Récupérer le reçu d'un RDV
+// ==========================================
+router.get("/:id/receipt", checkScope("appointments:read"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const receipt = await receiptService.getReceiptByAppointmentId(id, req.tenantId);
+
+    if (!receipt) {
+      return res.status(404).json({
+        success: false,
+        error: "Aucun reçu trouvé pour ce rendez-vous",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: receipt,
+    });
+  } catch (error) {
+    console.error("Erreur récupération reçu:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur lors de la récupération du reçu",
     });
   }
 });

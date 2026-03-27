@@ -167,7 +167,7 @@ const Navbar = () => {
       path: "/shop",
       label: "Boutique",
       icon: <ShoppingBagIcon className="h-5 w-5" />,
-      visible: true, // Visible to all admins so they can see the Pro banner at least
+      visible: can.canManageShop,
     },
     {
       path: config.servicesPath || "/services",
@@ -352,10 +352,13 @@ const Navbar = () => {
                       <Link
                         to="/wallet"
                         onClick={() => setProfileMenuOpen(false)}
-                        className={`flex items-center gap-2 px-4 py-2.5 text-slate-700 ${config.hoverBg} hover:${config.textColor} text-sm transition-colors`}
+                        className={`flex items-center justify-between px-4 py-2.5 text-slate-700 ${config.hoverBg} hover:${config.textColor} text-sm transition-colors`}
                       >
-                        <WalletIcon className="h-5 w-5" />
-                        Portefeuille
+                        <div className="flex items-center gap-2">
+                          <WalletIcon className="h-5 w-5" />
+                          Portefeuille
+                        </div>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 uppercase tracking-wider">Bientôt</span>
                       </Link>
 
                       {canInstall && (
@@ -492,6 +495,18 @@ const Navbar = () => {
                 Facturation
               </Link>
             )}
+
+            <Link
+              to="/wallet"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              <div className="flex items-center gap-2">
+                <WalletIcon className="h-5 w-5 text-slate-400" />
+                Portefeuille
+              </div>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 uppercase tracking-wider">Bientôt</span>
+            </Link>
 
             {canInstall && (
               <button

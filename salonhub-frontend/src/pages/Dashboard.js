@@ -826,43 +826,45 @@ const Dashboard = () => {
                 </Link>
               </div>
 
-              {todayAppointments.length === 0 ? (
-                <div className="px-6 py-12 text-center">
-                  <CalendarDaysIcon className="mx-auto h-12 w-12 text-slate-300" />
-                  <h3 className="mt-3 font-medium text-slate-600">Aucun rendez-vous</h3>
-                  <p className="mt-1 text-sm text-slate-400">Aucun rendez-vous prévu pour aujourd'hui.</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100">
-                  {todayAppointments.map((apt) => (
-                    <div key={apt.id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div className="flex items-center space-x-4 flex-1">
-                          <div className={`h-12 w-12 rounded-xl ${config.lightBg} flex items-center justify-center`}>
-                            <span className={`${config.textColor} font-semibold text-lg`}>
-                              {apt.client_first_name?.charAt(0)}{apt.client_last_name?.charAt(0)}
-                            </span>
+              <div className="max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
+                {todayAppointments.length === 0 ? (
+                  <div className="px-6 py-12 text-center">
+                    <CalendarDaysIcon className="mx-auto h-12 w-12 text-slate-300" />
+                    <h3 className="mt-3 font-medium text-slate-600">Aucun rendez-vous</h3>
+                    <p className="mt-1 text-sm text-slate-400">Aucun rendez-vous prévu pour aujourd'hui.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {todayAppointments.map((apt) => (
+                      <div key={apt.id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="flex items-center space-x-4 flex-1">
+                            <div className={`h-12 w-12 rounded-xl ${config.lightBg} flex items-center justify-center`}>
+                              <span className={`${config.textColor} font-semibold text-lg`}>
+                                {apt.client_first_name?.charAt(0)}{apt.client_last_name?.charAt(0)}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800 truncate">
+                                {apt.client_first_name} {apt.client_last_name}
+                              </p>
+                              <p className="text-sm text-slate-500 truncate">{apt.service_name}</p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-800 truncate">
-                              {apt.client_first_name} {apt.client_last_name}
-                            </p>
-                            <p className="text-sm text-slate-500 truncate">{apt.service_name}</p>
+                          <div className="flex items-center justify-between sm:justify-end gap-4">
+                            <div className="text-sm text-slate-500">
+                              <span className="font-medium">{apt.start_time?.substring(0, 5)}</span>
+                              <span className="mx-1">-</span>
+                              <span>{apt.end_time?.substring(0, 5)}</span>
+                            </div>
+                            {getStatusBadge(apt.status)}
                           </div>
-                        </div>
-                        <div className="flex items-center justify-between sm:justify-end gap-4">
-                          <div className="text-sm text-slate-500">
-                            <span className="font-medium">{apt.start_time?.substring(0, 5)}</span>
-                            <span className="mx-1">-</span>
-                            <span>{apt.end_time?.substring(0, 5)}</span>
-                          </div>
-                          {getStatusBadge(apt.status)}
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -912,7 +914,7 @@ const Dashboard = () => {
                   Voir tout
                 </Link>
               </div>
-              <div className="p-6 space-y-3">
+              <div className="p-6 space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
                 {recentClients.length === 0 ? (
                   <p className="text-sm text-slate-400 text-center py-4">Aucun client</p>
                 ) : (

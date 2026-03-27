@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../services/api';
 import { ShoppingBag, ChevronLeft, Plus, Minus, Search, Trash2 } from 'lucide-react';
 import { usePublicTheme } from '../../contexts/PublicThemeContext';
 import { getImageUrl, ImageWithFallback } from '../../utils/imageUtils';
@@ -28,26 +28,12 @@ const SalonShop = () => {
         try {
             setLoading(true);
             const [productsRes, categoriesRes] = await Promise.all([
-                 axios.get(`/api/shop/${tenantId}/products`),
-                 axios.get(`/api/shop/${tenantId}/categories`)
+                 api.get(`/shop/${tenantId}/products`),
+                 api.get(`/shop/${tenantId}/categories`)
             ]);
             
-            // Temporary Mock for demonstration until backend has data
-            if(productsRes.data.length === 0) {
-                 setProducts([
-                     { _id: '1', name: 'Shampoing Réparateur Argan', price: 15000, categoryId: { _id: 'c1', name: 'Soins' }, stock: 10, images: [] },
-                     { _id: '2', name: 'Sérum Éclat Visage', price: 25000, categoryId: { _id: 'c2', name: 'Cosmétiques' }, stock: 5, images: [] },
-                     { _id: '3', name: 'Brosse Démêlante Pro', price: 8000, categoryId: { _id: 'c3', name: 'Accessoires' }, stock: 20, images: [] }
-                 ]);
-                 setCategories([
-                     { _id: 'c1', name: 'Soins' },
-                     { _id: 'c2', name: 'Cosmétiques' },
-                     { _id: 'c3', name: 'Accessoires' }
-                 ]);
-            } else {
-                 setProducts(productsRes.data);
-                 setCategories(categoriesRes.data);
-            }
+            setProducts(productsRes.data);
+            setCategories(categoriesRes.data);
         } catch(err) {
             console.error("Error fetching shop data", err);
         } finally {
@@ -152,47 +138,49 @@ const SalonShop = () => {
                  </div>
 
                  {/* Product Grid */}
-                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                     {filteredProducts.map(product => (
-                         <div key={product.id} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow group flex flex-col">
-                             <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
-                                {product.images?.length > 0 ? (
-                                    <ImageWithFallback src={getImageUrl(product.images[0])} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                        <ShoppingBag className="w-12 h-12" />
-                                    </div>
-                                )}
-                                {product.stock === 0 && (
-                                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
-                                        <span className="bg-gray-900 text-white px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider">Rupture de stock</span>
-                                    </div>
-                                )}
-                             </div>
-                             <div className="p-5 flex flex-col flex-1">
-                                 <div className="text-xs text-indigo-600 font-medium mb-1">
-                                     {product.category_name || 'Catégorie'}
-                                 </div>
-                                 <h3 className="text-lg font-bold text-gray-900 leading-tight mb-2 line-clamp-2">{product.name}</h3>
-                                 <p className="text-2xl font-black text-gray-900 mt-auto pt-4 flex items-center justify-between">
-                                     {new Intl.NumberFormat('fr-TN', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(product.price)}
-                                     
-                                     <button 
-                                        onClick={() => addToCart(product)}
-                                        disabled={product.stock === 0}
-                                        className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                     >
-                                         <Plus className="w-5 h-5" />
-                                     </button>
-                                 </p>
-                             </div>
-                         </div>
-                     ))}
-                 </div>
-                 
-                 {filteredProducts.length === 0 && (
+                 {filteredProducts.length === 0 ? (
                      <div className="text-center py-20 text-gray-500">
-                         Aucun produit ne correspond à votre recherche.
+                         {products.length === 0 
+                             ? 'Cette boutique n\'a pas encore de produits en vente.' 
+                             : 'Aucun produit ne correspond à votre recherche.'}
+                     </div>
+                 ) : (
+                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                         {filteredProducts.map(product => (
+                             <div key={product.id} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow group flex flex-col">
+                                 <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                                    {product.images?.length > 0 ? (
+                                        <ImageWithFallback src={getImageUrl(product.images[0])} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                            <ShoppingBag className="w-12 h-12" />
+                                        </div>
+                                    )}
+                                    {product.stock === 0 && (
+                                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
+                                            <span className="bg-gray-900 text-white px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider">Rupture de stock</span>
+                                        </div>
+                                    )}
+                                 </div>
+                                 <div className="p-5 flex flex-col flex-1">
+                                     <div className="text-xs text-indigo-600 font-medium mb-1">
+                                         {product.category_name || 'Catégorie'}
+                                     </div>
+                                     <h3 className="text-lg font-bold text-gray-900 leading-tight mb-2 line-clamp-2">{product.name}</h3>
+                                     <p className="text-2xl font-black text-gray-900 mt-auto pt-4 flex items-center justify-between">
+                                         {new Intl.NumberFormat('fr-TG', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(product.price)}
+                                         
+                                         <button 
+                                            onClick={() => addToCart(product)}
+                                            disabled={product.stock === 0}
+                                            className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                         >
+                                             <Plus className="w-5 h-5" />
+                                         </button>
+                                     </p>
+                                 </div>
+                             </div>
+                         ))}
                      </div>
                  )}
             </main>
@@ -237,7 +225,7 @@ const SalonShop = () => {
                                                          <button onClick={() => updateQuantity(item.id, 1)} className="p-1 px-2 text-gray-600 hover:bg-gray-50 rounded-r-lg"><Plus className="w-3 h-3"/></button>
                                                      </div>
                                                      <div className="font-bold text-gray-900">
-                                                         {new Intl.NumberFormat('fr-TN', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(item.price * item.quantity)}
+                                                         {new Intl.NumberFormat('fr-TG', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(item.price * item.quantity)}
                                                      </div>
                                                 </div>
                                             </div>
@@ -251,7 +239,7 @@ const SalonShop = () => {
                             <div className="border-t border-gray-100 p-6 bg-gray-50 pb-8 sm:pb-6">
                                 <div className="flex justify-between text-base font-medium text-gray-900 mb-6">
                                     <p>Total estimé</p>
-                                    <p className="text-2xl font-black text-indigo-600">{new Intl.NumberFormat('fr-TN', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(cartTotal)}</p>
+                                    <p className="text-2xl font-black text-indigo-600">{new Intl.NumberFormat('fr-TG', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(cartTotal)}</p>
                                 </div>
                                 <button 
                                     onClick={() => navigate(`/book/${slug}/checkout`, { state: { cart, total: cartTotal } })}

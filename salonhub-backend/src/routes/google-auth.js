@@ -121,9 +121,11 @@ router.post("/login", async (req, res) => {
         t.subscription_plan,
         t.trial_ends_at,
         t.logo_url,
-        t.business_type
+        t.business_type,
+        sp.technical_features as plan_features
       FROM users u
       JOIN tenants t ON u.tenant_id = t.id
+      LEFT JOIN subscription_plans sp ON t.subscription_plan = sp.name
       WHERE u.google_id = ?`,
       [googleUser.google_id]
     );
@@ -140,9 +142,11 @@ router.post("/login", async (req, res) => {
           t.subscription_plan,
           t.trial_ends_at,
           t.logo_url,
-          t.business_type
+          t.business_type,
+          sp.technical_features as plan_features
         FROM users u
         JOIN tenants t ON u.tenant_id = t.id
+        LEFT JOIN subscription_plans sp ON t.subscription_plan = sp.name
         WHERE u.email = ?`,
         [googleUser.email]
       );
@@ -222,6 +226,11 @@ router.post("/login", async (req, res) => {
       [user.id]
     );
 
+    // Parser les features
+    const features = user.plan_features 
+      ? (typeof user.plan_features === 'string' ? JSON.parse(user.plan_features) : user.plan_features)
+      : [];
+
     res.json({
       success: true,
       message: "Connexion Google réussie",
@@ -243,6 +252,7 @@ router.post("/login", async (req, res) => {
           slug: user.tenant_slug,
           subscription_status: effectiveStatus,
           subscription_plan: user.subscription_plan,
+          features: features, // Ajout crucial
           trial_ends_at: user.trial_ends_at,
           logo_url: user.logo_url,
           business_type: user.business_type,

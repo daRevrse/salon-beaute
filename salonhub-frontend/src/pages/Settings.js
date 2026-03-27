@@ -113,6 +113,8 @@ const Settings = () => {
     phone: "",
     role: "staff",
     password: "",
+    can_confirm_appointments: false,
+    can_manage_shop: false,
   });
 
   // Promotions state
@@ -408,7 +410,6 @@ const Settings = () => {
     }
   };
 
-  // Staff functions
   const handleOpenStaffModal = (staffMember = null) => {
     if (staffMember) {
       setEditingStaff(staffMember);
@@ -419,6 +420,8 @@ const Settings = () => {
         phone: staffMember.phone || "",
         role: staffMember.role,
         password: "",
+        can_confirm_appointments: staffMember.can_confirm_appointments || false,
+        can_manage_shop: staffMember.can_manage_shop || false,
       });
     } else {
       setEditingStaff(null);
@@ -429,6 +432,8 @@ const Settings = () => {
         phone: "",
         role: "staff",
         password: "",
+        can_confirm_appointments: false,
+        can_manage_shop: false,
       });
     }
     setShowStaffModal(true);
@@ -453,6 +458,8 @@ const Settings = () => {
           last_name: staffFormData.last_name,
           phone: staffFormData.phone,
           role: staffFormData.role,
+          can_confirm_appointments: staffFormData.can_confirm_appointments,
+          can_manage_shop: staffFormData.can_manage_shop,
         };
 
         await axios.put(
@@ -1564,7 +1571,6 @@ const Settings = () => {
                   className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   Rôle *
@@ -1579,6 +1585,50 @@ const Settings = () => {
                   <option value="admin">Administrateur</option>
                 </select>
               </div>
+
+              {staffFormData.role !== "owner" && (
+                <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Permissions spécifiques</p>
+                  
+                  <label className="flex items-center cursor-pointer group">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={staffFormData.can_confirm_appointments}
+                        onChange={(e) => setStaffFormData({ ...staffFormData, can_confirm_appointments: e.target.checked })}
+                        className={`h-4 w-4 ${config.textColor} ${config.focusRing} border-slate-300 rounded transition-all`}
+                      />
+                    </div>
+                    <div className="ml-3">
+                      <span className="block text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+                        Confirmer les rendez-vous
+                      </span>
+                      <span className="block text-xs text-slate-500">
+                        Autorise le membre à valider les RDV en attente.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center cursor-pointer group">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={staffFormData.can_manage_shop}
+                        onChange={(e) => setStaffFormData({ ...staffFormData, can_manage_shop: e.target.checked })}
+                        className={`h-4 w-4 ${config.textColor} ${config.focusRing} border-slate-300 rounded transition-all`}
+                      />
+                    </div>
+                    <div className="ml-3">
+                      <span className="block text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+                        Gérer la boutique & inventaire
+                      </span>
+                      <span className="block text-xs text-slate-500">
+                        Accès complet à la gestion des produits et commandes.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              )}
 
               {!editingStaff && (
                 <div>

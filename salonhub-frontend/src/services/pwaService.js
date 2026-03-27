@@ -3,6 +3,7 @@
  */
 
 import api from './api';
+import { requestFcmToken } from '../config/firebase';
 
 class PWAService {
   constructor() {
@@ -10,6 +11,7 @@ class PWAService {
     this.serviceWorkerRegistration = null;
     this.tenantId = null;
     this.currentSubscription = null;
+    this.fcmToken = null;
   }
 
   /**
@@ -100,13 +102,22 @@ class PWAService {
       });
  
        console.log('✅ Abonné aux notifications push:', subscription);
-       
-       this.currentSubscription = subscription;
-       
-       // Sauvegarder sur le backend
-       await this.saveSubscriptionToBackend(subscription);
-       
-       return subscription;
+              this.currentSubscription = subscription;
+        
+        // Obtenir le token FCM (Firebase Cloud Messaging)
+        try {
+          const token = await requestFcmToken();
+          if (token) {
+            this.fcmToken = token;
+          }
+        } catch (fcmError) {
+          console.error('⚠️ Erreur obtention token FCM:', fcmError);
+        }
+        
+        // Sauvegarder sur le backend (VAPID + FCM)
+        await this.saveSubscriptionToBackend(subscription, null, this.fcmToken);
+        
+        return subscription;
     } catch (error) {
       console.error('❌ Erreur abonnement push:', error);
       return null;
@@ -160,12 +171,15 @@ class PWAService {
   /**
    * Envoyer l'abonnement au serveur
    */
-  async saveSubscriptionToBackend(subscription = null, clientId = null) {
+  async saveSubscriptionToBackend(subscription = null, clientId = null, fcmToken = null) {
     try {
       const sub = subscription || this.currentSubscription || await this.serviceWorkerRegistration?.pushManager.getSubscription();
-      if (!sub) return false;
+      const token = fcmToken || this.fcmToken;
+      
+      if (!sub && !token) return false;
 
       this.currentSubscription = sub;
+      this.fcmToken = token;
 
       // Récupérer les infos utilisateur/tenant si possible
       const userStr = localStorage.getItem('user');
@@ -183,16 +197,33 @@ class PWAService {
 
       const response = await api.post('/push/subscribe', {
         subscription: sub,
+        fcmToken: token,
         userId: user?.id || null,
         clientId: clientId || null,
         tenantId: tenantId
       });
 
-      console.log('✅ Abonnement synchronisé avec le serveur:', response.data);
+      console.log('✅ Abonnement FCM synchronisé avec le serveur:', response.data);
       return true;
     } catch (error) {
-      console.error('❌ Erreur synchronisation abonnement:', error);
+      console.error('❌ Erreur synchronisation abonnement FCM:', error);
       return false;
+    }
+  }
+
+  /**
+   * Envoyer une notification de test via le backend
+   */
+  async sendTestNotification() {
+    try {
+      const response = await api.post('/push/test', {
+        title: 'Test SalonHub 🧪',
+        body: 'Ceci est une notification de test envoyée via le backend (FCM/VAPID).'
+      });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur envoi test backend:', error);
+      return { success: false, error: error.response?.data?.error || error.message };
     }
   }
 
@@ -360,7 +391,7 @@ class PWAService {
   urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding)
-      .replace(/\-/g, '+')
+      .replace(/-/g, '+')
       .replace(/_/g, '/');
 
     const rawData = window.atob(base64);
@@ -373,4 +404,5 @@ class PWAService {
   }
 }
 
-export default new PWAService();
+const pwaServiceInstance = new PWAService();
+export default pwaServiceInstance;

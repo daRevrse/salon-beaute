@@ -27,6 +27,11 @@ export const AuthProvider = ({ children }) => {
           setUser(parsedUser);
           setTenant(parsedTenant);
 
+          // Initialiser le tenant ID pour la PWA au démarrage
+          if (parsedTenant?.id) {
+            pwaService.setTenantId(parsedTenant.id);
+          }
+
           // Restaurer les salons
           if (storedSalons) {
             try { setSalons(JSON.parse(storedSalons)); } catch {}
@@ -439,8 +444,13 @@ export const AuthProvider = ({ children }) => {
   const hasFeature = (featureKey) => {
     if (!tenant) return false;
     
-    // Si l'abonnement n'est pas actif, on bloque tout sauf si c'est un check de base (optionnel)
+    // Si l'abonnement n'est pas actif, on bloque tout
     if (!isSubscriptionActive()) return false;
+
+    // Si on est en période d'essai active, on donne accès à tout
+    if (tenant.subscription_status === 'trial') {
+      return true;
+    }
 
     const features = tenant.features || [];
     return features.includes(featureKey);
@@ -468,7 +478,6 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     changePassword,
     refreshTenant,
-    refreshUser,
     refreshUser,
     refreshSubscription,
     hasFeature,

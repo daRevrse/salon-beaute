@@ -23,18 +23,21 @@ const server = http.createServer(app);
 // Initialiser Socket.io
 const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:3000",
-  "http://localhost:8081",
-  "http://192.168.1.77:8081",
+  "http://localhost:3001",
+  "https://app.salonhub.flowkraftagency.com", // Adjonction explicite de l'URL de prod
 ];
 
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      // Allow mobile apps (no origin) and listed origins
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Autoriser les requêtes sans origine (comme les apps mobiles ou curl)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1 || origin.includes("flowkraftagency.com")) {
         callback(null, true);
       } else {
-        callback(null, true); // Allow all origins for socket (mobile needs it)
+        console.warn(`CORS blocked for origin: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
       }
     },
     methods: ["GET", "POST"],

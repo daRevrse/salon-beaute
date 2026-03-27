@@ -7,8 +7,17 @@ const { tenantMiddleware } = require('../middleware/tenant');
 const walletFeatureGate = featureMiddleware('wallet');
 
 const auth = [authMiddleware, tenantMiddleware];
+
+// TEMPORARY: Block access to the wallet feature
+router.use((req, res, next) => {
+    res.status(403).json({
+        error: 'FEATURE_COMING_SOON',
+        message: 'Le portefeuille SalonHub sera bientôt disponible. Restez à l\'écoute !'
+    });
+});
+
 // Get wallet details for the current tenant
-router.get('/', walletFeatureGate, async (req, res) => {
+router.get('/', auth, walletFeatureGate, async (req, res) => {
     try {
         const wallets = await query("SELECT * FROM wallets WHERE tenant_id = ?", [req.tenantId]);
         let wallet = wallets ? wallets[0] : null;
@@ -26,7 +35,7 @@ router.get('/', walletFeatureGate, async (req, res) => {
 });
 
 // Get recent transactions for the tenant
-router.get('/transactions', walletFeatureGate, async (req, res) => {
+router.get('/transactions', auth, walletFeatureGate, async (req, res) => {
     try {
         const transactions = await query(
             "SELECT * FROM transactions WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 100", 
@@ -46,7 +55,7 @@ router.get('/transactions', walletFeatureGate, async (req, res) => {
 });
 
 // Request a withdrawal
-router.post('/withdrawals', walletFeatureGate, async (req, res) => {
+router.post('/withdrawals', auth, walletFeatureGate, async (req, res) => {
     try {
         const { amount, payoutMethod, payoutDetails } = req.body;
         
@@ -75,7 +84,7 @@ router.post('/withdrawals', walletFeatureGate, async (req, res) => {
 });
 
 // Get withdrawal history
-router.get('/withdrawals', walletFeatureGate, async (req, res) => {
+router.get('/withdrawals', auth, walletFeatureGate, async (req, res) => {
     try {
         const withdrawals = await query(
             "SELECT * FROM withdrawal_requests WHERE tenant_id = ? ORDER BY created_at DESC", 

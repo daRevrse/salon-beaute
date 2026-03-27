@@ -321,20 +321,20 @@ const Clients = () => {
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-100">
-                <thead className="bg-slate-50/50">
+            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-400px)] min-h-[400px] relative">
+              <table className="min-w-full border-separate border-spacing-0">
+                <thead className="bg-slate-50/90 backdrop-blur-sm sticky top-0 z-10 shadow-sm">
                   <tr>
-                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Client
                     </th>
-                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Coordonnées
                     </th>
-                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Inscrit le
                     </th>
-                    <th className="px-6 py-5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-6 py-5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                       Actions
                     </th>
                   </tr>

@@ -426,11 +426,15 @@ function App() {
               {/* Bannière de mise à jour PWA */}
               <UpdateBanner />
               
-              {/* Prompt d'installation PWA */}
-              <PWAInstallPrompt />
-              
-              {/* Prompt d'activation des notifications */}
-              <PushSoftPrompt />
+              {/* Overlays globaux (seulement hors booking public) */}
+              {!window.location.pathname.startsWith('/book/') && (
+                <>
+                  {/* Prompt d'installation PWA */}
+                  <PWAInstallPrompt />
+                  {/* Prompt d'activation des notifications */}
+                  <PushSoftPrompt />
+                </>
+              )}
             </SocketProvider>
           </CurrencyProvider>
         </PermissionProvider>

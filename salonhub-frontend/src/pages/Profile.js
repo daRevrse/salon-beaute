@@ -479,6 +479,8 @@ const Profile = () => {
               </form>
             )}
 
+
+
             {/* Onglet Mot de passe */}
             {activeTab === "password" && (
               <div className="space-y-8">

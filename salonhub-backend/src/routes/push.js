@@ -50,7 +50,7 @@ router.get("/vapid-public-key", (req, res) => {
  */
 router.post("/subscribe", async (req, res) => {
   try {
-    const { subscription, clientId, userId } = req.body;
+    const { subscription, fcmToken, clientId, userId } = req.body;
 
     if (!subscription) {
       return res.status(400).json({
@@ -59,9 +59,9 @@ router.post("/subscribe", async (req, res) => {
       });
     }
 
-    // Récupérer le tenantId depuis le header ou le token (si authentifié)
-    let tenantId = req.headers["x-tenant-id"];
-
+    // Récupérer le tenantId depuis le header, le body ou le token (si authentifié)
+    let tenantId = req.headers["x-tenant-id"] || req.body.tenantId;
+ 
     // Si authentifié, utiliser le tenant de l'utilisateur
     if (req.user) {
       tenantId = req.user.tenant_id;
@@ -82,6 +82,7 @@ router.post("/subscribe", async (req, res) => {
       clientId,
       userId,
       subscription,
+      fcmToken,
       userAgent,
       ipAddress,
     });
