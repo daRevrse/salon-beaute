@@ -12,6 +12,48 @@ const { tenantMiddleware } = require("../middleware/tenant");
 const emailService = require("../services/emailService");
 
 // ==========================================
+// POST - Vérifier la disponibilité d'un email (avant inscription)
+// Contrôle à la fois users.email et tenants.email
+// ==========================================
+router.post("/check-email", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, error: "Email requis" });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Format email invalide" });
+    }
+
+    const value = email.trim();
+
+    const [existingUser] = await query(
+      "SELECT id FROM users WHERE email = ? LIMIT 1",
+      [value]
+    );
+    const [existingTenant] = await query(
+      "SELECT id FROM tenants WHERE email = ? LIMIT 1",
+      [value]
+    );
+
+    return res.json({
+      success: true,
+      available: !existingUser && !existingTenant,
+    });
+  } catch (error) {
+    console.error("Erreur vérification email:", error);
+    return res
+      .status(500)
+      .json({ success: false, error: "Erreur serveur lors de la vérification" });
+  }
+});
+
+// ==========================================
 // POST - Inscription (Créer nouveau salon + owner)
 // ==========================================
 router.post("/register", async (req, res) => {

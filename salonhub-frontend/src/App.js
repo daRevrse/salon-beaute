@@ -20,6 +20,9 @@ import Register from "./components/auth/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
+// Onboarding
+import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
+
 // Pages Admin
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
@@ -226,6 +229,15 @@ function App() {
                 <Route path="/m/:slug" element={<MedicalLanding />} />
 
                 {/* Routes protégées - Admin */}
+                <Route
+                  path="/onboarding"
+                  element={
+                    <ProtectedRoute>
+                      <OnboardingWizard />
+                    </ProtectedRoute>
+                  }
+                />
+
                 <Route
                   path="/dashboard"
                   element={

@@ -16,10 +16,10 @@ import PWASettings from "../components/settings/PWASettings";
 import APISettings from "../components/settings/APISettings";
 import WebhookSettings from "../components/settings/WebhookSettings";
 import { getImageUrl } from "../utils/imageUtils";
+import BusinessHoursEditor, { normalizeBusinessHours } from "../components/common/BusinessHoursEditor";
 import api from "../services/api";
 import {
   ClockIcon,
-  CalendarDaysIcon,
   CurrencyDollarIcon,
   BuildingStorefrontIcon,
   Cog6ToothIcon,
@@ -47,16 +47,6 @@ import Toast from "../components/common/Toast";
 import ConfirmModal from "../components/common/ConfirmModal";
 
 const API_URL = process.env.REACT_APP_API_URL;
-
-const DAYS = [
-  { key: "monday", label: "Lundi" },
-  { key: "tuesday", label: "Mardi" },
-  { key: "wednesday", label: "Mercredi" },
-  { key: "thursday", label: "Jeudi" },
-  { key: "friday", label: "Vendredi" },
-  { key: "saturday", label: "Samedi" },
-  { key: "sunday", label: "Dimanche" },
-];
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -214,7 +204,7 @@ const Settings = () => {
       const settings = response.data;
 
       if (settings.business_hours) {
-        setBusinessHours(settings.business_hours);
+        setBusinessHours(normalizeBusinessHours(settings.business_hours));
       }
 
       if (settings.slot_duration) {
@@ -531,16 +521,6 @@ const Settings = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
-  };
-
-  const handleDayChange = (day, field, value) => {
-    setBusinessHours((prev) => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        [field]: value,
-      },
-    }));
   };
 
   const handleSave = async () => {
@@ -929,123 +909,13 @@ const Settings = () => {
                     Planning et Créneaux
                   </h2>
 
-                  <div className="mb-8 pb-8 border-b border-slate-200">
-                    <h3 className="text-lg font-medium text-slate-800 mb-4 flex items-center">
-                      <CalendarDaysIcon className="h-5 w-5 mr-2 text-slate-600" />
-                      Durée des créneaux
-                    </h3>
-                    <div className="max-w-md">
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Durée d'un créneau de réservation
-                      </label>
-                      <div className="flex gap-3">
-                        <div className="flex-1">
-                          <input
-                            type="number"
-                            min="5"
-                            max="480"
-                            value={slotDuration}
-                            onChange={(e) => setSlotDuration(Math.max(5, Math.min(480, Number(e.target.value))))}
-                            className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
-                            placeholder="30"
-                          />
-                        </div>
-                        <select
-                          value={slotDuration >= 60 && slotDuration % 60 === 0 ? "hours" : "minutes"}
-                          onChange={(e) => {
-                            if (e.target.value === "hours") {
-                              setSlotDuration(Math.max(60, Math.round(slotDuration / 60) * 60));
-                            }
-                          }}
-                          className={`px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
-                        >
-                          <option value="minutes">minutes</option>
-                          <option value="hours">heures</option>
-                        </select>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {[15, 30, 45, 60, 90, 120].map((mins) => (
-                          <button
-                            key={mins}
-                            type="button"
-                            onClick={() => setSlotDuration(mins)}
-                            className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                              slotDuration === mins
-                                ? `${config.lightBg} ${config.textColor} border-transparent`
-                                : "border-slate-200 text-slate-600 hover:border-slate-300"
-                            }`}
-                          >
-                            {mins >= 60 ? `${mins / 60}h` : `${mins} min`}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="mt-3 text-sm text-slate-500">
-                        Les {term.clients.toLowerCase()} pourront réserver à des intervalles de {slotDuration >= 60 ? `${slotDuration / 60} heure(s)` : `${slotDuration} minutes`}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-medium text-slate-800 mb-4 flex items-center">
-                      <ClockIcon className="h-5 w-5 mr-2 text-slate-600" />
-                      Horaires d'ouverture
-                    </h3>
-                    <div className="space-y-4">
-                      {DAYS.map(({ key, label }) => (
-                        <div
-                          key={key}
-                          className="flex items-center space-x-4 pb-4 border-b border-slate-100 last:border-b-0"
-                        >
-                          <div className="w-32">
-                            <label className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={!businessHours[key].closed}
-                                onChange={(e) =>
-                                  handleDayChange(key, "closed", !e.target.checked)
-                                }
-                                className={`h-4 w-4 ${config.textColor} ${config.focusRing} border-slate-300 rounded`}
-                              />
-                              <span className="ml-2 text-sm font-medium text-slate-700">
-                                {label}
-                              </span>
-                            </label>
-                          </div>
-
-                          {!businessHours[key].closed ? (
-                            <div className="flex items-center space-x-4 flex-1">
-                              <div className="flex-1">
-                                <label className="block text-xs text-slate-500 mb-1">
-                                  Ouverture
-                                </label>
-                                <input
-                                  type="time"
-                                  value={businessHours[key].open}
-                                  onChange={(e) => handleDayChange(key, "open", e.target.value)}
-                                  className={`w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
-                                />
-                              </div>
-                              <div className="flex-1">
-                                <label className="block text-xs text-slate-500 mb-1">
-                                  Fermeture
-                                </label>
-                                <input
-                                  type="time"
-                                  value={businessHours[key].close}
-                                  onChange={(e) => handleDayChange(key, "close", e.target.value)}
-                                  className={`w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex-1 text-sm text-slate-400 italic">
-                              Fermé
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <BusinessHoursEditor
+                    value={businessHours}
+                    onChange={setBusinessHours}
+                    slotDuration={slotDuration}
+                    onSlotDurationChange={setSlotDuration}
+                    config={config}
+                  />
                 </div>
               </div>
             )}

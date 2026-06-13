@@ -308,6 +308,44 @@ router.get("/subscription", async (req, res) => {
 });
 
 // ==========================================
+// GET - Historique des factures (tenant)
+// ==========================================
+router.get("/invoices", async (req, res) => {
+  try {
+    const [tenant] = await query(
+      "SELECT stripe_customer_id FROM tenants WHERE id = ?",
+      [req.tenantId]
+    );
+
+    if (!tenant?.stripe_customer_id) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const invoices = await stripe.invoices.list({
+      customer: tenant.stripe_customer_id,
+      limit: 24,
+    });
+
+    const data = invoices.data.map((inv) => ({
+      id: inv.id,
+      number: inv.number,
+      amount: inv.amount_due / 100,
+      currency: inv.currency,
+      status: inv.status,
+      created: new Date(inv.created * 1000),
+      planName: inv.lines?.data?.[0]?.description || null,
+      invoice_pdf: inv.invoice_pdf,
+      hosted_invoice_url: inv.hosted_invoice_url,
+    }));
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Erreur récupération factures:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
+// ==========================================
 // POST - Annuler abonnement
 // ==========================================
 router.post("/cancel-subscription", async (req, res) => {

@@ -6,30 +6,26 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import QRCode from "react-qr-code";
-import Joyride, { STATUS } from "react-joyride";
 import { useAuth } from "../contexts/AuthContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 import DashboardLayout from "../components/common/DashboardLayout";
+import OnboardingChecklistCard from "../components/onboarding/OnboardingChecklistCard";
 import api from "../services/api";
 import {
   CalendarDaysIcon,
+  ArrowRightIcon,
   UserGroupIcon,
   ScissorsIcon,
   ClockIcon,
   CurrencyDollarIcon,
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
   ChartBarIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ExclamationTriangleIcon,
   ShareIcon,
   ClipboardDocumentIcon,
-  Cog6ToothIcon,
   BuildingStorefrontIcon,
   AcademicCapIcon,
   HeartIcon,
-  SparklesIcon,
 } from "@heroicons/react/24/outline";
 
 // Business Type Configuration
@@ -113,102 +109,15 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [runTutorial, setRunTutorial] = useState(false);
-  const [hasBusinessHours, setHasBusinessHours] = useState(true);
-
-  // Tutorial steps
-  const tutorialSteps = [
-    {
-      target: ".dashboard-header",
-      content: "🎉 Bienvenue sur SalonHub ! Ce tutoriel va vous guider à travers le workflow complet. Commençons !",
-      disableBeacon: true,
-      placement: "bottom",
-    },
-    {
-      target: "body",
-      content: `📋 Workflow Principal :\n\n1️⃣ Configurer vos horaires d'ouverture\n2️⃣ Ajouter vos ${config.servicesLabel.toLowerCase()}\n3️⃣ Ajouter vos clients\n4️⃣ Partager votre lien de réservation\n5️⃣ Recevoir et gérer les ${config.appointmentsLabel.toLowerCase()}\n6️⃣ Suivre vos performances`,
-      placement: "center",
-    },
-    ...(!hasBusinessHours ? [{
-      target: ".business-hours-alert",
-      content: "🚨 ALERTE IMPORTANTE !\n\nVos horaires ne sont pas configurés. Cliquez sur ce lien pour accéder à l'onglet Horaires dans les Paramètres.",
-      placement: "bottom",
-    }] : []),
-    {
-      target: ".stats-services",
-      content: `Configurez vos ${config.servicesLabel.toLowerCase()} avec leurs tarifs et durées.`,
-      placement: "bottom",
-    },
-    {
-      target: ".stats-clients",
-      content: "Gérez vos clients et leur historique.",
-      placement: "bottom",
-    },
-    {
-      target: ".share-btn",
-      content: "Partagez votre lien de réservation avec vos clients !",
-      placement: "bottom",
-    },
-    {
-      target: ".stats-pending",
-      content: `Les ${config.pendingLabel.toLowerCase()} apparaissent ici. Validez-les rapidement !`,
-      placement: "bottom",
-    },
-    {
-      target: ".stats-today",
-      content: `Vos ${config.appointmentsLabel.toLowerCase()} du jour s'affichent ici.`,
-      placement: "bottom",
-    },
-  ];
 
   useEffect(() => {
     loadDashboardData();
-
-    // Vérifier si le tutoriel a été complété (priorité: base de données > localStorage)
-    const hasSeenTutorialLocal = localStorage.getItem("dashboardTutorialSeen");
-    const hasCompletedOnboarding = tenant?.onboarding_status === "completed";
-
-    if (!hasCompletedOnboarding && !hasSeenTutorialLocal) {
-      setTimeout(() => setRunTutorial(true), 1000);
-    }
-  }, [tenant?.onboarding_status]);
-
-  const handleJoyrideCallback = async (data) => {
-    const { status } = data;
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
-      setRunTutorial(false);
-      localStorage.setItem("dashboardTutorialSeen", "true");
-
-      // Marquer le tutoriel comme terminé dans la base de données
-      try {
-        await api.put("/settings/onboarding/complete");
-      } catch (error) {
-        console.error("Erreur lors de la mise à jour du statut onboarding:", error);
-      }
-    }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-
-      const settingsRes = await api.get("/settings");
-      const settings = settingsRes.data;
-
-      let hasValidBusinessHours = false;
-      if (settings?.business_hours) {
-        for (const dayData of Object.values(settings.business_hours)) {
-          const isValid = !dayData.closed &&
-            dayData.open && dayData.close &&
-            (dayData.open !== "00:00" || dayData.close !== "00:00") &&
-            dayData.open !== dayData.close;
-          if (isValid) {
-            hasValidBusinessHours = true;
-            break;
-          }
-        }
-      }
-      setHasBusinessHours(hasValidBusinessHours);
 
       // Load data based on business type
       if (businessType === "restaurant") {
@@ -497,23 +406,6 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <Joyride
-        steps={tutorialSteps}
-        run={runTutorial}
-        continuous
-        showProgress
-        showSkipButton
-        callback={handleJoyrideCallback}
-        styles={{
-          options: { primaryColor: "#8B5CF6", zIndex: 10000 },
-          buttonNext: { backgroundColor: "#8B5CF6", fontSize: 14, padding: "8px 16px", borderRadius: "12px" },
-          buttonBack: { color: "#64748B", fontSize: 14, marginRight: 10 },
-          buttonSkip: { color: "#64748B", fontSize: 14 },
-          tooltip: { borderRadius: "16px", fontSize: 14 },
-        }}
-        locale={{ back: "Précédent", close: "Fermer", last: "Terminer", next: "Suivant", skip: "Passer" }}
-      />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 dashboard-header">
@@ -529,13 +421,6 @@ const Dashboard = () => {
             </p>
           </div>
           <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
-            <button
-              onClick={() => setRunTutorial(true)}
-              className="inline-flex items-center justify-center px-4 py-2.5 border border-slate-200 text-sm font-medium rounded-xl shadow-soft text-slate-600 bg-white hover:bg-slate-50 transition-all duration-300 flex-1 sm:flex-none"
-            >
-              <SparklesIcon className="h-5 w-5 mr-2" />
-              <span className="hidden sm:inline">Aide</span>
-            </button>
             <Link
               to={`/book/${tenant?.slug}`}
               target="_blank"
@@ -653,29 +538,8 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Business Hours Alert */}
-        {!hasBusinessHours && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-500 rounded-xl p-4 shadow-soft animate-fade-in">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-semibold text-red-800">⚠️ Configuration requise</h3>
-                <p className="mt-1 text-sm text-red-700">
-                  Vos horaires ne sont pas configurés. <strong>Vos clients ne peuvent pas réserver en ligne !</strong>
-                </p>
-                <Link
-                  to="/settings?tab=hours"
-                  className="business-hours-alert mt-2 inline-flex items-center text-sm font-medium text-red-800 hover:text-red-900 underline"
-                >
-                  <Cog6ToothIcon className="h-4 w-4 mr-1" />
-                  Configurer maintenant →
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Onboarding - reprise de la configuration */}
+        <OnboardingChecklistCard />
 
         {/* Pending Appointments Alert */}
         {stats.pendingAppointments > 0 && (
@@ -696,117 +560,86 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Stats Cards Row 1 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Today's Appointments */}
-          <div className={`stats-today bg-gradient-to-br ${config.cardGradient} text-white rounded-2xl p-6 shadow-soft hover:shadow-glow transition-all duration-300`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm font-medium">{config.appointmentsLabel}</p>
-                <p className="mt-2 text-4xl font-bold font-display">{stats.todayAppointments}</p>
-                <Link to="/appointments" className="mt-3 text-sm text-white/80 hover:text-white inline-flex items-center transition-colors">
-                  Voir le planning →
+        {/* Cartes résumé : Rendez-vous (aujourd'hui + en attente) + Revenu */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8">
+          {/* Rendez-vous : aujourd'hui + en attente */}
+          <div className="stats-appointments bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-soft hover:shadow-soft-lg transition-all duration-300">
+            <div className="grid grid-cols-2 divide-x divide-slate-100">
+              <div className="pr-4 sm:pr-6">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <p className="text-sm font-medium text-slate-500">{config.appointmentsLabel}</p>
+                  <div className={`p-2 sm:p-2.5 rounded-xl ${config.lightBg}`}>
+                    <CalendarDaysIcon className={`h-6 w-6 ${config.textColor}`} />
+                  </div>
+                </div>
+                <p className="text-2xl sm:text-3xl font-bold font-display text-slate-800">{stats.todayAppointments}</p>
+                <Link to="/appointments" className={`mt-2 sm:mt-3 inline-flex items-center gap-1 text-xs sm:text-sm font-medium ${config.textColor} hover:opacity-80 transition-colors`}>
+                  Voir le planning <ArrowRightIcon className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="p-3 bg-white/20 rounded-xl">
-                <CalendarDaysIcon className="h-10 w-10" />
-              </div>
-            </div>
-          </div>
-
-          {/* Total Clients */}
-          <div className="stats-clients bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-2xl p-6 shadow-soft hover:shadow-lg transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm font-medium">Total clients</p>
-                <p className="mt-2 text-4xl font-bold font-display">{stats.totalClients}</p>
-                <Link to="/clients" className="mt-3 text-sm text-white/80 hover:text-white inline-flex items-center transition-colors">
-                  Gérer les clients →
+              <div className="pl-4 sm:pl-6">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <p className="text-sm font-medium text-slate-500">{config.pendingLabel}</p>
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-amber-50">
+                    <ClockIcon className="h-6 w-6 text-amber-600" />
+                  </div>
+                </div>
+                <p className="text-2xl sm:text-3xl font-bold font-display text-slate-800">{stats.pendingAppointments}</p>
+                <Link to="/appointments?status=pending" className="mt-2 sm:mt-3 inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-amber-600 hover:opacity-80 transition-colors">
+                  Valider <ArrowRightIcon className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="p-3 bg-white/20 rounded-xl">
-                <UserGroupIcon className="h-10 w-10" />
+            </div>
+          </div>
+
+          {/* Revenu */}
+          <div className="revenue-section bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-soft hover:shadow-soft-lg transition-all duration-300">
+            <div className="flex flex-col gap-5">
+              {/* Hero : Revenu ce mois */}
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-2xl ${config.lightBg}`}>
+                  <ChartBarIcon className={`h-7 w-7 ${config.textColor}`} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Revenu ce mois</p>
+                  <p className="text-3xl font-bold font-display text-slate-800">
+                    {formatPrice(stats.monthRevenue)}
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Total Services */}
-          <div className="stats-services bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-2xl p-6 shadow-soft hover:shadow-glow transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm font-medium">{config.servicesLabel}</p>
-                <p className="mt-2 text-4xl font-bold font-display">{stats.totalServices}</p>
-                <Link to="/services" className="mt-3 text-sm text-white/80 hover:text-white inline-flex items-center transition-colors">
-                  Gérer →
-                </Link>
+              {/* Métriques secondaires */}
+              <div className="grid grid-cols-3 gap-4 border-t border-slate-100 pt-5">
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <CurrencyDollarIcon className="h-4 w-4 text-emerald-500" />
+                    <span className="text-xs font-medium text-slate-500">Aujourd'hui</span>
+                  </div>
+                  <p className="text-lg font-bold font-display text-slate-800">
+                    {formatPrice(stats.todayRevenue)}
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <CheckCircleIcon className={`h-4 w-4 ${config.textColor}`} />
+                    <span className="text-xs font-medium text-slate-500">Complétés</span>
+                  </div>
+                  <p className="text-lg font-bold font-display text-slate-800">
+                    {stats.completedThisMonth}
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <XCircleIcon className="h-4 w-4 text-red-500" />
+                    <span className="text-xs font-medium text-slate-500">Annulés</span>
+                  </div>
+                  <p className="text-lg font-bold font-display text-slate-800">
+                    {stats.cancelledThisMonth}
+                  </p>
+                </div>
               </div>
-              <div className="p-3 bg-white/20 rounded-xl">
-                <BusinessIcon className="h-10 w-10" />
-              </div>
-            </div>
-          </div>
-
-          {/* Pending */}
-          <div className="stats-pending bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-2xl p-6 shadow-soft hover:shadow-lg transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm font-medium">{config.pendingLabel}</p>
-                <p className="mt-2 text-4xl font-bold font-display">{stats.pendingAppointments}</p>
-                <Link to="/appointments?status=pending" className="mt-3 text-sm text-white/80 hover:text-white inline-flex items-center transition-colors">
-                  Valider →
-                </Link>
-              </div>
-              <div className="p-3 bg-white/20 rounded-xl">
-                <ClockIcon className="h-10 w-10" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Cards Row 2: Revenue */}
-        <div className="revenue-section grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-soft hover:shadow-soft-lg transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-slate-500">Revenu aujourd'hui</p>
-              <CurrencyDollarIcon className="h-6 w-6 text-emerald-500" />
-            </div>
-            <p className="text-3xl font-bold font-display text-slate-800">{formatPrice(stats.todayRevenue)}</p>
-            <div className="mt-2 flex items-center text-sm text-emerald-600">
-              <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-              <span>Terminés</span>
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-soft hover:shadow-soft-lg transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-slate-500">Revenu ce mois</p>
-              <ChartBarIcon className="h-6 w-6 text-violet-500" />
-            </div>
-            <p className="text-3xl font-bold font-display text-slate-800">{formatPrice(stats.monthRevenue)}</p>
-            <div className="mt-2 text-sm text-slate-500">{stats.completedThisMonth} complétés</div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-soft hover:shadow-soft-lg transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-slate-500">Complétés ce mois</p>
-              <CheckCircleIcon className="h-6 w-6 text-violet-500" />
-            </div>
-            <p className="text-3xl font-bold font-display text-slate-800">{stats.completedThisMonth}</p>
-            <div className="mt-2 flex items-center text-sm text-violet-600">
-              <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-              Terminés
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-soft hover:shadow-soft-lg transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-slate-500">Annulés ce mois</p>
-              <XCircleIcon className="h-6 w-6 text-red-500" />
-            </div>
-            <p className="text-3xl font-bold font-display text-slate-800">{stats.cancelledThisMonth}</p>
-            <div className="mt-2 flex items-center text-sm text-red-600">
-              <ArrowTrendingDownIcon className="h-4 w-4 mr-1" />
-              À surveiller
             </div>
           </div>
         </div>
@@ -821,8 +654,8 @@ const Dashboard = () => {
                   <CalendarDaysIcon className={`h-5 w-5 mr-2 ${config.textColor}`} />
                   {config.appointmentsLabel} du jour
                 </h2>
-                <Link to="/appointments" className={`text-sm ${config.textColor} hover:opacity-80 font-medium transition-colors`}>
-                  Voir tout
+                <Link to="/appointments" className={`inline-flex items-center gap-1 text-sm ${config.textColor} hover:opacity-80 font-medium transition-colors`}>
+                  Voir tout <ArrowRightIcon className="h-4 w-4" />
                 </Link>
               </div>
 
@@ -870,15 +703,24 @@ const Dashboard = () => {
 
           {/* Right Column */}
           <div className="space-y-8">
-            {/* Popular Services */}
-            <div className="popular-services bg-white border border-slate-200 rounded-2xl shadow-soft overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100">
-                <h2 className="font-display text-lg font-semibold text-slate-800 flex items-center">
-                  <ChartBarIcon className="h-5 w-5 mr-2 text-violet-500" />
-                  {config.servicesLabel} populaires
-                </h2>
+            {/* Services : actifs + populaires */}
+            <div className="services-card bg-white border border-slate-200 rounded-2xl shadow-soft overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-indigo-50">
+                    <BusinessIcon className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-400">{config.servicesLabel}</p>
+                    <p className="text-xl font-bold font-display text-slate-800 leading-tight">{stats.totalServices}</p>
+                  </div>
+                </div>
+                <Link to="/services" className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:opacity-80 transition-colors">
+                  Gérer <ArrowRightIcon className="h-4 w-4" />
+                </Link>
               </div>
-              <div className="p-6 space-y-4">
+              <p className="px-6 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">Populaires</p>
+              <div className="px-6 pb-6 pt-2 space-y-4 max-h-[260px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
                 {popularServices.length === 0 ? (
                   <p className="text-sm text-slate-400 text-center py-4">Aucune donnée</p>
                 ) : (
@@ -903,18 +745,24 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Recent Clients */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-soft overflow-hidden">
+            {/* Clients : total + récents */}
+            <div className="clients-card bg-white border border-slate-200 rounded-2xl shadow-soft overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="font-display text-lg font-semibold text-slate-800 flex items-center">
-                  <UserGroupIcon className="h-5 w-5 mr-2 text-emerald-500" />
-                  Clients récents
-                </h2>
-                <Link to="/clients" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
-                  Voir tout
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-50">
+                    <UserGroupIcon className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-400">Total clients</p>
+                    <p className="text-xl font-bold font-display text-slate-800 leading-tight">{stats.totalClients}</p>
+                  </div>
+                </div>
+                <Link to="/clients" className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:opacity-80 transition-colors">
+                  Voir tout <ArrowRightIcon className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="p-6 space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
+              <p className="px-6 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">Récents</p>
+              <div className="px-6 pb-6 pt-2 space-y-3 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
                 {recentClients.length === 0 ? (
                   <p className="text-sm text-slate-400 text-center py-4">Aucun client</p>
                 ) : (

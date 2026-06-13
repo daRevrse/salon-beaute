@@ -23,7 +23,6 @@ import {
   PlusIcon,
   ListBulletIcon,
   CalendarIcon,
-  FunnelIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
@@ -317,44 +316,32 @@ const Appointments = () => {
           </button>
         </div>
 
-        {/* Filters */}
-        <div className="mb-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">
-          <div className="flex items-center gap-2 mb-4">
-            <FunnelIcon className={`h-5 w-5 ${config.textColor}`} />
-            <span className="font-medium text-slate-700">Filtres</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">Par date</label>
-              <input
-                type="date"
-                value={filterDate}
-                onChange={handleFilterDate}
-                className="input-premium"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">Par statut</label>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { value: "", label: "Tous", style: `bg-gradient-to-r ${config.gradient} text-white` },
-                  { value: "pending", label: "En attente", style: "bg-amber-500 text-white" },
-                  { value: "confirmed", label: "Confirmés", style: "bg-emerald-500 text-white" },
-                ].map((btn) => (
-                  <button
-                    key={btn.value}
-                    onClick={() => handleFilterStatus(btn.value)}
-                    className={`px-4 py-2 text-sm font-medium rounded-xl border transition-all duration-300 ${
-                      filterStatus === btn.value
-                        ? btn.style
-                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+        {/* Filtres — compact */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+          <input
+            type="date"
+            value={filterDate}
+            onChange={handleFilterDate}
+            className={`px-3 py-1.5 text-sm border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
+          />
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-200">
+            {[
+              { value: "", label: "Tous", active: `${config.lightBg} ${config.textColor} ${config.lightBorderColor}` },
+              { value: "pending", label: "En attente", active: "bg-amber-50 text-amber-700 border-amber-200" },
+              { value: "confirmed", label: "Confirmés", active: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+            ].map((btn) => (
+              <button
+                key={btn.value}
+                onClick={() => handleFilterStatus(btn.value)}
+                className={`px-3.5 py-1.5 text-sm font-medium rounded-full whitespace-nowrap border transition-colors ${
+                  filterStatus === btn.value
+                    ? btn.active
+                    : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {btn.label}
+              </button>
+            ))}
           </div>
         </div>
 

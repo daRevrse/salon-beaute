@@ -132,7 +132,12 @@ const reactivateSubscription = async (subscriptionId) => {
 // Helper: Récupérer infos abonnement
 const getSubscriptionInfo = async (subscriptionId) => {
   try {
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ["default_payment_method", "items.data.price"],
+    });
+
+    const price = subscription.items?.data?.[0]?.price;
+    const card = subscription.default_payment_method?.card;
 
     return {
       success: true,
@@ -142,6 +147,17 @@ const getSubscriptionInfo = async (subscriptionId) => {
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
         cancelAt: subscription.cancel_at
           ? new Date(subscription.cancel_at * 1000)
+          : null,
+        amount: price?.unit_amount ?? null,
+        currency: price?.currency ?? null,
+        interval: price?.recurring?.interval ?? null,
+        paymentMethod: card
+          ? {
+              brand: card.brand,
+              last4: card.last4,
+              expMonth: card.exp_month,
+              expYear: card.exp_year,
+            }
           : null,
       },
     };

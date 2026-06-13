@@ -25,7 +25,6 @@ import {
   CurrencyDollarIcon,
   XMarkIcon,
   CheckCircleIcon,
-  FunnelIcon,
 } from "@heroicons/react/24/outline";
 
 // Fonctions utilitaires pour conversion minutes <-> HH:MM
@@ -269,39 +268,31 @@ const Services = () => {
           )}
         </div>
 
-        {/* Filters */}
-        <div className="mb-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-soft">
-          <div className="flex items-center gap-2 mb-4">
-            <FunnelIcon className={`h-5 w-5 ${config.textColor}`} />
-            <span className="font-medium text-slate-700">
-              {term.serviceCategory}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
+        {/* Filtre catégories — compact */}
+        <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-200">
+          <button
+            onClick={() => handleFilter("")}
+            className={`px-3.5 py-1.5 text-sm font-medium rounded-full whitespace-nowrap border transition-colors ${
+              !filterCategory
+                ? `${config.lightBg} ${config.textColor} ${config.lightBorderColor}`
+                : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            Tous
+          </button>
+          {categories.map((cat) => (
             <button
-              onClick={() => handleFilter("")}
-              className={`px-4 py-2 text-sm font-medium rounded-xl border transition-all duration-300 ${
-                !filterCategory
-                  ? `bg-gradient-to-r ${config.gradient} text-white border-transparent`
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+              key={cat}
+              onClick={() => handleFilter(cat)}
+              className={`px-3.5 py-1.5 text-sm font-medium rounded-full whitespace-nowrap capitalize border transition-colors ${
+                filterCategory === cat
+                  ? `${config.lightBg} ${config.textColor} ${config.lightBorderColor}`
+                  : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
               }`}
             >
-              Tous
+              {cat}
             </button>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => handleFilter(cat)}
-                className={`px-4 py-2 text-sm font-medium rounded-xl capitalize border transition-all duration-300 ${
-                  filterCategory === cat
-                    ? `bg-gradient-to-r ${config.gradient} text-white border-transparent`
-                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
 
         {/* Services Grid */}

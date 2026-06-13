@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import api from "../../services/api";
 import {
   BuildingStorefrontIcon,
   UserIcon,
@@ -14,8 +15,6 @@ import {
   ArrowLeftIcon,
   XCircleIcon,
   EnvelopeIcon,
-  PhoneIcon,
-  MapPinIcon,
   LockClosedIcon,
   SparklesIcon,
   ScissorsIcon,
@@ -41,9 +40,8 @@ const SECTOR_CONFIGS = {
 };
 
 const STEPS = [
-  { id: 1, name: "Activite", icon: Squares2X2Icon },
-  { id: 2, name: "Etablissement", icon: BuildingStorefrontIcon },
-  { id: 3, name: "Compte", icon: UserIcon },
+  { id: 1, name: "Compte", icon: UserIcon },
+  { id: 2, name: "Activite", icon: Squares2X2Icon },
 ];
 
 const Register = () => {
@@ -97,23 +95,18 @@ const Register = () => {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState("");
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
   const [formData, setFormData] = useState({
-    // Business Type
-    business_type: "",
-    // Salon/Establishment
-    salon_name: "",
-    salon_email: "",
-    salon_phone: "",
-    salon_address: "",
-    salon_city: "",
-    salon_postal_code: "",
-    // Owner
+    // Owner / Compte
     first_name: "",
     last_name: "",
     email: "",
     password: "",
     password_confirm: "",
+    // Business Type + nom de l'etablissement
+    business_type: "",
+    salon_name: "",
   });
 
   const handleChange = (e) => {
@@ -140,25 +133,6 @@ const Register = () => {
     setError("");
 
     if (step === 1) {
-      if (!formData.business_type) {
-        setError("Veuillez selectionner votre type d'activite");
-        return false;
-      }
-    }
-
-    if (step === 2) {
-      if (!formData.salon_name || !formData.salon_email) {
-        setError("Le nom et l'email de l'etablissement sont obligatoires");
-        return false;
-      }
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.salon_email)) {
-        setError("Format email invalide");
-        return false;
-      }
-    }
-
-    if (step === 3) {
       if (!formData.first_name || !formData.last_name || !formData.email) {
         setError("Le prenom, nom et email sont obligatoires");
         return false;
@@ -185,13 +159,47 @@ const Register = () => {
       }
     }
 
+    if (step === 2) {
+      if (!formData.business_type) {
+        setError("Veuillez selectionner votre type d'activite");
+        return false;
+      }
+      if (!formData.salon_name) {
+        setError("Le nom de l'etablissement est obligatoire");
+        return false;
+      }
+    }
+
     return true;
   };
 
-  const handleNext = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep(currentStep + 1);
+  const handleNext = async () => {
+    if (!validateStep(currentStep)) return;
+
+    // Etape 1 (Compte) : verifier que l'email n'est pas deja utilise avant d'avancer.
+    // (En flux Google, l'email vient de Google et est gere a la soumission.)
+    if (currentStep === 1 && !isGoogleFlow) {
+      setCheckingEmail(true);
+      setError("");
+      try {
+        const res = await api.post("/auth/check-email", {
+          email: formData.email,
+        });
+        if (!res.data?.available) {
+          setError(
+            "Cet email est deja utilise. Connectez-vous ou choisissez une autre adresse."
+          );
+          return;
+        }
+      } catch (err) {
+        // Si le controle echoue (reseau/serveur), on laisse la validation finale du backend trancher.
+        console.error("Verification email impossible:", err);
+      } finally {
+        setCheckingEmail(false);
+      }
     }
+
+    setCurrentStep(currentStep + 1);
   };
 
   const handlePrevious = () => {
@@ -203,25 +211,30 @@ const Register = () => {
     e.preventDefault();
     setError("");
 
-    if (!validateStep(3)) return;
+    if (!validateStep(2)) return;
 
     let result;
 
     if (isGoogleFlow && googleToken) {
-      // Google registration
-      const { password, password_confirm, first_name, last_name, email, ...salonData } = formData;
+      // Google registration — l'email du salon prend l'email du compte
+      const salonData = {
+        business_type: formData.business_type,
+        salon_name: formData.salon_name,
+        salon_email: formData.email,
+      };
       result = await registerWithGoogle(googleToken, salonData);
       // Clean up session storage
       sessionStorage.removeItem("googleUser");
       sessionStorage.removeItem("googleToken");
     } else {
-      // Standard registration
-      const { password_confirm, ...registerData } = formData;
+      // Standard registration — l'email du salon prend l'email du compte
+      const { password_confirm, ...rest } = formData;
+      const registerData = { ...rest, salon_email: formData.email };
       result = await register(registerData);
     }
 
     if (result.success) {
-      navigate("/dashboard");
+      navigate("/onboarding");
     } else {
       setError(result.error);
     }
@@ -242,12 +255,6 @@ const Register = () => {
         return "etablissement";
     }
   };
-
-
-  // Get current business type config
-  const currentBusinessType = businessTypes.find(
-    (bt) => bt.id === formData.business_type
-  );
 
   return (
     <div className="min-h-screen bg-slate-100 relative overflow-hidden">
@@ -344,8 +351,8 @@ const Register = () => {
             )}
 
             <form onSubmit={handleSubmit}>
-              {/* Step 1: Business Type Selection */}
-              {currentStep === 1 && (
+              {/* Step 2: Activite + nom de l'etablissement */}
+              {currentStep === 2 && (
                 <div className="space-y-6 animate-fade-in-up">
                   <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 mb-4">
@@ -436,36 +443,12 @@ const Register = () => {
                       );
                     })}
                   </div>
-                </div>
-              )}
 
-              {/* Step 2: Establishment Info */}
-              {currentStep === 2 && (
-                <div className="space-y-6 animate-fade-in-up">
-                  <div className="text-center mb-8">
-                    <div
-                      className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 ${
-                        currentBusinessType
-                          ? `bg-gradient-to-br ${currentBusinessType.gradient}`
-                          : "bg-gradient-to-br from-violet-500 to-indigo-600"
-                      }`}
-                    >
-                      {currentBusinessType ? (
-                        <currentBusinessType.icon className="h-8 w-8 text-white" />
-                      ) : (
-                        <BuildingStorefrontIcon className="h-8 w-8 text-white" />
-                      )}
-                    </div>
-                    <h3 className="font-display text-2xl text-slate-800 mb-2">
-                      Votre {getEstablishmentLabel()}
-                    </h3>
-                    <p className="text-slate-500">
-                      Informations de votre etablissement
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="label-premium">Nom de l'etablissement *</label>
+                  {/* Nom de l'etablissement */}
+                  <div className="mt-2">
+                    <label className="label-premium">
+                      Nom de votre {getEstablishmentLabel()} *
+                    </label>
                     <input
                       type="text"
                       name="salon_name"
@@ -486,91 +469,11 @@ const Register = () => {
                       }
                     />
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                      <label className="label-premium">Email professionnel *</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <EnvelopeIcon className="h-5 w-5 text-slate-300" />
-                        </div>
-                        <input
-                          type="email"
-                          name="salon_email"
-                          required
-                          value={formData.salon_email}
-                          onChange={handleChange}
-                          className="input-premium input-premium-icon"
-                          placeholder="contact@etablissement.fr"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="label-premium">Telephone</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <PhoneIcon className="h-5 w-5 text-slate-300" />
-                        </div>
-                        <input
-                          type="tel"
-                          name="salon_phone"
-                          value={formData.salon_phone}
-                          onChange={handleChange}
-                          className="input-premium input-premium-icon"
-                          placeholder="01 23 45 67 89"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="label-premium">Adresse</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <MapPinIcon className="h-5 w-5 text-slate-300" />
-                      </div>
-                      <input
-                        type="text"
-                        name="salon_address"
-                        value={formData.salon_address}
-                        onChange={handleChange}
-                        className="input-premium input-premium-icon"
-                        placeholder="123 Rue de la Paix"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                      <label className="label-premium">Ville</label>
-                      <input
-                        type="text"
-                        name="salon_city"
-                        value={formData.salon_city}
-                        onChange={handleChange}
-                        className="input-premium"
-                        placeholder="Paris"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label-premium">Code postal</label>
-                      <input
-                        type="text"
-                        name="salon_postal_code"
-                        value={formData.salon_postal_code}
-                        onChange={handleChange}
-                        className="input-premium"
-                        placeholder="75001"
-                      />
-                    </div>
-                  </div>
                 </div>
               )}
 
-              {/* Step 3: User Account */}
-              {currentStep === 3 && (
+              {/* Step 1: User Account */}
+              {currentStep === 1 && (
                 <div className="space-y-6 animate-fade-in-up">
                   <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-indigo-100 mb-4">
@@ -719,14 +622,43 @@ const Register = () => {
                   </Link>
                 )}
 
-                {currentStep < 3 ? (
+                {currentStep < 2 ? (
                   <button
                     type="button"
                     onClick={handleNext}
+                    disabled={checkingEmail}
                     className="btn-premium group"
                   >
-                    Suivant
-                    <ArrowRightIcon className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+                    {checkingEmail ? (
+                      <span className="flex items-center">
+                        <svg
+                          className="animate-elegant-spin -ml-1 mr-2 h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                          />
+                          <path
+                            className="opacity-90"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        Verification...
+                      </span>
+                    ) : (
+                      <>
+                        Suivant
+                        <ArrowRightIcon className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+                      </>
+                    )}
                   </button>
                 ) : (
                   <button
