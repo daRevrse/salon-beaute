@@ -11,7 +11,8 @@ import { useCurrency } from "../contexts/CurrencyContext";
 import DashboardLayout from "../components/common/DashboardLayout";
 import OnboardingChecklistCard from "../components/onboarding/OnboardingChecklistCard";
 import AppointmentDetails from "../components/appointments/AppointmentDetails";
-import { STATUS_LABELS, STATUS_BADGE_STYLES } from "../utils/appointmentUtils";
+import StatusBadge from "../components/appointments/StatusBadge";
+import Modal from "../components/common/Modal";
 import { getBusinessTypeConfig } from "../utils/businessTypeConfig";
 import api from "../services/api";
 import {
@@ -334,11 +335,7 @@ const Dashboard = () => {
     img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
   }, [tenant]);
 
-  const getStatusBadge = (status) => (
-    <span className={`px-3 py-1 text-xs font-medium rounded-full ${STATUS_BADGE_STYLES[status] || ""}`}>
-      {STATUS_LABELS[status] || status}
-    </span>
-  );
+  const getStatusBadge = (status) => <StatusBadge status={status} />;
 
   // Les RDV du jour ouvrent leur fiche (hors restaurant : ce sont des commandes)
   const canOpenAppointment = businessType !== "restaurant";
@@ -404,37 +401,51 @@ const Dashboard = () => {
 
         {/* Share Modal */}
         {showShareModal && (
-          <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-              <div className="fixed inset-0 transition-opacity bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowShareModal(false)}></div>
-              <div className="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-6 text-left overflow-hidden shadow-soft-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full animate-scale-in">
-                <div className={`mx-auto flex items-center justify-center h-14 w-14 rounded-2xl bg-gradient-to-br ${config.gradient}`}>
-                  <ShareIcon className="h-7 w-7 text-white" />
-                </div>
-                <div className="mt-4 text-center">
-                  <h3 className="font-display text-xl font-semibold text-slate-800">Partager votre page</h3>
-                  <p className="mt-2 text-sm text-slate-500">Partagez ce lien avec vos clients</p>
-
-                  <div className="mt-5 flex rounded-xl shadow-inner-soft border border-slate-200 overflow-hidden">
+          <Modal
+            onClose={() => setShowShareModal(false)}
+            size="md"
+            title="Partager votre page"
+            description="Partagez ce lien avec vos clients : ils réservent en ligne, sans compte."
+            icon={
+              <div className={`flex items-center justify-center h-10 w-10 rounded-xl bg-gradient-to-br ${config.gradient}`}>
+                <ShareIcon className="h-5 w-5 text-white" aria-hidden="true" />
+              </div>
+            }
+            footer={
+              <button type="button" onClick={() => setShowShareModal(false)} className="btn-secondary w-full sm:w-auto">
+                Fermer
+              </button>
+            }
+          >
+                <div>
+                  <label htmlFor="booking-link" className="sr-only">Lien de réservation</label>
+                  <div className="flex rounded-xl shadow-inner-soft border border-slate-200 overflow-hidden">
                     <input
+                      id="booking-link"
                       type="text"
                       readOnly
                       value={getBookingUrl()}
-                      className="flex-1 min-w-0 block w-full px-4 py-3 bg-slate-50 text-sm text-slate-600 border-0 focus:outline-none"
+                      onFocus={(e) => e.target.select()}
+                      className="flex-1 min-w-0 block w-full px-4 py-3 bg-slate-50 text-sm text-slate-600 border-0 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-500"
                     />
                     <button
+                      type="button"
                       onClick={handleCopyLink}
-                      className={`inline-flex items-center px-4 py-3 bg-white border-l border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors`}
+                      aria-label="Copier le lien"
+                      title="Copier le lien"
+                      className="inline-flex items-center px-4 py-3 bg-white border-l border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-500"
                     >
-                      <ClipboardDocumentIcon className="h-5 w-5" />
+                      <ClipboardDocumentIcon className="h-5 w-5" aria-hidden="true" />
                     </button>
                   </div>
 
-                  {copySuccess && (
-                    <p className="mt-2 text-sm text-emerald-600 font-medium flex items-center justify-center gap-1">
-                      <CheckCircleIcon className="h-4 w-4" /> Lien copié !
-                    </p>
-                  )}
+                  <p className="mt-2 min-h-[1.25rem] text-sm text-emerald-600 font-medium flex items-center justify-center gap-1" role="status">
+                    {copySuccess && (
+                      <>
+                        <CheckCircleIcon className="h-4 w-4" aria-hidden="true" /> Lien copié !
+                      </>
+                    )}
+                  </p>
 
                   {/* QR Code Section */}
                   <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
@@ -491,15 +502,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowShareModal(false)}
-                  className="mt-6 w-full inline-flex justify-center rounded-xl border border-slate-200 shadow-soft px-4 py-3 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  Fermer
-                </button>
-              </div>
-            </div>
-          </div>
+          </Modal>
         )}
 
         {/* Onboarding - reprise de la configuration */}

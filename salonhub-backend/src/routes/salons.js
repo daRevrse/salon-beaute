@@ -71,7 +71,7 @@ router.post("/switch/:tenantId", async (req, res) => {
     const [membership] = await query(
       `SELECT us.role, us.is_active, t.name as tenant_name, t.slug,
               t.subscription_plan, t.subscription_status, t.trial_ends_at,
-              t.logo_url, t.business_type
+              t.logo_url, t.business_type, t.currency
        FROM user_salons us
        JOIN tenants t ON us.tenant_id = t.id
        WHERE us.user_id = ? AND us.tenant_id = ? AND us.is_active = TRUE`,
@@ -126,6 +126,7 @@ router.post("/switch/:tenantId", async (req, res) => {
           trial_ends_at: membership.trial_ends_at,
           logo_url: membership.logo_url,
           business_type: membership.business_type,
+          currency: membership.currency,
         },
       },
     });

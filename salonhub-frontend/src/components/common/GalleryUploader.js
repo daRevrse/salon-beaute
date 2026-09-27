@@ -2,10 +2,11 @@
  * GalleryUploader Component
  * Manages multiple image uploads for service galleries
  */
-import { useState, useRef } from "react";
+import { useState, useRef, useId } from "react";
 import api from "../../services/api";
 import { PhotoIcon, TrashIcon, PlusIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import { getImageUrl } from "../../utils/imageUtils";
+import { clickableProps } from "../../utils/a11y";
 
 const GalleryUploader = ({
   images = [],
@@ -13,6 +14,7 @@ const GalleryUploader = ({
   maxImages = 6,
   label = "Galerie photos"
 }) => {
+  const inputId = useId();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
@@ -77,7 +79,7 @@ const GalleryUploader = ({
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-slate-700">
+      <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
         {label}
       </label>
 
@@ -99,7 +101,7 @@ const GalleryUploader = ({
               alt={`Galerie ${index + 1}`}
               className="w-full h-full object-cover"
             />
-            <button
+            <button aria-label="Supprimer cette image"
               type="button"
               onClick={() => handleRemove(index)}
               className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600"
@@ -112,7 +114,7 @@ const GalleryUploader = ({
         {/* Add button */}
         {images.length < maxImages && (
           <div
-            onClick={() => !loading && fileInputRef.current?.click()}
+            {...clickableProps(() => !loading && fileInputRef.current?.click(), "Ajouter une photo")}
             className={`aspect-square border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all ${
               loading
                 ? "bg-slate-100 cursor-not-allowed"
@@ -131,7 +133,7 @@ const GalleryUploader = ({
         )}
       </div>
 
-      <input
+      <input id={inputId}
         ref={fileInputRef}
         type="file"
         multiple

@@ -71,7 +71,7 @@ const PWAInstallPrompt = () => {
               <p className="text-xs text-slate-500">Accédez plus rapidement à votre gestion</p>
             </div>
           </div>
-          <button 
+          <button aria-label="Fermer" 
             onClick={handleDismiss}
             className="p-1 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
           >

@@ -122,7 +122,7 @@ const CreateSalonModal = ({ open, onClose, onSuccess }) => {
                 </p>
               </div>
             </div>
-            <button
+            <button aria-label="Fermer"
               onClick={handleClose}
               className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
             >
@@ -157,12 +157,12 @@ const CreateSalonModal = ({ open, onClose, onSuccess }) => {
 
               {/* Nom du salon */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="createsalonmodal-nom-du-salon" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Nom du salon <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
                   <BuildingStorefrontIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
+                  <input id="createsalonmodal-nom-du-salon"
                     type="text"
                     value={form.name}
                     onChange={(e) => handleChange("name", e.target.value)}
@@ -175,9 +175,9 @@ const CreateSalonModal = ({ open, onClose, onSuccess }) => {
 
               {/* Type d'activité */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <p className="block text-sm font-medium text-slate-700 mb-1.5">
                   Type d'activité
-                </label>
+                </p>
                 <div className="grid grid-cols-2 gap-2">
                   {BUSINESS_TYPES.map((type) => (
                     <button
@@ -203,12 +203,12 @@ const CreateSalonModal = ({ open, onClose, onSuccess }) => {
 
               {/* Téléphone */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="createsalonmodal-telephone" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Téléphone
                 </label>
                 <div className="relative">
                   <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
+                  <input id="createsalonmodal-telephone"
                     type="tel"
                     value={form.phone}
                     onChange={(e) => handleChange("phone", e.target.value)}
@@ -220,12 +220,12 @@ const CreateSalonModal = ({ open, onClose, onSuccess }) => {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="createsalonmodal-email-du-salon" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Email du salon
                 </label>
                 <div className="relative">
                   <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
+                  <input id="createsalonmodal-email-du-salon"
                     type="email"
                     value={form.email}
                     onChange={(e) => handleChange("email", e.target.value)}
@@ -237,12 +237,12 @@ const CreateSalonModal = ({ open, onClose, onSuccess }) => {
 
               {/* Adresse */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="createsalonmodal-adresse" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Adresse
                 </label>
                 <div className="relative">
                   <MapPinIcon className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-                  <textarea
+                  <textarea id="createsalonmodal-adresse"
                     value={form.address}
                     onChange={(e) => handleChange("address", e.target.value)}
                     placeholder="Optionnel"

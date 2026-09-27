@@ -282,7 +282,11 @@ const BookingClientInfo = () => {
       if (attempts >= maxAttempts) {
          clearInterval(poll);
          setIsAwaitingPayment(false);
-         alert("Le paiement a pris trop de temps. Veuillez vérifier l'état de votre rendez-vous ou réessayer.");
+         // Le RDV est déjà enregistré : pas de nouvel envoi (doublon), on affiche
+         // la confirmation en signalant que l'acompte n'est pas encore confirmé
+         navigate(`/book/${slug}/confirmation`, {
+           state: { ...details, paymentPending: true },
+         });
       }
     }, 3000);
   };
@@ -735,10 +739,10 @@ const BookingClientInfo = () => {
                     {/* Mobile Money Phone Input */}
                     {formData.payment_method === 'paygate' && (
                       <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
-                        <label className="block text-sm font-semibold text-slate-700">
+                        <label htmlFor="bookingclientinfo-numero-mobile-money-pour-le-pr" className="block text-sm font-semibold text-slate-700">
                           Numéro Mobile Money pour le prélèvement
                         </label>
-                        <input
+                        <input id="bookingclientinfo-numero-mobile-money-pour-le-pr"
                           type="tel"
                           placeholder="Ex: 90 00 00 00"
                           value={formData.payment_phone || formData.phone || ''}
@@ -758,7 +762,7 @@ const BookingClientInfo = () => {
 
                 {/* Success/Error API Feedback */}
                 {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-pulse">
+                  <div className="bg-red-50 border border-red-200 rounded-2xl p-5" role="alert">
                     <p className="text-red-800 font-medium text-center">{error}</p>
                   </div>
                 )}

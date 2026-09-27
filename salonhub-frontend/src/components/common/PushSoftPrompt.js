@@ -93,7 +93,7 @@ const PushSoftPrompt = () => {
             </div>
           </div>
           
-          <button 
+          <button aria-label="Fermer" 
             onClick={handleDismiss}
             className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 transition-colors"
           >

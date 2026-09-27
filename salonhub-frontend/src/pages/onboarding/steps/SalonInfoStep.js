@@ -102,12 +102,12 @@ const SalonInfoStep = ({ config, term, onNext, onSkip, onBack }) => {
 
       <div className="space-y-5">
         <div>
-          <label className="label-premium">Téléphone</label>
+          <label htmlFor="saloninfostep-phone" className="label-premium">Téléphone</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <PhoneIcon className="h-5 w-5 text-slate-300" />
             </div>
-            <input
+            <input id="saloninfostep-phone"
               type="tel"
               name="phone"
               value={form.phone}
@@ -119,12 +119,12 @@ const SalonInfoStep = ({ config, term, onNext, onSkip, onBack }) => {
         </div>
 
         <div>
-          <label className="label-premium">Adresse</label>
+          <label htmlFor="saloninfostep-address" className="label-premium">Adresse</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <MapPinIcon className="h-5 w-5 text-slate-300" />
             </div>
-            <input
+            <input id="saloninfostep-address"
               type="text"
               name="address"
               value={form.address}
@@ -137,8 +137,8 @@ const SalonInfoStep = ({ config, term, onNext, onSkip, onBack }) => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
-            <label className="label-premium">Ville</label>
-            <input
+            <label htmlFor="saloninfostep-city" className="label-premium">Ville</label>
+            <input id="saloninfostep-city"
               type="text"
               name="city"
               value={form.city}
@@ -148,8 +148,8 @@ const SalonInfoStep = ({ config, term, onNext, onSkip, onBack }) => {
             />
           </div>
           <div>
-            <label className="label-premium">Code postal</label>
-            <input
+            <label htmlFor="saloninfostep-postal-code" className="label-premium">Code postal</label>
+            <input id="saloninfostep-postal-code"
               type="text"
               name="postal_code"
               value={form.postal_code}
@@ -161,7 +161,7 @@ const SalonInfoStep = ({ config, term, onNext, onSkip, onBack }) => {
         </div>
 
         <div>
-          <label className="label-premium">Logo (optionnel)</label>
+          <p className="label-premium">Logo (optionnel)</p>
           <div className="max-w-xs">
             <ImageUploader
               target="tenant-logo"

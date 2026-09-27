@@ -5,6 +5,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
 
 const CurrencyContext = createContext();
 
@@ -40,6 +41,16 @@ export const CurrencyProvider = ({ children }) => {
 
     initCurrency();
   }, []);
+
+  // Back-office : la devise du salon connecté fait foi (nouvel appareil,
+  // employé, changement de salon), sans attendre un passage par les paramètres
+  const { tenant } = useAuth();
+  useEffect(() => {
+    if (tenant?.currency && CURRENCIES[tenant.currency]) {
+      setCurrency(tenant.currency);
+      localStorage.setItem("tenant_currency", tenant.currency);
+    }
+  }, [tenant?.currency]);
 
   // Fonction pour changer la devise du salon
   const changeCurrency = (newCurrency) => {

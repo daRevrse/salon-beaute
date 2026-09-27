@@ -17,11 +17,12 @@
 
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import Modal from "../common/Modal";
 import { useServices } from "../../hooks/useServices";
 import BusinessHoursEditor, {
   normalizeBusinessHours,
 } from "../common/BusinessHoursEditor";
-import { XMarkIcon, TrashIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { TrashIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
 
 const formatDate = (value) =>
   new Date(`${value}T00:00:00`).toLocaleDateString("fr-FR", {
@@ -118,31 +119,23 @@ const StaffAvailabilityModal = ({ member, salonHours, config, onClose, onSaved }
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm overflow-y-auto z-50 flex items-start sm:items-center justify-center p-4">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="staff-availability-title"
-        className="relative bg-white rounded-2xl shadow-soft-xl max-w-2xl w-full my-8 animate-scale-in"
-      >
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <h3 id="staff-availability-title" className="font-display text-lg font-semibold text-slate-800">
-              Disponibilités de {member.first_name} {member.last_name}
-            </h3>
-            <p className="text-sm text-slate-500">
-              Utilisées pour proposer les créneaux de réservation en ligne
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Fermer"
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <XMarkIcon className="h-5 w-5 text-slate-400" />
+    <Modal
+      onClose={onClose}
+      size="lg"
+      title={`Disponibilités de ${member.first_name} ${member.last_name}`}
+      description="Utilisées pour proposer les créneaux de réservation en ligne"
+      bodyClassName=""
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="btn-secondary">
+            Annuler
           </button>
-        </div>
-
+          <button type="button" onClick={handleSave} disabled={saving} className="btn-primary">
+            {saving ? "Enregistrement..." : "Enregistrer"}
+          </button>
+        </>
+      }
+    >
         <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-800">{error}</div>
@@ -267,18 +260,20 @@ const StaffAvailabilityModal = ({ member, salonHours, config, onClose, onSaved }
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Du</label>
+                    <label htmlFor="timeoff-start" className="block text-xs font-medium text-slate-500 mb-1">Du</label>
                     <input
                       type="date"
+                      id="timeoff-start"
                       value={newTimeOff.start_date}
                       onChange={(e) => setNewTimeOff({ ...newTimeOff, start_date: e.target.value })}
                       className="input-premium py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Au (inclus)</label>
+                    <label htmlFor="timeoff-end" className="block text-xs font-medium text-slate-500 mb-1">Au (inclus)</label>
                     <input
                       type="date"
+                      id="timeoff-end"
                       value={newTimeOff.end_date}
                       min={newTimeOff.start_date || undefined}
                       onChange={(e) => setNewTimeOff({ ...newTimeOff, end_date: e.target.value })}
@@ -286,9 +281,10 @@ const StaffAvailabilityModal = ({ member, salonHours, config, onClose, onSaved }
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Motif</label>
+                    <label htmlFor="timeoff-reason" className="block text-xs font-medium text-slate-500 mb-1">Motif</label>
                     <input
                       type="text"
+                      id="timeoff-reason"
                       value={newTimeOff.reason}
                       onChange={(e) => setNewTimeOff({ ...newTimeOff, reason: e.target.value })}
                       placeholder="Optionnel"
@@ -304,16 +300,7 @@ const StaffAvailabilityModal = ({ member, salonHours, config, onClose, onSaved }
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="btn-premium-secondary">
-            Annuler
-          </button>
-          <button type="button" onClick={handleSave} disabled={saving} className="btn-premium">
-            {saving ? "Enregistrement..." : "Enregistrer"}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

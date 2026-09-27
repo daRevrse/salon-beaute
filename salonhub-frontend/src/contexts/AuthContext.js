@@ -54,9 +54,15 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('salons', JSON.stringify(freshSalons));
           }
 
-          // Mettre à jour le tenant avec le business_type du user si différent
-          if (freshUser.business_type && freshUser.business_type !== parsedTenant?.business_type) {
-            const updatedTenant = { ...parsedTenant, business_type: freshUser.business_type };
+          // Mettre à jour le tenant (secteur, devise) s'ils ont changé
+          const businessTypeChanged = freshUser.business_type && freshUser.business_type !== parsedTenant?.business_type;
+          const currencyChanged = freshUser.currency && freshUser.currency !== parsedTenant?.currency;
+          if (businessTypeChanged || currencyChanged) {
+            const updatedTenant = {
+              ...parsedTenant,
+              ...(businessTypeChanged ? { business_type: freshUser.business_type } : {}),
+              ...(currencyChanged ? { currency: freshUser.currency } : {}),
+            };
             localStorage.setItem('tenant', JSON.stringify(updatedTenant));
             setTenant(updatedTenant);
           }

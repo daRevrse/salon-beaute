@@ -84,7 +84,7 @@ const Checkout = () => {
         <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
              <div className="max-w-3xl mx-auto">
                   <div className="mb-8 flex items-center">
-                     <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 rounded-full hover:bg-gray-200 transition-colors">
+                     <button aria-label="Retour" onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 rounded-full hover:bg-gray-200 transition-colors">
                         <ChevronLeft className="w-6 h-6" />
                      </button>
                      <h1 className="text-2xl font-bold text-gray-900 ml-2">Finaliser la commande</h1>
@@ -113,8 +113,8 @@ const Checkout = () => {
 
                          <form onSubmit={handleSubmit} className="space-y-5">
                              <div>
-                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nom complet <span className="text-red-500">*</span></label>
-                                 <input
+                                 <label htmlFor="checkout-nom-complet" className="block text-sm font-semibold text-gray-700 mb-1.5">Nom complet <span className="text-red-500">*</span></label>
+                                 <input id="checkout-nom-complet"
                                      required
                                      type="text"
                                      placeholder="Ex: Jean Dupont"
@@ -125,8 +125,8 @@ const Checkout = () => {
                              </div>
 
                              <div>
-                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Téléphone <span className="text-red-500">*</span></label>
-                                 <input
+                                 <label htmlFor="checkout-telephone" className="block text-sm font-semibold text-gray-700 mb-1.5">Téléphone <span className="text-red-500">*</span></label>
+                                 <input id="checkout-telephone"
                                      required
                                      type="tel"
                                      placeholder="Ex: 90 00 00 00"
@@ -137,8 +137,8 @@ const Checkout = () => {
                              </div>
 
                               <div>
-                                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Adresse de livraison (Optionnel)</label>
-                                 <textarea
+                                 <label htmlFor="checkout-adresse-de-livraison-optionnel" className="block text-sm font-semibold text-gray-700 mb-1.5">Adresse de livraison (Optionnel)</label>
+                                 <textarea id="checkout-adresse-de-livraison-optionnel"
                                      rows={3}
                                      placeholder="Si vous souhaitez être livré..."
                                      value={guestInfo.address}

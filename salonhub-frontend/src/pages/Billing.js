@@ -10,6 +10,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { withPermission } from "../components/common/PermissionGate";
 import api from '../services/api';
+import { useToast } from '../hooks/useToast';
+import Toast from '../components/common/Toast';
 import {
   CreditCardIcon,
   CheckCircleIcon,
@@ -26,6 +28,7 @@ import {
 const Billing = () => {
   const { tenant, refreshSubscription } = useAuth();
   const { formatPrice } = useCurrency();
+  const { toast, error: showError, hideToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
   const [plans, setPlans] = useState({});
@@ -83,10 +86,10 @@ const Billing = () => {
       if (response.data.success) {
         window.location.href = response.data.url;
       } else {
-        alert(response.data.error);
+        showError(response.data.error);
       }
     } catch (err) {
-      alert(err.response?.data?.error || 'Erreur lors de la création de la session');
+      showError(err.response?.data?.error || 'Erreur lors de la création de la session');
     } finally {
       setLoading(false);
     }
@@ -99,10 +102,10 @@ const Billing = () => {
       if (response.data.success) {
         window.location.href = response.data.url;
       } else {
-        alert(response.data.error);
+        showError(response.data.error);
       }
     } catch (err) {
-      alert(err.response?.data?.error || 'Erreur');
+      showError(err.response?.data?.error || 'Une erreur est survenue');
     } finally {
       setLoading(false);
     }
@@ -198,6 +201,7 @@ const Billing = () => {
 
   return (
     <DashboardLayout>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} duration={toast.duration} />}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">

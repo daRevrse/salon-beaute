@@ -6,8 +6,10 @@
 import { useState, useEffect } from 'react';
 import { useCurrency } from '../../contexts/CurrencyContext';
 import api from '../../services/api';
+import Modal from '../common/Modal';
+import Spinner from '../common/Spinner';
+import StatusBadge from '../appointments/StatusBadge';
 import {
-  XMarkIcon,
   CalendarIcon,
   ClockIcon,
   ScissorsIcon,
@@ -77,24 +79,6 @@ const ClientHistory = ({ client, onClose }) => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    const styles = {
-      pending: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', label: 'En attente' },
-      confirmed: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'Confirmé' },
-      completed: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', label: 'Terminé' },
-      cancelled: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Annulé' },
-      no_show: { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', label: 'Absent' },
-    };
-
-    const style = styles[status] || styles.pending;
-
-    return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${style.bg} ${style.text} border ${style.border}`}>
-        {style.label}
-      </span>
-    );
-  };
-
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
       weekday: 'short',
@@ -107,28 +91,20 @@ const ClientHistory = ({ client, onClose }) => {
   if (!client) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-10 mx-auto p-0 border w-full max-w-5xl shadow-2xl rounded-xl bg-white mb-10">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-6 rounded-t-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">
-                Historique de {client.first_name} {client.last_name}
-              </h2>
-              <p className="text-indigo-100 mt-1">{client.email || client.phone}</p>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
-            >
-              <XMarkIcon className="h-6 w-6" />
-            </button>
-          </div>
-        </div>
-
+    <Modal
+      onClose={onClose}
+      size="xl"
+      title={`Historique de ${client.first_name} ${client.last_name}`}
+      description={client.email || client.phone}
+      bodyClassName=""
+      footer={
+        <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">
+          Fermer
+        </button>
+      }
+    >
         {/* Stats Cards */}
-        <div className="p-6 bg-gray-50 border-b">
+        <div className="p-5 sm:p-6 bg-slate-50 border-b border-slate-100">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
@@ -136,7 +112,7 @@ const ClientHistory = ({ client, onClose }) => {
                   <p className="text-sm text-gray-600">Total RDV</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalAppointments}</p>
                 </div>
-                <CalendarIcon className="h-10 w-10 text-indigo-500" />
+                <CalendarIcon className="h-10 w-10 text-indigo-500" aria-hidden="true" />
               </div>
             </div>
 
@@ -146,7 +122,7 @@ const ClientHistory = ({ client, onClose }) => {
                   <p className="text-sm text-gray-600">Complétés</p>
                   <p className="text-2xl font-bold text-green-600 mt-1">{stats.completedAppointments}</p>
                 </div>
-                <CheckCircleIcon className="h-10 w-10 text-green-500" />
+                <CheckCircleIcon className="h-10 w-10 text-green-500" aria-hidden="true" />
               </div>
             </div>
 
@@ -156,7 +132,7 @@ const ClientHistory = ({ client, onClose }) => {
                   <p className="text-sm text-gray-600">Annulés</p>
                   <p className="text-2xl font-bold text-red-600 mt-1">{stats.cancelledAppointments}</p>
                 </div>
-                <XCircleIcon className="h-10 w-10 text-red-500" />
+                <XCircleIcon className="h-10 w-10 text-red-500" aria-hidden="true" />
               </div>
             </div>
 
@@ -166,7 +142,7 @@ const ClientHistory = ({ client, onClose }) => {
                   <p className="text-sm text-gray-600">Total dépensé</p>
                   <p className="text-2xl font-bold text-indigo-600 mt-1">{formatPrice(stats.totalSpent)}</p>
                 </div>
-                <CurrencyDollarIcon className="h-10 w-10 text-indigo-500" />
+                <CurrencyDollarIcon className="h-10 w-10 text-indigo-500" aria-hidden="true" />
               </div>
             </div>
           </div>
@@ -184,13 +160,11 @@ const ClientHistory = ({ client, onClose }) => {
         </div>
 
         {/* Appointments List */}
-        <div className="p-6 max-h-[500px] overflow-y-auto">
+        <div className="p-5 sm:p-6 max-h-[500px] overflow-y-auto">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Historique des rendez-vous</h3>
 
           {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-            </div>
+            <Spinner size="lg" block label="Chargement de l'historique" />
           ) : appointments.length === 0 ? (
             <div className="text-center py-12">
               <ExclamationCircleIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -206,22 +180,22 @@ const ClientHistory = ({ client, onClose }) => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <ScissorsIcon className="h-5 w-5 text-indigo-600" />
+                        <ScissorsIcon className="h-5 w-5 text-indigo-600" aria-hidden="true" />
                         <h4 className="font-semibold text-gray-900">{apt.service_name}</h4>
-                        {getStatusBadge(apt.status)}
+                        <StatusBadge status={apt.status} />
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600 mt-3">
                         <div className="flex items-center">
-                          <CalendarIcon className="h-4 w-4 mr-2 text-gray-400" />
+                          <CalendarIcon className="h-4 w-4 mr-2 text-gray-400" aria-hidden="true" />
                           {formatDate(apt.appointment_date)}
                         </div>
                         <div className="flex items-center">
-                          <ClockIcon className="h-4 w-4 mr-2 text-gray-400" />
+                          <ClockIcon className="h-4 w-4 mr-2 text-gray-400" aria-hidden="true" />
                           {apt.start_time?.substring(0, 5)} - {apt.end_time?.substring(0, 5)}
                         </div>
                         <div className="flex items-center">
-                          <CurrencyDollarIcon className="h-4 w-4 mr-2 text-gray-400" />
+                          <CurrencyDollarIcon className="h-4 w-4 mr-2 text-gray-400" aria-hidden="true" />
                           <span className="font-semibold">{formatPrice(apt.service_price)}</span>
                         </div>
                       </div>
@@ -240,17 +214,7 @@ const ClientHistory = ({ client, onClose }) => {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 rounded-b-xl flex justify-end border-t">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 font-medium transition-colors"
-          >
-            Fermer
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

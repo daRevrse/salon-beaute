@@ -1,14 +1,13 @@
 /**
  * AppointmentDetails Component
- * Modal pour afficher et gérer les détails d'un rendez-vous
- * CORRECTION : Ordre d'affichage des modales (Z-Index)
+ * Fenêtre de détail d'un rendez-vous : infos, personnel, déplacement,
+ * changement de statut et messages au client.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import api from "../../services/api";
 import {
-  XMarkIcon,
   UserIcon,
   CalendarIcon,
   ClockIcon,
@@ -33,8 +32,10 @@ import {
 import { useToast } from "../../hooks/useToast";
 import Toast from "../common/Toast";
 import ConfirmModal from "../common/ConfirmModal";
+import Modal from "../common/Modal";
 import ReceiptModal from "./ReceiptModal";
-import { DocumentTextIcon } from "@heroicons/react/24/outline";
+import StatusBadge from "./StatusBadge";
+import { DocumentTextIcon, PhoneIcon } from "@heroicons/react/24/outline";
 
 const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
   const { formatPrice } = useCurrency();
@@ -80,6 +81,10 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
     setSelectedStaffId(appointment.staff_id || "");
   }, [appointment.staff_id]);
 
+  // Motif d'annulation (transmis au client) ; ref : lu au moment de la validation
+  const [cancelReason, setCancelReason] = useState("");
+  const cancelReasonRef = useRef("");
+
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
     title: "",
@@ -90,32 +95,46 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
 
   if (!appointment) return null;
 
-  const getStatusBadge = (status) => {
-    const styles = {
-      pending: "bg-yellow-100 text-yellow-800 border border-yellow-200",
-      confirmed: "bg-green-100 text-green-800 border border-green-200",
-      cancelled: "bg-red-100 text-red-800 border border-red-200",
-      completed: "bg-blue-100 text-blue-800 border border-blue-200",
-      no_show: "bg-slate-100 text-slate-700 border border-slate-200",
-    };
-
-    return (
-      <span
-        className={`px-3 py-1 text-sm font-medium rounded-full ${styles[status]}`}
-      >
-        {STATUS_LABELS[status]}
-      </span>
-    );
+  const STATUS_CONFIRMATIONS = {
+    confirmed: {
+      title: "Confirmer ce rendez-vous ?",
+      message: "Le client recevra la confirmation avec son lien pour gérer le rendez-vous.",
+      confirmText: "Confirmer",
+      type: "info",
+    },
+    cancelled: {
+      title: "Annuler ce rendez-vous ?",
+      message: "Le créneau sera libéré et le client prévenu de l'annulation.",
+      confirmText: "Annuler le rendez-vous",
+      cancelText: "Retour",
+      type: "danger",
+    },
+    completed: {
+      title: "Marquer comme terminé ?",
+      message: "Le rendez-vous sera compté dans le chiffre d'affaires.",
+      confirmText: "Terminé",
+      type: "info",
+    },
+    no_show: {
+      title: "Signaler l'absence du client ?",
+      message: "Le rendez-vous sera marqué « Absent » dans l'historique du client.",
+      confirmText: "Client absent",
+      type: "warning",
+    },
   };
 
-  // --- ACTIONS ---
-
   const initiateStatusChange = (newStatus) => {
-    setConfirmConfig({
-      isOpen: true,
+    cancelReasonRef.current = "";
+    setCancelReason("");
+    const config = STATUS_CONFIRMATIONS[newStatus] || {
       title: "Changer le statut",
       message: `Passer ce rendez-vous au statut « ${STATUS_LABELS[newStatus] || newStatus} » ?`,
-      type: newStatus === "cancelled" ? "danger" : "warning",
+      type: "warning",
+    };
+    setConfirmConfig({
+      isOpen: true,
+      ...config,
+      status: newStatus,
       onConfirm: () => processStatusChange(newStatus),
     });
   };
@@ -127,6 +146,9 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
       const payload = { status: newStatus };
       if (newStatus === "confirmed" && selectedStaffId) {
         payload.staff_id = selectedStaffId;
+      }
+      if (newStatus === "cancelled" && cancelReasonRef.current.trim()) {
+        payload.cancellation_reason = cancelReasonRef.current.trim();
       }
 
       const response = await api.patch(`/appointments/${appointment.id}/status`, payload);
@@ -289,9 +311,25 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
     });
   };
 
+  const isActive = ["pending", "confirmed"].includes(appointment.status);
+  const clientName = `${appointment.client_first_name || ""} ${appointment.client_last_name || ""}`.trim();
+  const staffName = appointment.staff_first_name
+    ? `${appointment.staff_first_name} ${appointment.staff_last_name || ""}`.trim()
+    : "Non assigné";
+  const confirmBlockedReason = !can.canConfirmAppointments
+    ? "Vous n'avez pas la permission de confirmer les rendez-vous"
+    : isMultiStaff && !selectedStaffId
+    ? "Assignez un membre du personnel avant de confirmer"
+    : null;
+
+  const sectionTitle = "text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3";
+  const actionButton =
+    "flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-violet-500";
+  const fieldClass =
+    "w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500";
+
   return (
     <>
-      {/* Toast Container (Toujours visible) */}
       {toast && (
         <Toast
           message={toast.message}
@@ -301,123 +339,98 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
         />
       )}
 
-      {/* Overlay Principal - DÉTAILS DU RDV */}
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-10 mx-auto p-0 border w-full max-w-3xl shadow-2xl rounded-xl bg-white mb-10 animate-scale-in">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 rounded-t-xl">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Détails du rendez-vous</h2>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
+      <Modal
+        onClose={onClose}
+        size="lg"
+        title={clientName || "Rendez-vous"}
+        description={`${formatDate(appointment.appointment_date)} · ${appointment.start_time?.substring(0, 5)} – ${appointment.end_time?.substring(0, 5)}`}
+        icon={
+          <span className="h-10 w-10 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-semibold" aria-hidden="true">
+            {(appointment.client_first_name || "?").charAt(0).toUpperCase()}
+          </span>
+        }
+        footer={
+          <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">
+            Fermer
+          </button>
+        }
+      >
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={appointment.status} size="md" />
+            {appointment.client_phone && (
+              <a
+                href={`tel:${String(appointment.client_phone).replace(/[^\d+]/g, "")}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm text-slate-700 bg-slate-100 hover:bg-slate-200"
               >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="mt-2">{getStatusBadge(appointment.status)}</div>
+                <PhoneIcon className="h-4 w-4" aria-hidden="true" />
+                {appointment.client_phone}
+              </a>
+            )}
+            {appointment.client_email && (
+              <a
+                href={`mailto:${appointment.client_email}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 max-w-full truncate"
+              >
+                <EnvelopeIcon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                <span className="truncate">{appointment.client_email}</span>
+              </a>
+            )}
           </div>
 
-          {/* Body */}
-          <div className="p-6 space-y-6">
-            {/* Client Info */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <UserIcon className="h-5 w-5 mr-2 text-indigo-600" />
-                Informations client
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Nom complet</p>
-                  <p className="text-base font-medium text-gray-900">
-                    {appointment.client_first_name}{" "}
-                    {appointment.client_last_name}
-                  </p>
-                </div>
-                {appointment.client_email && (
-                  <div>
-                    <p className="text-sm text-gray-600">Email</p>
-                    <p className="text-base font-medium text-gray-900 flex items-center">
-                      <EnvelopeIcon className="h-4 w-4 mr-1 text-gray-400" />
-                      {appointment.client_email}
-                    </p>
-                  </div>
-                )}
-                {appointment.client_phone && (
-                  <div>
-                    <p className="text-sm text-gray-600">Téléphone</p>
-                    <p className="text-base font-medium text-gray-900">
-                      {appointment.client_phone}
-                    </p>
-                  </div>
-                )}
-              </div>
+          {/* Détails */}
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-200 rounded-xl overflow-hidden border border-slate-200">
+            <div className="bg-white p-4">
+              <dt className="flex items-center text-xs font-medium text-slate-500">
+                <ScissorsIcon className="h-4 w-4 mr-1.5" aria-hidden="true" />
+                Prestation
+              </dt>
+              <dd className="mt-1 font-semibold text-slate-900">{appointment.service_name}</dd>
+              <dd className="text-sm text-slate-500">{appointment.service_duration} min</dd>
             </div>
-
-            {/* Appointment Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-indigo-50 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <CalendarIcon className="h-5 w-5 text-indigo-600 mr-2" />
-                  <p className="text-sm font-medium text-gray-600">Date</p>
-                </div>
-                <p className="text-lg font-semibold text-gray-900">
-                  {formatDate(appointment.appointment_date)}
-                </p>
-              </div>
-
-              <div className="bg-purple-50 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <ClockIcon className="h-5 w-5 text-purple-600 mr-2" />
-                  <p className="text-sm font-medium text-gray-600">Heure</p>
-                </div>
-                <p className="text-lg font-semibold text-gray-900">
-                  {appointment.start_time?.substring(0, 5)} -{" "}
-                  {appointment.end_time?.substring(0, 5)}
-                </p>
-              </div>
-
-              <div className="bg-green-50 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <ScissorsIcon className="h-5 w-5 text-green-600 mr-2" />
-                  <p className="text-sm font-medium text-gray-600">Service</p>
-                </div>
-                <p className="text-lg font-semibold text-gray-900">
-                  {appointment.service_name}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {appointment.service_duration} min
-                </p>
-              </div>
-
-              <div className="bg-blue-50 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <CurrencyDollarIcon className="h-5 w-5 text-blue-600 mr-2" />
-                  <p className="text-sm font-medium text-gray-600">Prix</p>
-                </div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {formatPrice(appointment.service_price)}
-                </p>
-              </div>
-
-              {/* Staff Assignment */}
-              <div className={`rounded-lg p-4 col-span-1 md:col-span-2 ${appointment.status === 'pending' ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <UserIcon className="h-5 w-5 text-indigo-600 mr-2" />
-                    <p className="text-sm font-medium text-gray-600">Personnel assigné</p>
-                  </div>
-                  {appointment.status === 'pending' && isMultiStaff && !appointment.staff_id && (
-                    <span className="text-xs font-bold text-amber-600 uppercase">Assignation requise pour confirmer</span>
-                  )}
-                </div>
-                
-                {appointment.status === 'pending' ? (
+            <div className="bg-white p-4">
+              <dt className="flex items-center text-xs font-medium text-slate-500">
+                <CurrencyDollarIcon className="h-4 w-4 mr-1.5" aria-hidden="true" />
+                Prix
+              </dt>
+              <dd className="mt-1 text-xl font-bold text-slate-900">{formatPrice(appointment.service_price)}</dd>
+            </div>
+            <div className="bg-white p-4">
+              <dt className="flex items-center text-xs font-medium text-slate-500">
+                <CalendarIcon className="h-4 w-4 mr-1.5" aria-hidden="true" />
+                Date
+              </dt>
+              <dd className="mt-1 font-semibold text-slate-900 first-letter:uppercase">{formatDate(appointment.appointment_date)}</dd>
+            </div>
+            <div className="bg-white p-4">
+              <dt className="flex items-center text-xs font-medium text-slate-500">
+                <ClockIcon className="h-4 w-4 mr-1.5" aria-hidden="true" />
+                Heure
+              </dt>
+              <dd className="mt-1 font-semibold text-slate-900">
+                {appointment.start_time?.substring(0, 5)} – {appointment.end_time?.substring(0, 5)}
+              </dd>
+            </div>
+            <div className={`p-4 sm:col-span-2 ${appointment.status === "pending" && isMultiStaff && !selectedStaffId ? "bg-amber-50" : "bg-white"}`}>
+              <dt className="flex items-center justify-between gap-2 text-xs font-medium text-slate-500">
+                <span className="flex items-center">
+                  <UserIcon className="h-4 w-4 mr-1.5" aria-hidden="true" />
+                  <label htmlFor="assign-staff" className={appointment.status === "pending" ? "" : "pointer-events-none"}>
+                    Personnel assigné
+                  </label>
+                </span>
+                {appointment.status === "pending" && isMultiStaff && !selectedStaffId && (
+                  <span className="text-amber-700 font-semibold">À assigner pour confirmer</span>
+                )}
+              </dt>
+              <dd className="mt-1">
+                {appointment.status === "pending" ? (
                   <select
+                    id="assign-staff"
                     value={selectedStaffId}
                     onChange={(e) => handleAssignStaff(e.target.value)}
                     disabled={loading}
-                    className="w-full mt-1 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className={fieldClass}
                   >
                     <option value="">-- Sélectionner un membre --</option>
                     {staffList.map((s) => (
@@ -428,277 +441,302 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
                     ))}
                   </select>
                 ) : (
-                  <p className="text-lg font-semibold text-gray-900">
-                    {appointment.staff_first_name ? `${appointment.staff_first_name} ${appointment.staff_last_name}` : "Non assigné"}
-                  </p>
+                  <span className="font-semibold text-slate-900">{staffName}</span>
                 )}
-              </div>
+              </dd>
             </div>
+          </dl>
 
-            {/* Déplacer */}
-            {canReschedule && (
-              <div className="rounded-lg border border-slate-200 p-4">
-                {!showReschedule ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowReschedule(true)}
-                    className="flex items-center text-sm font-medium text-indigo-700 hover:text-indigo-900"
-                  >
-                    <CalendarIcon className="h-5 w-5 mr-2" />
-                    Déplacer ce rendez-vous
-                  </button>
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold text-gray-900">Déplacer ce rendez-vous</p>
-                    <div className={`grid grid-cols-1 ${isStaff ? "sm:grid-cols-2" : "sm:grid-cols-3"} gap-3`}>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1" htmlFor="reschedule-date">Date</label>
-                        <input
-                          id="reschedule-date"
-                          type="date"
-                          value={reschedule.date}
-                          min={toDateKey(new Date())}
-                          onChange={(e) => setReschedule({ ...reschedule, date: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1" htmlFor="reschedule-time">Heure</label>
-                        <input
-                          id="reschedule-time"
-                          type="time"
-                          step="300"
-                          value={reschedule.time}
-                          onChange={(e) => setReschedule({ ...reschedule, time: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        />
-                      </div>
-                      {!isStaff && (
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1" htmlFor="reschedule-staff">Personnel</label>
-                          <select
-                            id="reschedule-staff"
-                            value={reschedule.staffId}
-                            onChange={(e) => setReschedule({ ...reschedule, staffId: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white"
-                          >
-                            <option value="">Non assigné</option>
-                            {staffList.map((s) => (
-                              <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowReschedule(false)}
-                        className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
-                      >
-                        Annuler
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleReschedule}
-                        disabled={loading}
-                        className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-                      >
-                        Enregistrer
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+          {/* Notes */}
+          {appointment.notes && (
+            <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
+              <p className="text-xs font-medium text-amber-800 mb-1">Notes</p>
+              <p className="text-sm text-slate-800 whitespace-pre-line">{appointment.notes}</p>
+            </div>
+          )}
 
-            {/* Notes */}
-            {appointment.notes && (
-              <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                <p className="text-sm font-medium text-gray-700 mb-2">Notes</p>
-                <p className="text-gray-900">{appointment.notes}</p>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Actions rapides
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Boutons de statut */}
+          {/* Statut */}
+          {(appointment.status === "pending" || appointment.status === "confirmed" || appointment.status === "completed") && (
+            <section aria-label="Statut du rendez-vous">
+              <h3 className={sectionTitle}>Statut</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {appointment.status === "pending" && (
                   <>
                     <button
+                      type="button"
                       onClick={() => initiateStatusChange("confirmed")}
-                      disabled={loading || (isMultiStaff && !selectedStaffId) || !can.canConfirmAppointments}
-                      className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors shadow-sm"
-                      title={!can.canConfirmAppointments ? "Vous n'avez pas la permission de confirmer les rendez-vous" : (isMultiStaff && !selectedStaffId ? "Veuillez assigner un membre du personnel avant de confirmer" : "")}
+                      disabled={loading || !!confirmBlockedReason}
+                      aria-describedby={confirmBlockedReason ? "confirm-blocked-reason" : undefined}
+                      className={`${actionButton} bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm`}
                     >
-                      <CheckCircleIcon className="h-5 w-5 mr-2" />
+                      <CheckCircleIcon className="h-5 w-5" aria-hidden="true" />
                       Confirmer
                     </button>
                     <button
+                      type="button"
                       onClick={() => initiateStatusChange("cancelled")}
                       disabled={loading}
-                      className="flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium transition-colors shadow-sm"
+                      className={`${actionButton} bg-white text-red-700 border border-red-200 hover:bg-red-50`}
                     >
-                      <XCircleIcon className="h-5 w-5 mr-2" />
-                      Annuler
+                      <XCircleIcon className="h-5 w-5" aria-hidden="true" />
+                      Annuler le rendez-vous
                     </button>
+                    {confirmBlockedReason && (
+                      <p id="confirm-blocked-reason" className="sm:col-span-2 text-xs text-amber-700">
+                        {confirmBlockedReason}
+                      </p>
+                    )}
                   </>
                 )}
 
                 {appointment.status === "confirmed" && (
-                  <button
-                    onClick={() => initiateStatusChange("completed")}
-                    disabled={loading}
-                    className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors shadow-sm"
-                  >
-                    <CheckCircleIcon className="h-5 w-5 mr-2" />
-                    Marquer comme terminé
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => initiateStatusChange("completed")}
+                      disabled={loading}
+                      className={`${actionButton} bg-violet-600 text-white hover:bg-violet-700 shadow-sm`}
+                    >
+                      <CheckCircleIcon className="h-5 w-5" aria-hidden="true" />
+                      Marquer comme terminé
+                    </button>
+                    {hasStarted(appointment) ? (
+                      <button
+                        type="button"
+                        onClick={() => initiateStatusChange("no_show")}
+                        disabled={loading}
+                        className={`${actionButton} bg-white text-slate-700 border border-slate-200 hover:bg-slate-50`}
+                      >
+                        <XCircleIcon className="h-5 w-5" aria-hidden="true" />
+                        Client absent
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => initiateStatusChange("cancelled")}
+                        disabled={loading}
+                        className={`${actionButton} bg-white text-red-700 border border-red-200 hover:bg-red-50`}
+                      >
+                        <XCircleIcon className="h-5 w-5" aria-hidden="true" />
+                        Annuler le rendez-vous
+                      </button>
+                    )}
+                  </>
                 )}
 
-                {appointment.status === "confirmed" && hasStarted(appointment) && (
-                  <button
-                    onClick={() => initiateStatusChange("no_show")}
-                    disabled={loading}
-                    className="flex items-center justify-center px-4 py-3 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-200 disabled:opacity-50 font-medium transition-colors"
-                  >
-                    <XCircleIcon className="h-5 w-5 mr-2" />
-                    Client absent
-                  </button>
-                )}
-
-                {/* Confirmation Email */}
-                {(appointment.status === "pending" ||
-                  appointment.status === "confirmed") &&
-                  appointment.client_email && (
-                    <button
-                      onClick={() => initiateSendConfirmation("email")}
-                      disabled={loading}
-                      className="flex items-center justify-center px-4 py-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50 font-medium transition-colors"
-                    >
-                      <EnvelopeIcon className="h-5 w-5 mr-2" />
-                      Confirmation Email
-                    </button>
-                  )}
-
-                {/* Confirmation WhatsApp */}
-                {(appointment.status === "pending" ||
-                  appointment.status === "confirmed") &&
-                  appointment.client_phone && (
-                    <button
-                      onClick={() => initiateSendConfirmation("whatsapp")}
-                      disabled={loading}
-                      className="flex items-center justify-center px-4 py-3 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 disabled:opacity-50 font-medium transition-colors"
-                    >
-                      <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
-                      Confirmation WhatsApp
-                    </button>
-                  )}
-
-                {/* Rappel */}
-                {(appointment.status === "pending" ||
-                  appointment.status === "confirmed") &&
-                  (appointment.client_email || appointment.client_phone) && (
-                    <button
-                      onClick={handleSendReminder}
-                      disabled={loading}
-                      className="flex items-center justify-center px-4 py-3 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 disabled:opacity-50 font-medium transition-colors"
-                    >
-                      <PaperAirplaneIcon className="h-5 w-5 mr-2" />
-                      Envoyer un rappel
-                    </button>
-                  )}
-
-                {/* Voir le reçu */}
                 {appointment.status === "completed" && (
                   <button
+                    type="button"
                     onClick={() => setShowReceiptModal(true)}
-                    className="flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors shadow-sm col-span-1 md:col-span-2"
+                    className={`${actionButton} bg-violet-600 text-white hover:bg-violet-700 shadow-sm sm:col-span-2`}
                   >
-                    <DocumentTextIcon className="h-5 w-5 mr-2" />
+                    <DocumentTextIcon className="h-5 w-5" aria-hidden="true" />
                     Voir le reçu
                   </button>
                 )}
+              </div>
+            </section>
+          )}
 
-                {/* Contact */}
-                {(appointment.client_email || appointment.client_phone) && appointment.status !== "completed" && (
+          {/* Déplacer */}
+          {canReschedule && (
+            <section aria-label="Déplacer le rendez-vous" className="rounded-xl border border-slate-200 p-4">
+              {!showReschedule ? (
+                <button
+                  type="button"
+                  onClick={() => setShowReschedule(true)}
+                  aria-expanded="false"
+                  className="flex items-center text-sm font-medium text-violet-700 hover:text-violet-900 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                >
+                  <CalendarIcon className="h-5 w-5 mr-2" aria-hidden="true" />
+                  Déplacer ce rendez-vous
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-slate-900">Déplacer ce rendez-vous</p>
+                  <div className={`grid grid-cols-1 ${isStaff ? "sm:grid-cols-2" : "sm:grid-cols-3"} gap-3`}>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor="reschedule-date">Date</label>
+                      <input
+                        id="reschedule-date"
+                        type="date"
+                        value={reschedule.date}
+                        min={toDateKey(new Date())}
+                        onChange={(e) => setReschedule({ ...reschedule, date: e.target.value })}
+                        className={fieldClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor="reschedule-time">Heure</label>
+                      <input
+                        id="reschedule-time"
+                        type="time"
+                        step="300"
+                        value={reschedule.time}
+                        onChange={(e) => setReschedule({ ...reschedule, time: e.target.value })}
+                        className={fieldClass}
+                      />
+                    </div>
+                    {!isStaff && (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor="reschedule-staff">Personnel</label>
+                        <select
+                          id="reschedule-staff"
+                          value={reschedule.staffId}
+                          onChange={(e) => setReschedule({ ...reschedule, staffId: e.target.value })}
+                          className={fieldClass}
+                        >
+                          <option value="">Non assigné</option>
+                          {staffList.map((s) => (
+                            <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                    <button type="button" onClick={() => setShowReschedule(false)} className="btn-ghost">
+                      Annuler
+                    </button>
+                    <button type="button" onClick={handleReschedule} disabled={loading} className="btn-primary">
+                      Enregistrer
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Messages au client */}
+          {isActive && (appointment.client_email || appointment.client_phone) && (
+            <section aria-label="Messages au client">
+              <h3 className={sectionTitle}>Prévenir le client</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {appointment.client_email && (
                   <button
-                    onClick={() => setShowNotificationModal(true)}
-                    className="flex items-center justify-center px-4 py-3 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 font-medium col-span-1 md:col-span-2 transition-colors"
+                    type="button"
+                    onClick={() => initiateSendConfirmation("email")}
+                    disabled={loading}
+                    className={`${actionButton} bg-white text-slate-700 border border-slate-200 hover:bg-slate-50`}
                   >
-                    <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
-                    Contacter le client
+                    <EnvelopeIcon className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                    Confirmation par email
                   </button>
                 )}
+                {appointment.client_phone && (
+                  <button
+                    type="button"
+                    onClick={() => initiateSendConfirmation("whatsapp")}
+                    disabled={loading}
+                    className={`${actionButton} bg-white text-slate-700 border border-slate-200 hover:bg-slate-50`}
+                  >
+                    <ChatBubbleLeftRightIcon className="h-5 w-5 text-emerald-600" aria-hidden="true" />
+                    Confirmation WhatsApp
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSendReminder}
+                  disabled={loading}
+                  className={`${actionButton} bg-white text-slate-700 border border-slate-200 hover:bg-slate-50`}
+                >
+                  <PaperAirplaneIcon className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                  Envoyer un rappel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNotificationModal(true)}
+                  className={`${actionButton} bg-white text-slate-700 border border-slate-200 hover:bg-slate-50`}
+                >
+                  <ChatBubbleLeftRightIcon className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                  Message personnalisé
+                </button>
               </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="bg-gray-50 px-6 py-4 rounded-b-xl flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 font-medium"
-            >
-              Fermer
-            </button>
-          </div>
+            </section>
+          )}
         </div>
-      </div>
+      </Modal>
 
-      {/* MODALE DE CONFIRMATION - PLACÉE APRÈS LA MODALE PRINCIPALE POUR APPARAÎTRE AU-DESSUS */}
+      {/* Confirmation d'action (au-dessus de la fenêtre de détail) */}
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
         onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
         onConfirm={confirmConfig.onConfirm}
         title={confirmConfig.title}
         message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        cancelText={confirmConfig.cancelText}
         type={confirmConfig.type}
         loading={loading}
-      />
+      >
+        {confirmConfig.status === "cancelled" && (
+          <>
+            <label htmlFor="cancel-reason" className="block text-sm font-medium text-slate-700 mb-1">
+              Motif communiqué au client (facultatif)
+            </label>
+            <input
+              id="cancel-reason"
+              type="text"
+              value={cancelReason}
+              maxLength={255}
+              onChange={(e) => {
+                cancelReasonRef.current = e.target.value;
+                setCancelReason(e.target.value);
+              }}
+              placeholder="Ex. fermeture exceptionnelle"
+              className={fieldClass}
+            />
+          </>
+        )}
+      </ConfirmModal>
 
-      {/* MODALE DE NOTIFICATION - PLACÉE À LA FIN EGALEMENT */}
-      {showNotificationModal && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 animate-scale-in relative z-[70]">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Contacter {appointment.client_first_name}
-            </h3>
-            <textarea
-              value={notificationMessage}
-              onChange={(e) => setNotificationMessage(e.target.value)}
-              placeholder="Saisissez votre message..."
-              rows="4"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            ></textarea>
-            <div className="mt-4 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowNotificationModal(false);
-                  setNotificationMessage("");
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleSendNotification}
-                disabled={loading || !notificationMessage.trim()}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 inline-flex items-center"
-              >
-                <PaperAirplaneIcon className="h-4 w-4 mr-2" />
-                {loading ? "Envoi..." : "Envoyer"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Message personnalisé */}
+      <Modal
+        open={showNotificationModal}
+        onClose={() => {
+          setShowNotificationModal(false);
+          setNotificationMessage("");
+        }}
+        size="sm"
+        title={`Contacter ${appointment.client_first_name}`}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setShowNotificationModal(false);
+                setNotificationMessage("");
+              }}
+              className="btn-secondary"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={handleSendNotification}
+              disabled={loading || !notificationMessage.trim()}
+              className="btn-primary"
+            >
+              <PaperAirplaneIcon className="h-4 w-4" aria-hidden="true" />
+              {loading ? "Envoi..." : "Envoyer"}
+            </button>
+          </>
+        }
+      >
+        <label htmlFor="client-message" className="block text-sm font-medium text-slate-700 mb-1">
+          Message
+        </label>
+        <textarea
+          id="client-message"
+          value={notificationMessage}
+          onChange={(e) => setNotificationMessage(e.target.value)}
+          placeholder="Saisissez votre message..."
+          rows="4"
+          data-autofocus
+          className={fieldClass}
+        />
+      </Modal>
 
-      {/* MODALE DE REÇU */}
       {showReceiptModal && (
         <ReceiptModal
           appointmentId={appointment.id}

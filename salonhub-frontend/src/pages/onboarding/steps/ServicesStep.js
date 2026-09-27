@@ -117,8 +117,8 @@ const ServicesStep = ({ config, term, onNext, onSkip, onBack }) => {
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="label-premium">Nom de la prestation</label>
-            <input
+            <label htmlFor="servicesstep-name" className="label-premium">Nom de la prestation</label>
+            <input id="servicesstep-name"
               type="text"
               name="name"
               value={form.name}
@@ -128,8 +128,8 @@ const ServicesStep = ({ config, term, onNext, onSkip, onBack }) => {
             />
           </div>
           <div>
-            <label className="label-premium">Durée (min)</label>
-            <input
+            <label htmlFor="servicesstep-duration" className="label-premium">Durée (min)</label>
+            <input id="servicesstep-duration"
               type="number"
               name="duration"
               min="5"
@@ -141,8 +141,8 @@ const ServicesStep = ({ config, term, onNext, onSkip, onBack }) => {
             />
           </div>
           <div>
-            <label className="label-premium">Tarif</label>
-            <input
+            <label htmlFor="servicesstep-price" className="label-premium">Tarif</label>
+            <input id="servicesstep-price"
               type="number"
               name="price"
               min="0"
@@ -154,8 +154,8 @@ const ServicesStep = ({ config, term, onNext, onSkip, onBack }) => {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="label-premium">Catégorie (optionnel)</label>
-            <input
+            <label htmlFor="servicesstep-category" className="label-premium">Catégorie (optionnel)</label>
+            <input id="servicesstep-category"
               type="text"
               name="category"
               value={form.category}

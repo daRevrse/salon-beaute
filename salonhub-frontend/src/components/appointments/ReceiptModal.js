@@ -14,6 +14,7 @@ import {
   CheckCircleIcon,
   DocumentArrowDownIcon,
 } from "@heroicons/react/24/outline";
+import { useModalBehavior } from "../common/Modal";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -24,6 +25,9 @@ const ReceiptModal = ({ appointmentId, onClose }) => {
   const [error, setError] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const printRef = useRef();
+  // Même élément role="dialog" pour le chargement, l'erreur et le reçu
+  const panelRef = useRef(null);
+  useModalBehavior(panelRef, { onClose });
 
   useEffect(() => {
     const fetchReceipt = async () => {
@@ -98,8 +102,8 @@ const ReceiptModal = ({ appointmentId, onClose }) => {
   if (loading) {
     return (
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-[100]">
-        <div className="bg-white p-8 rounded-xl shadow-xl flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-4"></div>
+        <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Reçu" aria-busy="true" tabIndex={-1} className="bg-white p-8 rounded-xl shadow-xl flex flex-col items-center focus:outline-none">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-4" aria-hidden="true"></div>
           <p className="text-gray-600 font-medium">Génération du reçu...</p>
         </div>
       </div>
@@ -109,11 +113,11 @@ const ReceiptModal = ({ appointmentId, onClose }) => {
   if (error || !receipt) {
     return (
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-[100]">
-        <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4">
-          <div className="text-red-500 mb-4 flex justify-center">
+        <div ref={panelRef} role="alertdialog" aria-modal="true" aria-labelledby="receipt-error-title" tabIndex={-1} className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4 focus:outline-none">
+          <div className="text-red-500 mb-4 flex justify-center" aria-hidden="true">
             <XMarkIcon className="h-12 w-12 border-2 border-red-500 rounded-full p-2" />
           </div>
-          <h3 className="text-lg font-bold text-center text-gray-900 mb-2">Erreur</h3>
+          <h3 id="receipt-error-title" className="text-lg font-bold text-center text-gray-900 mb-2">Erreur</h3>
           <p className="text-gray-600 text-center mb-6">{error}</p>
           <button
             onClick={onClose}
@@ -136,11 +140,11 @@ const ReceiptModal = ({ appointmentId, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-75 overflow-y-auto h-full w-full z-[100] flex items-center justify-center p-4">
-      <div className="relative bg-white w-full max-w-2xl shadow-2xl rounded-2xl overflow-hidden animate-scale-in flex flex-col max-h-[95vh]">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="receipt-title" tabIndex={-1} className="relative bg-white w-full max-w-2xl shadow-2xl rounded-2xl overflow-hidden animate-scale-in flex flex-col max-h-[95vh] focus:outline-none">
         {/* Toolbar */}
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between no-print">
-          <h2 className="text-xl font-bold text-gray-800 flex items-center">
-            <CheckCircleIcon className="h-6 w-6 text-green-500 mr-2" />
+          <h2 id="receipt-title" className="text-xl font-bold text-gray-800 flex items-center">
+            <CheckCircleIcon className="h-6 w-6 text-green-500 mr-2" aria-hidden="true" />
             Reçu #{receipt.receipt_number}
           </h2>
           <div className="flex items-center space-x-2">
@@ -149,6 +153,7 @@ const ReceiptModal = ({ appointmentId, onClose }) => {
               disabled={downloading}
               className={`p-2 ${downloading ? "text-gray-400" : "text-gray-600 hover:text-indigo-600 hover:bg-indigo-50"} rounded-lg transition-all`}
               title="Télécharger PDF"
+              aria-label="Télécharger le reçu en PDF"
             >
               {downloading ? (
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
@@ -160,11 +165,14 @@ const ReceiptModal = ({ appointmentId, onClose }) => {
               onClick={handlePrint}
               className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
               title="Imprimer"
+              aria-label="Imprimer le reçu"
             >
               <PrinterIcon className="h-6 w-6" />
             </button>
             <button
               onClick={onClose}
+              aria-label="Fermer"
+              title="Fermer"
               className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
             >
               <XMarkIcon className="h-6 w-6" />

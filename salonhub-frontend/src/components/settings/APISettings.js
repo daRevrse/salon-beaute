@@ -274,7 +274,7 @@ const APISettings = () => {
           <div className="flex-1">
             <p className="text-sm text-red-800">{error}</p>
           </div>
-          <button
+          <button aria-label="Masquer l'erreur"
             onClick={() => setError(null)}
             className="text-red-400 hover:text-red-600"
           >
@@ -295,7 +295,7 @@ const APISettings = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <button aria-label="Rafraîchir"
             onClick={fetchApiKeys}
             className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
             title="Rafraîchir"
@@ -428,7 +428,7 @@ const APISettings = () => {
                       <EyeSlashIcon className="h-4 w-4" />
                     )}
                   </button>
-                  <button
+                  <button aria-label="Supprimer la clé"
                     onClick={() => {
                       setKeyToDelete(key);
                       setShowDeleteModal(true);
@@ -501,10 +501,10 @@ const APISettings = () => {
             <form onSubmit={handleCreate} className="p-6 space-y-5">
               {/* Nom */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="apisettings-nom-de-la-cle" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Nom de la clé *
                 </label>
-                <input
+                <input id="apisettings-nom-de-la-cle"
                   type="text"
                   required
                   value={newKeyName}
@@ -517,11 +517,11 @@ const APISettings = () => {
 
               {/* Expiration */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="apisettings-date-d-expiration-optionnel" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Date d'expiration{" "}
                   <span className="text-slate-400">(optionnel)</span>
                 </label>
-                <input
+                <input id="apisettings-date-d-expiration-optionnel"
                   type="date"
                   value={newKeyExpiry}
                   onChange={(e) => setNewKeyExpiry(e.target.value)}
@@ -536,9 +536,9 @@ const APISettings = () => {
               {/* Scopes */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-slate-700">
+                  <p className="block text-sm font-medium text-slate-700">
                     Permissions (scopes) *
-                  </label>
+                  </p>
                   <div className="flex gap-2">
                     <button
                       type="button"

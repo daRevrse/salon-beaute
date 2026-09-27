@@ -101,7 +101,7 @@ const PromoCodeInput = ({ onValidate, currentAmount, clientId }) => {
                 </div>
               </div>
             </div>
-            <button
+            <button aria-label="Retirer le code promo"
               onClick={handleRemove}
               className="ml-4 p-1 text-gray-400 hover:text-red-600 transition-colors"
               title="Retirer le code promo"

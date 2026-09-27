@@ -120,17 +120,17 @@ const FinishStep = ({ config, term, onGoToStep }) => {
 
       {/* Lien de réservation */}
       <div className="mb-6 text-left max-w-lg mx-auto">
-        <label className="text-sm font-medium text-slate-700 mb-2 block">
+        <label htmlFor="finishstep-votre-lien-de-reservation" className="text-sm font-medium text-slate-700 mb-2 block">
           Votre lien de réservation
         </label>
         <div className="flex rounded-xl border border-slate-200 overflow-hidden">
-          <input
+          <input id="finishstep-votre-lien-de-reservation"
             type="text"
             readOnly
             value={bookingUrl}
             className="flex-1 min-w-0 px-4 py-3 bg-slate-50 text-sm text-slate-600 border-0 focus:outline-none"
           />
-          <button
+          <button aria-label="Copier le lien"
             onClick={handleCopy}
             className="px-4 py-3 bg-white border-l border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
           >

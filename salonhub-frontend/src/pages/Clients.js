@@ -16,7 +16,6 @@ import {
   EnvelopeIcon,
   ChatBubbleLeftRightIcon,
   PaperAirplaneIcon,
-  XMarkIcon,
   ClockIcon,
   PencilIcon,
   TrashIcon,
@@ -32,6 +31,8 @@ import {
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/common/Toast";
 import ConfirmModal from "../components/common/ConfirmModal";
+import Modal from "../components/common/Modal";
+import Spinner from "../components/common/Spinner";
 
 const Clients = () => {
   const { tenant } = useAuth();
@@ -366,9 +367,18 @@ const Clients = () => {
                             </span>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-bold text-slate-900 group-hover:text-violet-600 transition-colors">
+                            {/* Accès clavier à la fiche (la ligne entière reste cliquable) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDetailClient(client);
+                                setShowDetailModal(true);
+                              }}
+                              className="text-sm font-bold text-slate-900 group-hover:text-violet-600 transition-colors text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                            >
                               {client.first_name} {client.last_name}
-                            </div>
+                            </button>
                             <div className="text-xs text-slate-500 mt-0.5">
                               ID: #{client.id}
                             </div>
@@ -451,24 +461,28 @@ const Clients = () => {
 
       {/* Modal Création/Édition */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-lg bg-white shadow-soft-2xl rounded-3xl animate-scale-in overflow-hidden border border-slate-100">
-            <div className={`bg-gradient-to-r ${config.gradient} px-8 py-6 flex items-center justify-between`}>
-              <h3 className="text-xl font-display font-bold text-white uppercase tracking-wider">
-                {editingClient ? term.clientEdit : term.clientAdd}
-              </h3>
-              <button onClick={handleCloseModal} className="text-white/80 hover:text-white transition-colors">
-                <XMarkIcon className="h-6 w-6" />
+        <Modal
+          onClose={handleCloseModal}
+          size="md"
+          title={editingClient ? term.clientEdit : term.clientAdd}
+          footer={
+            <>
+              <button type="button" onClick={handleCloseModal} className="btn-secondary">
+                Annuler
               </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <button type="submit" form="client-form" disabled={loading} className="btn-primary">
+                {loading ? "Enregistrement..." : "Enregistrer"}
+              </button>
+            </>
+          }
+        >
+            <form id="client-form" onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="label-premium">
+                  <label htmlFor="clients-first-name" className="label-premium">
                     Prénom <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input id="clients-first-name"
                     type="text"
                     name="first_name"
                     required
@@ -480,10 +494,10 @@ const Clients = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="label-premium">
+                  <label htmlFor="clients-last-name" className="label-premium">
                     Nom <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input id="clients-last-name"
                     type="text"
                     name="last_name"
                     required
@@ -496,12 +510,12 @@ const Clients = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="label-premium">
+                <label htmlFor="clients-email" className="label-premium">
                   Email
                 </label>
                 <div className="relative">
                   <EnvelopeIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                  <input
+                  <input id="clients-email"
                     type="email"
                     name="email"
                     value={formData.email}
@@ -513,12 +527,12 @@ const Clients = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="label-premium">
+                <label htmlFor="clients-phone" className="label-premium">
                   Téléphone
                 </label>
                 <div className="relative">
                   <PhoneIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                  <input
+                  <input id="clients-phone"
                     type="tel"
                     name="phone"
                     value={formData.phone}
@@ -530,10 +544,10 @@ const Clients = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="label-premium">
+                <label htmlFor="clients-notes" className="label-premium">
                   Notes privées
                 </label>
-                <textarea
+                <textarea id="clients-notes"
                   name="notes"
                   rows="3"
                   value={formData.notes}
@@ -543,65 +557,51 @@ const Clients = () => {
                 ></textarea>
               </div>
 
-              <div className="flex justify-end gap-4 pt-6 mt-6 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-6 py-3 border-2 border-slate-200 rounded-2xl text-slate-600 font-bold hover:bg-slate-50 transition-all"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`px-8 py-3 bg-gradient-to-r ${config.gradient} text-white rounded-2xl font-bold shadow-soft hover:shadow-glow disabled:opacity-50 transition-all duration-300`}
-                >
-                  {loading ? "Enregistrement..." : "Enregistrer"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal Messagerie */}
       {showMessageModal && messagingClient && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-lg bg-white shadow-soft-2xl rounded-3xl animate-scale-in overflow-hidden border border-slate-100">
-            <div className={`bg-gradient-to-r ${config.gradient} px-8 py-6`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl mr-4">
-                     <ChatBubbleLeftRightIcon className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-display font-bold text-white uppercase tracking-wider">
-                      Message
-                    </h3>
-                    <p className="text-sm text-white/80 font-medium">
-                      À {messagingClient.first_name} {messagingClient.last_name}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleCloseMessageModal}
-                  className="text-white/80 hover:text-white transition-colors"
-                >
-                  <XMarkIcon className="h-7 w-7" />
-                </button>
-              </div>
+        <Modal
+          onClose={handleCloseMessageModal}
+          size="md"
+          title="Message"
+          description={`À ${messagingClient.first_name} ${messagingClient.last_name}`}
+          icon={
+            <div className="p-2 rounded-xl bg-emerald-100">
+              <ChatBubbleLeftRightIcon className="h-5 w-5 text-emerald-700" aria-hidden="true" />
             </div>
-
-            <form onSubmit={handleSendMessage} className="p-8 space-y-6">
+          }
+          footer={
+            <>
+              <button type="button" onClick={handleCloseMessageModal} className="btn-secondary">
+                Annuler
+              </button>
+              <button
+                type="submit"
+                form="client-message-form"
+                disabled={sending}
+                className="btn bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500 shadow-soft"
+              >
+                {sending ? <Spinner size="sm" label={null} /> : <PaperAirplaneIcon className="h-5 w-5" aria-hidden="true" />}
+                {sending ? "Envoi..." : "Envoyer"}
+              </button>
+            </>
+          }
+        >
+            <form id="client-message-form" onSubmit={handleSendMessage} className="space-y-6">
               {/* Canal d'envoi */}
               <div>
-                <label className="label-premium mb-3">
+                <p id="send-via-label" className="label-premium mb-3">
                   Canal d'envoi
-                </label>
-                <div className="grid grid-cols-3 gap-3">
+                </p>
+                <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-labelledby="send-via-label">
                   {messagingClient.email && (
                     <button
                       type="button"
+                      role="radio"
+                      aria-checked={messageData.send_via === "email"}
                       onClick={() => setMessageData({ ...messageData, send_via: "email" })}
                       className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all border-2 ${
                         messageData.send_via === "email"
@@ -616,6 +616,8 @@ const Clients = () => {
                   {messagingClient.phone && (
                     <button
                       type="button"
+                      role="radio"
+                      aria-checked={messageData.send_via === "sms"}
                       onClick={() => setMessageData({ ...messageData, send_via: "sms" })}
                       className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all border-2 ${
                         messageData.send_via === "sms"
@@ -630,6 +632,8 @@ const Clients = () => {
                   {messagingClient.email && messagingClient.phone && (
                     <button
                       type="button"
+                      role="radio"
+                      aria-checked={messageData.send_via === "both"}
                       onClick={() => setMessageData({ ...messageData, send_via: "both" })}
                       className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all border-2 ${
                         messageData.send_via === "both"
@@ -646,10 +650,11 @@ const Clients = () => {
               {/* Sujet (pour email) */}
               {(messageData.send_via === "email" || messageData.send_via === "both") && (
                 <div className="space-y-2 animate-fade-in">
-                  <label className="label-premium">
+                  <label className="label-premium" htmlFor="message-subject">
                     Sujet de l'email
                   </label>
                   <input
+                    id="message-subject"
                     type="text"
                     name="subject"
                     value={messageData.subject}
@@ -662,10 +667,11 @@ const Clients = () => {
 
               {/* Message */}
               <div className="space-y-2">
-                <label className="label-premium">
-                  Message personnalisé <span className="text-red-500">*</span>
+                <label className="label-premium" htmlFor="message-body">
+                  Message personnalisé <span className="text-red-500" aria-hidden="true">*</span>
                 </label>
                 <textarea
+                  id="message-body"
                   name="message"
                   required
                   rows="5"
@@ -694,33 +700,8 @@ const Clients = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-4 pt-6 mt-6 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={handleCloseMessageModal}
-                  className="px-6 py-3 border-2 border-slate-200 rounded-2xl text-slate-600 font-bold hover:bg-slate-50 transition-all font-display"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={sending}
-                  className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl font-bold shadow-soft hover:shadow-glow disabled:opacity-50 transition-all duration-300 inline-flex items-center font-display"
-                >
-                   {sending ? (
-                    <svg className="animate-spin h-5 w-5 mr-3 text-white" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <PaperAirplaneIcon className="h-5 w-5 mr-2" />
-                  )}
-                  {sending ? "Envoi..." : "Envoyer"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal Historique */}
@@ -736,44 +717,24 @@ const Clients = () => {
 
       {/* Modal Détails Client */}
       {showDetailModal && detailClient && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-2xl bg-white shadow-soft-2xl rounded-3xl animate-scale-in overflow-hidden border border-slate-100">
-            {/* Header */}
-            <div className={`bg-gradient-to-r ${config.gradient} px-8 py-8 flex items-center justify-between`}>
-              <div className="flex items-center">
-                <div className="h-20 w-20 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-soft border border-white/30">
-                  <span className="text-white font-bold text-3xl">
-                    {detailClient.first_name?.charAt(0)}
-                    {detailClient.last_name?.charAt(0)}
-                  </span>
-                </div>
-                <div className="ml-6">
-                  <h3 className="text-3xl font-display font-bold text-white tracking-tight">
-                    {detailClient.first_name} {detailClient.last_name}
-                  </h3>
-                  <div className="flex items-center mt-2 space-x-3">
-                    <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-bold uppercase tracking-wider">
-                      ID: #{detailClient.id}
-                    </span>
-                    <span className="text-white/80 text-sm font-medium">
-                      Membre depuis {new Date(detailClient.created_at).toLocaleDateString("fr-FR", { month: 'long', year: 'numeric' })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowDetailModal(false);
-                  setDetailClient(null);
-                }}
-                className="p-2 text-white/80 hover:text-white transition-colors self-start"
-              >
-                <XMarkIcon className="h-8 w-8" />
-              </button>
+        <Modal
+          onClose={() => {
+            setShowDetailModal(false);
+            setDetailClient(null);
+          }}
+          size="lg"
+          title={`${detailClient.first_name} ${detailClient.last_name}`}
+          description={`${term.client} depuis ${new Date(detailClient.created_at).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`}
+          icon={
+            <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${config.gradient} flex items-center justify-center`} aria-hidden="true">
+              <span className="text-white font-bold text-lg">
+                {detailClient.first_name?.charAt(0)}
+                {detailClient.last_name?.charAt(0)}
+              </span>
             </div>
-
-            {/* Content */}
-            <div className="p-8">
+          }
+        >
+            <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Contact Info Card */}
                 <div className="space-y-4">
@@ -880,8 +841,7 @@ const Clients = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </DashboardLayout>
   );

@@ -58,7 +58,7 @@ function Toast({ message, type = "success", onClose, duration = 3000 }) {
         <div className="flex-1">
           <p className={`text-sm font-medium ${style.text}`}>{message}</p>
         </div>
-        <button
+        <button aria-label="Fermer la notification"
           onClick={onClose}
           className={`flex-shrink-0 ml-3 ${style.text} hover:opacity-75 transition`}
         >

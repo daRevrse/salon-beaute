@@ -518,7 +518,7 @@ const WebhookSettings = () => {
                     {/* Actions */}
                     <div className="flex items-center gap-1.5">
                       {/* Toggle */}
-                      <button
+                      <button role="switch" aria-checked={!!webhook.is_active} aria-label="Webhook actif"
                         onClick={() => handleToggle(webhook)}
                         className={`relative w-10 h-5 rounded-full transition-colors ${
                           webhook.is_active ? "bg-emerald-500" : "bg-slate-300"
@@ -553,7 +553,7 @@ const WebhookSettings = () => {
                       </button>
 
                       {/* Régénérer secret */}
-                      <button
+                      <button aria-label="Régénérer le secret"
                         onClick={() => handleRegenerateSecret(webhook.id)}
                         className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
                         title="Régénérer le secret"
@@ -575,7 +575,7 @@ const WebhookSettings = () => {
                       </button>
 
                       {/* Supprimer */}
-                      <button
+                      <button aria-label="Supprimer le webhook"
                         onClick={() => setDeleteTarget(webhook)}
                         className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Supprimer"
@@ -710,10 +710,10 @@ const WebhookSettings = () => {
             <div className="p-5 space-y-5">
               {/* URL */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="webhooksettings-url-de-l-endpoint" className="block text-sm font-medium text-slate-700 mb-1.5">
                   URL de l'endpoint *
                 </label>
-                <input
+                <input id="webhooksettings-url-de-l-endpoint"
                   type="url"
                   value={newWebhook.url}
                   onChange={(e) =>
@@ -729,10 +729,10 @@ const WebhookSettings = () => {
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="webhooksettings-description-optionnelle" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Description (optionnelle)
                 </label>
-                <input
+                <input id="webhooksettings-description-optionnelle"
                   type="text"
                   value={newWebhook.description}
                   onChange={(e) =>
@@ -748,9 +748,9 @@ const WebhookSettings = () => {
 
               {/* Événements */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">
+                <p className="block text-sm font-medium text-slate-700 mb-3">
                   Événements à écouter *
-                </label>
+                </p>
                 <div className="space-y-4">
                   {Object.entries(EVENT_GROUPS).map(([group, events]) => {
                     const groupEvents = events.map((e) => e.value);

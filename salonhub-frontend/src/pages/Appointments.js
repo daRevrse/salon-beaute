@@ -25,7 +25,6 @@ import api from "../services/api";
 import { getBusinessTypeConfig } from "../utils/businessTypeConfig";
 import {
   STATUS_LABELS,
-  STATUS_BADGE_STYLES,
   getDateKey,
   toDateKey,
   toLocalDateTime,
@@ -36,12 +35,13 @@ import {
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/common/Toast";
 import ConfirmModal from "../components/common/ConfirmModal";
+import Modal from "../components/common/Modal";
+import StatusBadge from "../components/appointments/StatusBadge";
 import {
   CalendarDaysIcon,
   PlusIcon,
   ListBulletIcon,
   CalendarIcon,
-  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 const PLANNING_LIMIT = 500;
@@ -334,11 +334,7 @@ const Appointments = () => {
   const handleCloseDetails = () => setSelectedAppointment(null);
   const handleUpdateAfterDetails = () => fetchAppointments();
 
-  const getStatusBadge = (status) => (
-    <span className={`px-3 py-1 text-xs font-medium rounded-full ${STATUS_BADGE_STYLES[status]}`}>
-      {STATUS_LABELS[status]}
-    </span>
-  );
+  const getStatusBadge = (status) => <StatusBadge status={status} />;
 
   // Mêmes règles que la fiche détaillée :
   // confirmer exige le droit, et un employé assigné quand l'équipe compte plusieurs membres
@@ -561,15 +557,23 @@ const Appointments = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className={`h-9 w-9 rounded-lg ${config.lightBg} flex items-center justify-center mr-3`}>
+                            <div className={`h-9 w-9 rounded-lg ${config.lightBg} flex items-center justify-center mr-3`} aria-hidden="true">
                               <span className={`${config.textColor} font-semibold text-sm`}>
                                 {apt.client_first_name?.charAt(0)}{apt.client_last_name?.charAt(0)}
                               </span>
                             </div>
                             <div>
-                              <div className="text-sm font-medium text-slate-800">
+                              {/* Accès clavier à la fiche (la ligne entière reste cliquable) */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDetails(apt);
+                                }}
+                                className="text-sm font-medium text-slate-800 text-left hover:underline rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                              >
                                 {apt.client_first_name} {apt.client_last_name}
-                              </div>
+                              </button>
                               <div className="text-xs text-slate-400">{apt.client_phone}</div>
                             </div>
                           </div>
@@ -613,24 +617,30 @@ const Appointments = () => {
 
         {/* Create Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-            <div role="dialog" aria-modal="true" aria-labelledby="new-appointment-title" className="relative bg-white rounded-2xl shadow-soft-xl max-w-md w-full animate-scale-in">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-xl bg-gradient-to-br ${config.gradient}`}>
-                    <PlusIcon className="h-5 w-5 text-white" />
-                  </div>
-                  <h3 id="new-appointment-title" className="font-display text-lg font-semibold text-slate-800">{term.appointmentNew}</h3>
-                </div>
-                <button onClick={handleCloseModal} aria-label="Fermer" className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                  <XMarkIcon className="h-5 w-5 text-slate-400" />
-                </button>
+          <Modal
+            onClose={handleCloseModal}
+            size="md"
+            title={term.appointmentNew}
+            icon={
+              <div className={`p-2 rounded-xl bg-gradient-to-br ${config.gradient}`}>
+                <PlusIcon className="h-5 w-5 text-white" aria-hidden="true" />
               </div>
-
-              <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            }
+            footer={
+              <>
+                <button type="button" onClick={handleCloseModal} className="btn-secondary">
+                  Annuler
+                </button>
+                <button type="submit" form="new-appointment-form" disabled={loading} className="btn-primary">
+                  {loading ? "Création..." : "Créer"}
+                </button>
+              </>
+            }
+          >
+              <form id="new-appointment-form" onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="label-premium">{term.client} *</label>
-                  <ClientPicker value={selectedClient} onChange={setSelectedClient} term={term} />
+                  <label className="label-premium" htmlFor="new-apt-client">{term.client} *</label>
+                  <ClientPicker inputId="new-apt-client" value={selectedClient} onChange={setSelectedClient} term={term} />
                 </div>
 
                 <div>
@@ -706,54 +716,39 @@ const Appointments = () => {
                   />
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <button type="button" onClick={handleCloseModal} className="btn-premium-secondary">
-                    Annuler
-                  </button>
-                  <button type="submit" disabled={loading} className="btn-premium">
-                    {loading ? "Création..." : "Créer"}
-                  </button>
-                </div>
               </form>
-            </div>
-          </div>
+          </Modal>
         )}
 
         {/* Cancel Modal */}
         {showCancelModal && (
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-soft-xl max-w-md w-full animate-scale-in">
-              <div className="px-6 py-4 border-b border-slate-100">
-                <h3 className="font-display text-lg font-semibold text-red-600 flex items-center gap-2">
-                  <span>⚠️</span> {term.appointmentCancel}
-                </h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  Voulez-vous indiquer une raison pour l'annulation ?
-                </p>
-              </div>
-              <div className="p-6">
-                <label className="label-premium">Raison (optionnel)</label>
-                <textarea
-                  rows="3"
-                  className="input-premium"
-                  placeholder="Ex: Client malade, imprévu..."
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                />
-              </div>
-              <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
-                <button onClick={() => setShowCancelModal(false)} className="btn-premium-secondary">
+          <Modal
+            onClose={() => setShowCancelModal(false)}
+            size="sm"
+            role="alertdialog"
+            title={term.appointmentCancel}
+            description="Le client sera prévenu de l'annulation. Vous pouvez indiquer un motif."
+            footer={
+              <>
+                <button type="button" onClick={() => setShowCancelModal(false)} className="btn-secondary">
                   Retour
                 </button>
-                <button
-                  onClick={handleConfirmCancel}
-                  className="px-5 py-2.5 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-colors"
-                >
+                <button type="button" onClick={handleConfirmCancel} className="btn-danger">
                   Confirmer l'annulation
                 </button>
-              </div>
-            </div>
-          </div>
+              </>
+            }
+          >
+            <label className="label-premium" htmlFor="cancel-reason-input">Motif (facultatif)</label>
+            <textarea
+              id="cancel-reason-input"
+              rows="3"
+              className="input-premium"
+              placeholder="Ex. imprévu, fermeture exceptionnelle..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+          </Modal>
         )}
 
         {selectedAppointment && (

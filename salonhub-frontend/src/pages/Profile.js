@@ -9,6 +9,8 @@ import DashboardLayout from "../components/common/DashboardLayout";
 import ImageUploader from "../components/common/ImageUploader";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../services/api";
+import Modal from "../components/common/Modal";
+import Spinner from "../components/common/Spinner";
 import { getImageUrl } from "../utils/imageUtils";
 import {
   UserCircleIcon,
@@ -217,6 +219,12 @@ const Profile = () => {
     }
   };
 
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeleteAccountData({ password: "", confirmation_text: "" });
+    setError(null);
+  };
+
   const handleDeleteAccount = async (e) => {
     e.preventDefault();
     setDeleting(true);
@@ -234,7 +242,11 @@ const Profile = () => {
         // Déconnexion et redirection
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        alert(response.data.message);
+        try {
+          sessionStorage.setItem("login_notice", response.data.message || "Votre compte a été supprimé.");
+        } catch (e) {
+          // stockage indisponible : la redirection suffit
+        }
         window.location.href = "/login";
       }
     } catch (err) {
@@ -403,10 +415,10 @@ const Profile = () => {
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="profile-first-name" className="block text-sm font-medium text-gray-700 mb-2">
                           Prénom *
                         </label>
-                        <input
+                        <input id="profile-first-name"
                           type="text"
                           name="first_name"
                           required
@@ -417,10 +429,10 @@ const Profile = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="profile-last-name" className="block text-sm font-medium text-gray-700 mb-2">
                           Nom *
                         </label>
-                        <input
+                        <input id="profile-last-name"
                           type="text"
                           name="last_name"
                           required
@@ -432,10 +444,10 @@ const Profile = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="profile-email" className="block text-sm font-medium text-gray-700 mb-2">
                         Email *
                       </label>
-                      <input
+                      <input id="profile-email"
                         type="email"
                         name="email"
                         required
@@ -446,10 +458,10 @@ const Profile = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="profile-phone" className="block text-sm font-medium text-gray-700 mb-2">
                         Téléphone
                       </label>
-                      <input
+                      <input id="profile-phone"
                         type="tel"
                         name="phone"
                         value={formData.phone}
@@ -494,10 +506,10 @@ const Profile = () => {
                   </h3>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="profile-current-password" className="block text-sm font-medium text-gray-700 mb-2">
                       Mot de passe actuel *
                     </label>
-                    <input
+                    <input id="profile-current-password"
                       type="password"
                       name="current_password"
                       required
@@ -508,10 +520,10 @@ const Profile = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="profile-new-password" className="block text-sm font-medium text-gray-700 mb-2">
                       Nouveau mot de passe *
                     </label>
-                    <input
+                    <input id="profile-new-password"
                       type="password"
                       name="new_password"
                       required
@@ -525,10 +537,10 @@ const Profile = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="profile-confirm-password" className="block text-sm font-medium text-gray-700 mb-2">
                       Confirmer le nouveau mot de passe *
                     </label>
-                    <input
+                    <input id="profile-confirm-password"
                       type="password"
                       name="confirm_password"
                       required
@@ -768,16 +780,38 @@ const Profile = () => {
 
       {/* Modal de suppression de compte */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full mx-4 shadow-2xl">
-            <div className="bg-red-600 text-white px-6 py-4 rounded-t-xl flex items-center">
-              <ExclamationTriangleIcon className="h-6 w-6 mr-3" />
-              <h3 className="text-xl font-bold">
-                Confirmer la suppression du compte
-              </h3>
-            </div>
-
-            <form onSubmit={handleDeleteAccount} className="p-6">
+        <Modal
+          onClose={deleting ? undefined : closeDeleteModal}
+          role="alertdialog"
+          size="md"
+          title="Confirmer la suppression du compte"
+          icon={
+            <span className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+              <ExclamationTriangleIcon className="h-6 w-6 text-red-600" aria-hidden="true" />
+            </span>
+          }
+          footer={
+            <>
+              <button type="button" onClick={closeDeleteModal} disabled={deleting} className="btn-secondary" data-autofocus>
+                Annuler
+              </button>
+              <button type="submit" form="delete-account-form" disabled={deleting} className="btn-danger">
+                {deleting ? (
+                  <>
+                    <Spinner size="sm" label={null} />
+                    Suppression...
+                  </>
+                ) : (
+                  <>
+                    <TrashIcon className="h-5 w-5" aria-hidden="true" />
+                    Supprimer définitivement
+                  </>
+                )}
+              </button>
+            </>
+          }
+        >
+            <form id="delete-account-form" onSubmit={handleDeleteAccount}>
               <div className="mb-6">
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                   <p className="text-sm text-red-800 font-medium mb-2">
@@ -807,13 +841,14 @@ const Profile = () => {
 
                 {user?.role === "owner" && (
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="delete-confirmation-text" className="block text-sm font-medium text-gray-700 mb-2">
                       Pour confirmer, tapez le nom de votre salon :{" "}
                       <span className="font-bold text-gray-900">
                         {tenant?.name}
                       </span>
                     </label>
                     <input
+                      id="delete-confirmation-text"
                       type="text"
                       required
                       value={deleteAccountData.confirmation_text}
@@ -830,11 +865,13 @@ const Profile = () => {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="delete-password" className="block text-sm font-medium text-gray-700 mb-2">
                     Mot de passe de confirmation *
                   </label>
                   <input
+                    id="delete-password"
                     type="password"
+                    autoComplete="current-password"
                     required
                     value={deleteAccountData.password}
                     onChange={(e) =>
@@ -850,49 +887,13 @@ const Profile = () => {
               </div>
 
               {error && (
-                <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start">
-                  <XMarkIcon className="h-5 w-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" />
+                <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start" role="alert">
+                  <XMarkIcon className="h-5 w-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" aria-hidden="true" />
                   <p className="text-sm text-red-800">{error}</p>
                 </div>
               )}
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setDeleteAccountData({
-                      password: "",
-                      confirmation_text: "",
-                    });
-                    setError(null);
-                  }}
-                  disabled={deleting}
-                  className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium disabled:opacity-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={deleting}
-                  className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                >
-                  {deleting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Suppression...
-                    </>
-                  ) : (
-                    <>
-                      <TrashIcon className="h-5 w-5 mr-2" />
-                      Supprimer définitivement
-                    </>
-                  )}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
     </DashboardLayout>
   );

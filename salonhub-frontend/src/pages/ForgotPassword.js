@@ -159,12 +159,12 @@ function ForgotPassword() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Salon Slug */}
             <div>
-              <label className="label-premium">Nom du salon</label>
+              <label htmlFor="forgotpassword-nom-du-salon" className="label-premium">Nom du salon</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <BuildingStorefrontIcon className="w-5 h-5 text-slate-300" />
                 </div>
-                <input
+                <input id="forgotpassword-nom-du-salon"
                   type="text"
                   value={salonSlug}
                   onChange={(e) => setSalonSlug(e.target.value.toLowerCase().trim())}
@@ -181,12 +181,12 @@ function ForgotPassword() {
 
             {/* Email */}
             <div>
-              <label className="label-premium">Adresse email</label>
+              <label htmlFor="forgotpassword-adresse-email" className="label-premium">Adresse email</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <EnvelopeIcon className="w-5 h-5 text-slate-300" />
                 </div>
-                <input
+                <input id="forgotpassword-adresse-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

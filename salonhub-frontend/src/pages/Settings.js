@@ -48,6 +48,7 @@ import {
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/common/Toast";
 import ConfirmModal from "../components/common/ConfirmModal";
+import Modal from "../components/common/Modal";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -501,11 +502,14 @@ const Settings = () => {
     }
   };
 
-  const handleDeleteStaff = async (id) => {
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer cet ${term.staffMember.toLowerCase()} ?`)) {
-      return;
-    }
+  // Suppression d'un membre : demande de confirmation, puis suppression
+  const [staffToDelete, setStaffToDelete] = useState(null);
+  const handleDeleteStaff = (id) => setStaffToDelete(staff.find((member) => member.id === id) || { id });
 
+  const confirmDeleteStaff = async () => {
+    const id = staffToDelete?.id;
+    setStaffToDelete(null);
+    if (!id) return;
     try {
       const token = localStorage.getItem("token");
       await axios.delete(`${API_URL}/auth/staff/${id}`, {
@@ -661,6 +665,16 @@ const Settings = () => {
         type="danger"
       />
 
+      <ConfirmModal
+        isOpen={!!staffToDelete}
+        onClose={() => setStaffToDelete(null)}
+        onConfirm={confirmDeleteStaff}
+        title={`Supprimer ${staffToDelete?.first_name ? `${staffToDelete.first_name} ${staffToDelete.last_name || ""}`.trim() : `cet ${term.staffMember.toLowerCase()}`} ?`}
+        message="Son accès sera supprimé et ses rendez-vous redeviendront « non assignés ». Cette action est irréversible."
+        confirmText="Supprimer"
+        type="danger"
+      />
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
@@ -774,10 +788,10 @@ const Settings = () => {
                   <div className="grid grid-cols-1 gap-8 mt-8">
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <label htmlFor="settings-champ" className="block text-sm font-medium text-slate-700 mb-2">
                           {term.establishmentName}
                         </label>
-                        <input
+                        <input id="settings-champ"
                           type="text"
                           value={tenant?.name || ""}
                           disabled
@@ -789,14 +803,14 @@ const Settings = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <label htmlFor="settings-url-de-reservation" className="block text-sm font-medium text-slate-700 mb-2">
                           URL de réservation
                         </label>
                         <div className="flex">
                           <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 text-slate-500 text-sm">
                             {window.location.origin}/book/
                           </span>
-                          <input
+                          <input id="settings-url-de-reservation"
                             type="text"
                             value={tenant?.slug || ""}
                             readOnly
@@ -813,10 +827,10 @@ const Settings = () => {
                       </div>
 
                       <div className="mt-4">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <label htmlFor="settings-slogan" className="block text-sm font-medium text-slate-700 mb-2">
                           Slogan
                         </label>
-                        <input
+                        <input id="settings-slogan"
                           type="text"
                           value={salonInfo.slogan}
                           onChange={(e) => setSalonInfo({ ...salonInfo, slogan: e.target.value })}
@@ -845,10 +859,10 @@ const Settings = () => {
 
                   <div className="max-w-md space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                      <label htmlFor="settings-devise" className="block text-sm font-medium text-slate-700 mb-2">
                         Devise
                       </label>
-                      <select
+                      <select id="settings-devise"
                         value={selectedCurrency}
                         onChange={(e) => setSelectedCurrency(e.target.value)}
                         className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
@@ -1162,14 +1176,14 @@ const Settings = () => {
                                   </span>
                                 </label>
                                 <div className="flex items-center space-x-1 sm:space-x-2">
-                                  <button
+                                  <button aria-label={`Modifier ${member.first_name}`}
                                     onClick={() => handleOpenStaffModal(member)}
                                     className={`p-1.5 sm:p-2 text-slate-600 hover:${config.textColor} ${config.hoverBg} rounded-lg transition-colors`}
                                     title="Modifier"
                                   >
                                     <PencilIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                                   </button>
-                                  <button
+                                  <button aria-label={`Supprimer ${member.first_name}`}
                                     onClick={() => handleDeleteStaff(member.id)}
                                     className="p-1.5 sm:p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                     title="Supprimer"
@@ -1298,14 +1312,14 @@ const Settings = () => {
                                   {promo.is_active ? "Désactiver" : "Activer"}
                                 </button>
 
-                                <button
+                                <button aria-label={`Modifier la promotion ${promo.code}`}
                                   onClick={() => handleOpenPromoModal(promo)}
                                   className={`px-3 py-2 ${config.lightBg} ${config.textColor} rounded-xl hover:${config.mediumBg} text-xs font-medium transition-colors`}
                                 >
                                   <PencilSquareIcon className="h-4 w-4" />
                                 </button>
 
-                                <button
+                                <button aria-label={`Supprimer la promotion ${promo.code}`}
                                   onClick={() => initiateDeletePromo(promo.id)}
                                   className="px-3 py-2 bg-red-100 text-red-700 rounded-xl hover:bg-red-200 text-xs font-medium transition-colors"
                                 >
@@ -1340,11 +1354,11 @@ const Settings = () => {
 
                       {/* Primary Color */}
                       <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <label htmlFor="settings-couleur-principale" className="block text-sm font-medium text-slate-700 mb-2">
                           Couleur principale
                         </label>
                         <div className="flex items-center gap-3">
-                          <input
+                          <input id="settings-couleur-principale"
                             type="color"
                             value={themeSettings.primaryColor}
                             onChange={(e) => setThemeSettings({ ...themeSettings, primaryColor: e.target.value })}
@@ -1361,11 +1375,11 @@ const Settings = () => {
 
                       {/* Secondary Color */}
                       <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <label htmlFor="settings-couleur-secondaire" className="block text-sm font-medium text-slate-700 mb-2">
                           Couleur secondaire
                         </label>
                         <div className="flex items-center gap-3">
-                          <input
+                          <input id="settings-couleur-secondaire"
                             type="color"
                             value={themeSettings.secondaryColor}
                             onChange={(e) => setThemeSettings({ ...themeSettings, secondaryColor: e.target.value })}
@@ -1382,10 +1396,10 @@ const Settings = () => {
 
                       {/* Font Family */}
                       <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <label htmlFor="settings-police-de-caracteres" className="block text-sm font-medium text-slate-700 mb-2">
                           Police de caractères
                         </label>
-                        <select
+                        <select id="settings-police-de-caracteres"
                           value={themeSettings.fontFamily}
                           onChange={(e) => setThemeSettings({ ...themeSettings, fontFamily: e.target.value })}
                           className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
@@ -1400,11 +1414,11 @@ const Settings = () => {
 
                       {/* Footer Colors */}
                       <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-4">
-                        <label className="block text-sm font-medium text-slate-700">Pied de page</label>
+                        <label htmlFor="settings-pied-de-page" className="block text-sm font-medium text-slate-700">Pied de page</label>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <span className="block text-xs text-slate-500 mb-1">Fond</span>
-                            <input
+                            <input id="settings-pied-de-page"
                               type="color"
                               value={themeSettings.footerBgColor || "#1E293B"}
                               onChange={(e) => setThemeSettings({ ...themeSettings, footerBgColor: e.target.value })}
@@ -1493,23 +1507,22 @@ const Settings = () => {
 
       {/* Staff Modal */}
       {invitationToShow && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="invitation-title" className="bg-white rounded-2xl shadow-soft-xl max-w-lg w-full p-6 animate-scale-in">
-            <h3 id="invitation-title" className="font-display text-lg font-semibold text-slate-800 mb-4">
-              Invitation de {invitationToShow.firstName}
-            </h3>
-            <InvitationLinkPanel
-              token={invitationToShow.token}
-              firstName={invitationToShow.firstName}
-              salonName={salonInfo?.name}
-            />
-            <div className="flex justify-end mt-5">
-              <button type="button" onClick={() => setInvitationToShow(null)} className="btn-premium">
-                Terminé
-              </button>
-            </div>
-          </div>
-        </div>
+        <Modal
+          onClose={() => setInvitationToShow(null)}
+          size="md"
+          title={`Invitation de ${invitationToShow.firstName}`}
+          footer={
+            <button type="button" onClick={() => setInvitationToShow(null)} className="btn-primary">
+              Terminé
+            </button>
+          }
+        >
+          <InvitationLinkPanel
+            token={invitationToShow.token}
+            firstName={invitationToShow.firstName}
+            salonName={salonInfo?.name}
+          />
+        </Modal>
       )}
 
       {availabilityMember && (
@@ -1526,21 +1539,28 @@ const Settings = () => {
       )}
 
       {showStaffModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-soft-2xl animate-scale-in">
-            <div className={`bg-gradient-to-r ${config.gradient} px-6 py-4 rounded-t-2xl`}>
-              <h3 className="text-lg font-display font-semibold text-white">
-                {editingStaff ? `Modifier le ${term.staffMember.toLowerCase()}` : term.staffAdd}
-              </h3>
-            </div>
-
-            <form onSubmit={handleStaffSubmit} className="p-6 space-y-4">
+        <Modal
+          onClose={handleCloseStaffModal}
+          size="md"
+          title={editingStaff ? `Modifier le ${term.staffMember.toLowerCase()}` : term.staffAdd}
+          footer={
+            <>
+              <button type="button" onClick={handleCloseStaffModal} className="btn-secondary">
+                Annuler
+              </button>
+              <button type="submit" form="staff-form" disabled={saving} className="btn-primary">
+                {saving ? "Enregistrement..." : editingStaff ? "Modifier" : "Ajouter"}
+              </button>
+            </>
+          }
+        >
+            <form id="staff-form" onSubmit={handleStaffSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="settings-prenom" className="block text-sm font-medium text-slate-700 mb-1.5">
                     Prénom *
                   </label>
-                  <input
+                  <input id="settings-prenom"
                     type="text"
                     required
                     value={staffFormData.first_name}
@@ -1550,10 +1570,10 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="settings-nom" className="block text-sm font-medium text-slate-700 mb-1.5">
                     Nom *
                   </label>
-                  <input
+                  <input id="settings-nom"
                     type="text"
                     required
                     value={staffFormData.last_name}
@@ -1564,10 +1584,10 @@ const Settings = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="settings-email" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Email *
                 </label>
-                <input
+                <input id="settings-email"
                   type="email"
                   required
                   disabled={!!editingStaff}
@@ -1583,10 +1603,10 @@ const Settings = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="settings-telephone" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Téléphone
                 </label>
-                <input
+                <input id="settings-telephone"
                   type="tel"
                   value={staffFormData.phone}
                   onChange={(e) => setStaffFormData({ ...staffFormData, phone: e.target.value })}
@@ -1594,10 +1614,10 @@ const Settings = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="settings-role" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Rôle *
                 </label>
-                <select
+                <select id="settings-role"
                   required
                   value={staffFormData.role}
                   onChange={(e) => setStaffFormData({ ...staffFormData, role: e.target.value })}
@@ -1659,50 +1679,34 @@ const Settings = () => {
                 </p>
               )}
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={handleCloseStaffModal}
-                  className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 font-medium"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className={`px-5 py-2.5 bg-gradient-to-r ${config.gradient} text-white rounded-xl font-medium shadow-soft hover:shadow-glow disabled:opacity-50 transition-all`}
-                >
-                  {saving ? "Enregistrement..." : editingStaff ? "Modifier" : "Ajouter"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Promotion Modal */}
       {showPromoModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-soft-2xl my-8 animate-scale-in">
-            <div className={`bg-gradient-to-r ${config.gradient} px-6 py-4 rounded-t-2xl flex items-center justify-between`}>
-              <h3 className="text-lg font-display font-semibold text-white">
-                {editingPromotion ? "Modifier la promotion" : "Nouvelle promotion"}
-              </h3>
-              <button
-                onClick={handleClosePromoModal}
-                className="p-2 hover:bg-white/20 rounded-full transition-colors"
-              >
-                <XMarkIcon className="h-5 w-5 text-white" />
+        <Modal
+          onClose={handleClosePromoModal}
+          size="lg"
+          title={editingPromotion ? "Modifier la promotion" : "Nouvelle promotion"}
+          footer={
+            <>
+              <button type="button" onClick={handleClosePromoModal} className="btn-secondary">
+                Annuler
               </button>
-            </div>
-
-            <form onSubmit={handlePromoSubmit} className="p-6 space-y-5">
+              <button type="submit" form="promo-form" disabled={saving} className="btn-primary">
+                {saving ? "Enregistrement..." : editingPromotion ? "Modifier" : "Créer"}
+              </button>
+            </>
+          }
+        >
+            <form id="promo-form" onSubmit={handlePromoSubmit} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="settings-code" className="block text-sm font-medium text-slate-700 mb-1.5">
                     Code promo *
                   </label>
-                  <input
+                  <input id="settings-code"
                     type="text"
                     name="code"
                     required
@@ -1714,10 +1718,10 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="settings-title" className="block text-sm font-medium text-slate-700 mb-1.5">
                     Titre *
                   </label>
-                  <input
+                  <input id="settings-title"
                     type="text"
                     name="title"
                     required
@@ -1730,10 +1734,10 @@ const Settings = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="settings-description" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Description
                 </label>
-                <textarea
+                <textarea id="settings-description"
                   name="description"
                   rows="2"
                   value={promoFormData.description}
@@ -1745,10 +1749,10 @@ const Settings = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="settings-discount-type" className="block text-sm font-medium text-slate-700 mb-1.5">
                     Type de réduction *
                   </label>
-                  <select
+                  <select id="settings-discount-type"
                     name="discount_type"
                     required
                     value={promoFormData.discount_type}
@@ -1761,10 +1765,10 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="settings-discount-value" className="block text-sm font-medium text-slate-700 mb-1.5">
                     Valeur *
                   </label>
-                  <input
+                  <input id="settings-discount-value"
                     type="number"
                     name="discount_value"
                     required
@@ -1780,10 +1784,10 @@ const Settings = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="settings-valid-from" className="block text-sm font-medium text-slate-700 mb-1.5">
                     Début de validité *
                   </label>
-                  <input
+                  <input id="settings-valid-from"
                     type="date"
                     name="valid_from"
                     required
@@ -1794,10 +1798,10 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="settings-valid-until" className="block text-sm font-medium text-slate-700 mb-1.5">
                     Fin de validité *
                   </label>
-                  <input
+                  <input id="settings-valid-until"
                     type="date"
                     name="valid_until"
                     required
@@ -1810,10 +1814,10 @@ const Settings = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="settings-usage-limit" className="block text-sm font-medium text-slate-700 mb-1.5">
                     Limite d'utilisation totale
                   </label>
-                  <input
+                  <input id="settings-usage-limit"
                     type="number"
                     name="usage_limit"
                     min="0"
@@ -1825,10 +1829,10 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  <label htmlFor="settings-usage-per-client" className="block text-sm font-medium text-slate-700 mb-1.5">
                     Par {term.client.toLowerCase()} *
                   </label>
-                  <input
+                  <input id="settings-usage-per-client"
                     type="number"
                     name="usage_per_client"
                     required
@@ -1868,25 +1872,8 @@ const Settings = () => {
                 </label>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={handleClosePromoModal}
-                  className="px-5 py-2.5 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 font-medium"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className={`px-5 py-2.5 bg-gradient-to-r ${config.gradient} text-white rounded-xl font-medium shadow-soft hover:shadow-glow disabled:opacity-50 transition-all`}
-                >
-                  {saving ? "Enregistrement..." : editingPromotion ? "Modifier" : "Créer"}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
     </DashboardLayout>
   );

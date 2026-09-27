@@ -3,7 +3,12 @@ import api from '../../services/api';
 import { Plus, Edit2, Trash2, Package, Tag, ShoppingBag, LayoutDashboard, Camera, X } from 'lucide-react';
 import { getImageUrl } from '../../utils/imageUtils';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCurrency, CURRENCIES } from '../../contexts/CurrencyContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import ConfirmModal from '../../components/common/ConfirmModal';
+import Modal from '../../components/common/Modal';
+import Toast from '../../components/common/Toast';
+import { useToast } from '../../hooks/useToast';
 import { getBusinessTypeConfig } from '../../utils/businessTypeConfig';
 
 const ProBanner = () => (
@@ -23,6 +28,10 @@ const ShopManagement = () => {
     const config = getBusinessTypeConfig(businessType);
     
     const [activeTab, setActiveTab] = useState('products');
+    const { toast, error: showError, hideToast } = useToast();
+    const { currency } = useCurrency();
+    // Suppression en attente de confirmation : { type: 'category' | 'product', id, name }
+    const [pendingDelete, setPendingDelete] = useState(null);
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [orders, setOrders] = useState([]);
@@ -81,12 +90,19 @@ const ShopManagement = () => {
         } catch(err) { console.error('Failed to save category:', err); }
     };
 
-    const handleDeleteCategory = async (id) => {
-        if(!window.confirm('Voulez-vous vraiment supprimer cette catégorie ?')) return;
+    const handleDeleteCategory = (id) => {
+        const category = categories.find(c => c.id === id);
+        setPendingDelete({ type: 'category', id, name: category?.name });
+    };
+
+    const deleteCategory = async (id) => {
         try {
             await api.delete(`/shop/admin/categories/${id}`);
             setCategories(categories.filter(c => c.id !== id));
-        } catch(err) { console.error('Failed to delete category:', err); }
+        } catch(err) {
+            console.error('Failed to delete category:', err);
+            showError(err.response?.data?.error || 'Impossible de supprimer la catégorie');
+        }
     };
 
     // Product Handlers
@@ -137,18 +153,33 @@ const ShopManagement = () => {
             setImagePreview(null);
         } catch(err) { 
             console.error('Failed to save product:', err); 
-            alert('Erreur lors de l\'enregistrement du produit');
+            showError(err.response?.data?.error || 'Erreur lors de l\'enregistrement du produit');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDeleteProduct = async (id) => {
-        if(!window.confirm('Voulez-vous vraiment supprimer ce produit ?')) return;
+    const handleDeleteProduct = (id) => {
+        const product = products.find(p => p.id === id);
+        setPendingDelete({ type: 'product', id, name: product?.name });
+    };
+
+    const deleteProduct = async (id) => {
         try {
             await api.delete(`/shop/admin/products/${id}`);
             setProducts(products.filter(p => p.id !== id));
-        } catch(err) { console.error('Failed to delete product:', err); }
+        } catch(err) {
+            console.error('Failed to delete product:', err);
+            showError(err.response?.data?.error || 'Impossible de supprimer le produit');
+        }
+    };
+
+    const confirmPendingDelete = async () => {
+        const target = pendingDelete;
+        setPendingDelete(null);
+        if (!target) return;
+        if (target.type === 'category') await deleteCategory(target.id);
+        else await deleteProduct(target.id);
     };
 
     // Order Handlers
@@ -197,6 +228,16 @@ const ShopManagement = () => {
     // --- PRO VIEW ---
     return (
         <DashboardLayout>
+            {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} duration={toast.duration} />}
+            <ConfirmModal
+                isOpen={!!pendingDelete}
+                onClose={() => setPendingDelete(null)}
+                onConfirm={confirmPendingDelete}
+                title={pendingDelete?.type === 'category' ? 'Supprimer cette catégorie ?' : 'Supprimer ce produit ?'}
+                message={pendingDelete?.name ? `« ${pendingDelete.name} » sera supprimé définitivement.` : 'Cette action est irréversible.'}
+                confirmText="Supprimer"
+                type="danger"
+            />
             <div className="p-6 max-w-6xl mx-auto">
                  <div className="mb-8 flex justify-between items-center flex-wrap gap-4">
                     <div>
@@ -296,7 +337,7 @@ const ShopManagement = () => {
                                                         </td>
                                                         <td className="py-4 px-4 text-right">
                                                             <div className="flex justify-end gap-2">
-                                                                <button 
+                                                                <button aria-label={`Modifier ${prod.name}`} 
                                                                     onClick={() => { 
                                                                         setCurrentProduct({...prod, categoryId: prod.category_id || ''}); 
                                                                         setImageFile(null);
@@ -306,7 +347,7 @@ const ShopManagement = () => {
                                                                     className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
                                                                     <Edit2 className="w-4 h-4" />
                                                                 </button>
-                                                                <button 
+                                                                <button aria-label={`Supprimer ${prod.name}`} 
                                                                     onClick={() => handleDeleteProduct(prod.id)}
                                                                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
                                                                     <Trash2 className="w-4 h-4" />
@@ -346,12 +387,12 @@ const ShopManagement = () => {
                                                         <td className="py-4 px-4 font-medium text-gray-900">{cat.name}</td>
                                                         <td className="py-4 px-4 text-right">
                                                             <div className="flex justify-end gap-2">
-                                                                <button 
+                                                                <button aria-label={`Modifier ${cat.name}`} 
                                                                     onClick={() => { setCurrentCategory(cat); setIsCategoryModalOpen(true); }}
                                                                     className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg">
                                                                     <Edit2 className="w-4 h-4" />
                                                                 </button>
-                                                                <button 
+                                                                <button aria-label={`Supprimer ${cat.name}`} 
                                                                     onClick={() => handleDeleteCategory(cat.id)}
                                                                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
                                                                     <Trash2 className="w-4 h-4" />
@@ -444,13 +485,27 @@ const ShopManagement = () => {
 
         {/* Category Modal */}
         {isCategoryModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">{currentCategory.id ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</h3>
+            <Modal
+                onClose={() => setIsCategoryModalOpen(false)}
+                size="sm"
+                title={currentCategory.id ? 'Modifier la catégorie' : 'Nouvelle catégorie'}
+                footer={
+                    <>
+                        <button type="button" onClick={() => setIsCategoryModalOpen(false)} className="btn-secondary">
+                            Annuler
+                        </button>
+                        <button type="button" onClick={handleSaveCategory} disabled={!currentCategory.name?.trim()} className="btn-primary">
+                            Enregistrer
+                        </button>
+                    </>
+                }
+            >
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la catégorie</label>
+                            <label htmlFor="category-name" className="block text-sm font-medium text-gray-700 mb-1">Nom de la catégorie</label>
                             <input
+                                id="category-name"
+                                data-autofocus
                                 type="text"
                                 value={currentCategory.name}
                                 onChange={e => setCurrentCategory({...currentCategory, name: e.target.value})}
@@ -459,33 +514,37 @@ const ShopManagement = () => {
                             />
                         </div>
                     </div>
-                    <div className="mt-8 flex justify-end gap-3">
-                        <button 
-                            onClick={() => setIsCategoryModalOpen(false)}
-                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-xl font-medium transition-colors">
-                            Annuler
-                        </button>
-                        <button 
-                            onClick={handleSaveCategory}
-                            disabled={!currentCategory.name?.trim()}
-                            className="bg-indigo-600 text-white px-6 py-2 rounded-xl hover:bg-indigo-700 disabled:opacity-50 font-medium transition-colors">
-                            Enregistrer
-                        </button>
-                    </div>
-                </div>
-            </div>
+            </Modal>
         )}
 
         {/* Product Modal */}
         {isProductModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">{currentProduct.id ? 'Modifier le produit' : 'Nouveau produit'}</h3>
+            <Modal
+                onClose={() => setIsProductModalOpen(false)}
+                size="md"
+                title={currentProduct.id ? 'Modifier le produit' : 'Nouveau produit'}
+                footer={
+                    <>
+                        <button type="button" onClick={() => setIsProductModalOpen(false)} className="btn-secondary">
+                            Annuler
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSaveProduct}
+                            disabled={loading || !currentProduct.name?.trim() || currentProduct.price <= 0}
+                            className="btn-primary"
+                        >
+                            {loading ? 'Enregistrement...' : 'Enregistrer'}
+                        </button>
+                    </>
+                }
+            >
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Nom du produit <span className="text-red-500">*</span></label>
+                            <label htmlFor="product-name" className="block text-sm font-medium text-gray-700 mb-1">Nom du produit <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
+                                id="product-name"
                                 value={currentProduct.name}
                                 onChange={e => setCurrentProduct({...currentProduct, name: e.target.value})}
                                 className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
@@ -494,29 +553,32 @@ const ShopManagement = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Prix (FCFA) <span className="text-red-500">*</span></label>
+                                <label htmlFor="product-price" className="block text-sm font-medium text-gray-700 mb-1">Prix ({CURRENCIES[currency]?.symbol || currency}) <span className="text-red-500">*</span></label>
                                 <input
                                     type="number"
                                     min="0"
-                                    value={currentProduct.price}
+                                    id="product-price"
+                                value={currentProduct.price}
                                     onChange={e => setCurrentProduct({...currentProduct, price: Number(e.target.value)})}
                                     className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Stock disponible</label>
+                                <label htmlFor="product-stock" className="block text-sm font-medium text-gray-700 mb-1">Stock disponible</label>
                                 <input
                                     type="number"
                                     min="0"
-                                    value={currentProduct.stock}
+                                    id="product-stock"
+                                value={currentProduct.stock}
                                     onChange={e => setCurrentProduct({...currentProduct, stock: Number(e.target.value)})}
                                     className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                                 />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+                            <label htmlFor="product-category" className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
                             <select
+                                id="product-category"
                                 value={currentProduct.categoryId}
                                 onChange={e => setCurrentProduct({...currentProduct, categoryId: e.target.value})}
                                 className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
@@ -528,9 +590,10 @@ const ShopManagement = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description (optionnelle)</label>
+                            <label htmlFor="product-description" className="block text-sm font-medium text-gray-700 mb-1">Description (optionnelle)</label>
                             <textarea
                                 rows="3"
+                                id="product-description"
                                 value={currentProduct.description || ''}
                                 onChange={e => setCurrentProduct({...currentProduct, description: e.target.value})}
                                 className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
@@ -538,7 +601,7 @@ const ShopManagement = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Image du produit</label>
+                            <label htmlFor="shopmanagement-image-du-produit" className="block text-sm font-medium text-gray-700 mb-2">Image du produit</label>
                             <div className="flex items-start gap-4">
                                 <div className="relative group">
                                     <div className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden bg-gray-50 group-hover:border-indigo-300 transition-colors">
@@ -548,14 +611,17 @@ const ShopManagement = () => {
                                             <Camera className="w-8 h-8 text-gray-300" />
                                         )}
                                     </div>
-                                    <input
+                                    <input id="shopmanagement-image-du-produit"
                                         type="file"
+                                        aria-label="Choisir l'image du produit"
                                         accept="image/*"
                                         onChange={handleImageChange}
                                         className="absolute inset-0 opacity-0 cursor-pointer"
                                     />
                                     {imagePreview && (
                                         <button 
+                                            type="button"
+                                            aria-label="Retirer l'image"
                                             onClick={() => { setImageFile(null); setImagePreview(null); setCurrentProduct({...currentProduct, images: []}); }}
                                             className="absolute -top-2 -right-2 bg-red-100 text-red-600 p-1 rounded-full hover:bg-red-200 transition-colors shadow-sm"
                                         >
@@ -570,21 +636,7 @@ const ShopManagement = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="mt-8 flex justify-end gap-3">
-                        <button 
-                            onClick={() => setIsProductModalOpen(false)}
-                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-xl font-medium transition-colors">
-                            Annuler
-                        </button>
-                        <button 
-                            onClick={handleSaveProduct}
-                            disabled={!currentProduct.name?.trim() || currentProduct.price <= 0}
-                            className="bg-indigo-600 text-white px-6 py-2 rounded-xl hover:bg-indigo-700 disabled:opacity-50 font-medium transition-colors">
-                            Enregistrer
-                        </button>
-                    </div>
-                </div>
-            </div>
+            </Modal>
         )}
         </DashboardLayout>
     );

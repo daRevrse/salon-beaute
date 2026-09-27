@@ -170,7 +170,7 @@ const SalonShop = () => {
                                      <p className="text-2xl font-black text-gray-900 mt-auto pt-4 flex items-center justify-between">
                                          {new Intl.NumberFormat('fr-TG', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(product.price)}
                                          
-                                         <button 
+                                         <button aria-label={`Ajouter ${product.name} au panier`} 
                                             onClick={() => addToCart(product)}
                                             disabled={product.stock === 0}
                                             className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -194,7 +194,7 @@ const SalonShop = () => {
                             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                                 <ShoppingBag className="w-5 h-5 text-indigo-600"/> Mon Panier
                             </h2>
-                            <button onClick={() => setIsCartOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
+                            <button aria-label="Fermer le panier" onClick={() => setIsCartOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
                                  <Minus className="w-5 h-5 rotate-45 transform" />
                              </button>
                         </div>
@@ -216,13 +216,13 @@ const SalonShop = () => {
                                             <div className="flex-1 flex flex-col justify-between">
                                                 <div className="flex justify-between items-start">
                                                     <h4 className="font-semibold text-gray-900 line-clamp-2 text-sm pr-4">{item.name}</h4>
-                                                    <button onClick={() => updateQuantity(item.id, -item.quantity)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
+                                                    <button aria-label={`Retirer ${item.name} du panier`} onClick={() => updateQuantity(item.id, -item.quantity)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
                                                 </div>
                                                 <div className="flex items-center justify-between mt-2">
                                                      <div className="flex items-center border border-gray-200 rounded-lg">
-                                                         <button onClick={() => updateQuantity(item.id, -1)} className="p-1 px-2 text-gray-600 hover:bg-gray-50 rounded-l-lg"><Minus className="w-3 h-3"/></button>
+                                                         <button aria-label="Diminuer la quantité" onClick={() => updateQuantity(item.id, -1)} className="p-1 px-2 text-gray-600 hover:bg-gray-50 rounded-l-lg"><Minus className="w-3 h-3"/></button>
                                                          <span className="px-3 text-sm font-medium w-8 text-center">{item.quantity}</span>
-                                                         <button onClick={() => updateQuantity(item.id, 1)} className="p-1 px-2 text-gray-600 hover:bg-gray-50 rounded-r-lg"><Plus className="w-3 h-3"/></button>
+                                                         <button aria-label="Augmenter la quantité" onClick={() => updateQuantity(item.id, 1)} className="p-1 px-2 text-gray-600 hover:bg-gray-50 rounded-r-lg"><Plus className="w-3 h-3"/></button>
                                                      </div>
                                                      <div className="font-bold text-gray-900">
                                                          {new Intl.NumberFormat('fr-TG', { style: 'currency', currency: salon?.currency || 'XOF', minimumFractionDigits: 0 }).format(item.price * item.quantity)}

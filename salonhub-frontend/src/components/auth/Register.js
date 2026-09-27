@@ -502,10 +502,10 @@ const Register = () => {
 
                   {/* Nom de l'etablissement */}
                   <div className="mt-2">
-                    <label className="label-premium">
+                    <label htmlFor="register-salon-name" className="label-premium">
                       Nom de votre {getEstablishmentLabel()} *
                     </label>
-                    <input
+                    <input id="register-salon-name"
                       type="text"
                       name="salon_name"
                       required

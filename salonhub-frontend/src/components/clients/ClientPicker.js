@@ -20,7 +20,7 @@ import {
 const SEARCH_LIMIT = 8;
 const EMPTY_FORM = { first_name: "", last_name: "", phone: "", email: "" };
 
-const ClientPicker = ({ value, onChange, term = {} }) => {
+const ClientPicker = ({ value, onChange, term = {}, inputId }) => {
   const clientLabel = (term.client || "Client").toLowerCase();
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
@@ -103,7 +103,9 @@ const ClientPicker = ({ value, onChange, term = {} }) => {
     if (e.key === "Enter") {
       e.preventDefault();
       if (results.length > 0 && !loading) select(results[0]);
-    } else if (e.key === "Escape") {
+    } else if (e.key === "Escape" && open) {
+      // Ferme la liste sans fermer la fenêtre qui contient le champ
+      e.stopPropagation();
       setOpen(false);
     }
   };
@@ -234,6 +236,7 @@ const ClientPicker = ({ value, onChange, term = {} }) => {
       <div className="relative">
         <MagnifyingGlassIcon className="h-5 w-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
+          id={inputId}
           type="text"
           value={search}
           onChange={(e) => {

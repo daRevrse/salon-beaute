@@ -16,6 +16,7 @@ import { getBusinessTypeConfig } from "../utils/businessTypeConfig";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/common/Toast";
 import ConfirmModal from "../components/common/ConfirmModal";
+import Modal from "../components/common/Modal";
 import {
   PencilSquareIcon,
   TrashIcon,
@@ -23,7 +24,6 @@ import {
   TagIcon,
   ClockIcon,
   CurrencyDollarIcon,
-  XMarkIcon,
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 
@@ -381,7 +381,7 @@ const Services = () => {
                         Modifier
                       </button>
                       {can.deleteService && (
-                        <button
+                        <button aria-label={`Supprimer ${service.name}`}
                           onClick={() => initiateDelete(service.id)}
                           className="px-4 py-2.5 text-sm font-medium bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center"
                         >
@@ -398,28 +398,27 @@ const Services = () => {
 
         {/* Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-start justify-center p-4 pt-12">
-            <div className="relative bg-white rounded-2xl shadow-soft-xl max-w-lg w-full animate-scale-in">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`p-2 rounded-xl bg-gradient-to-br ${config.gradient}`}
-                  >
-                    <BusinessIcon className="h-5 w-5 text-white" />
-                  </div>
-                  <h3 className="font-display text-lg font-semibold text-slate-800">
-                    {editingService ? term.serviceEdit : term.serviceAdd}
-                  </h3>
-                </div>
-                <button
-                  onClick={handleCloseModal}
-                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                >
-                  <XMarkIcon className="h-5 w-5 text-slate-400" />
-                </button>
+          <Modal
+            onClose={handleCloseModal}
+            size="md"
+            title={editingService ? term.serviceEdit : term.serviceAdd}
+            icon={
+              <div className={`p-2 rounded-xl bg-gradient-to-br ${config.gradient}`}>
+                <BusinessIcon className="h-5 w-5 text-white" aria-hidden="true" />
               </div>
-
-              <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            }
+            footer={
+              <>
+                <button type="button" onClick={handleCloseModal} className="btn-secondary">
+                  Annuler
+                </button>
+                <button type="submit" form="service-form" disabled={loading} className="btn-primary">
+                  {loading ? "Enregistrement..." : "Enregistrer"}
+                </button>
+              </>
+            }
+          >
+              <form id="service-form" onSubmit={handleSubmit} className="space-y-5">
                 {/* Image Uploader */}
                 <ImageUploader
                   target="service-image"
@@ -443,8 +442,8 @@ const Services = () => {
                 />
 
                 <div>
-                  <label className="label-premium">Nom *</label>
-                  <input
+                  <label htmlFor="services-name" className="label-premium">Nom *</label>
+                  <input id="services-name"
                     type="text"
                     name="name"
                     required
@@ -456,8 +455,8 @@ const Services = () => {
                 </div>
 
                 <div>
-                  <label className="label-premium">Description</label>
-                  <textarea
+                  <label htmlFor="services-description" className="label-premium">Description</label>
+                  <textarea id="services-description"
                     name="description"
                     rows="2"
                     value={formData.description}
@@ -469,11 +468,11 @@ const Services = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="label-premium flex items-center">
+                    <label htmlFor="services-duration" className="label-premium flex items-center">
                       <ClockIcon className="h-4 w-4 mr-1.5" />
                       {term.serviceDuration} *
                     </label>
-                    <input
+                    <input id="services-duration"
                       type="text"
                       name="duration"
                       required
@@ -488,12 +487,12 @@ const Services = () => {
                   </div>
 
                   <div>
-                    <label className="label-premium flex items-center">
+                    <label htmlFor="services-price" className="label-premium flex items-center">
                       <CurrencyDollarIcon className="h-4 w-4 mr-1.5" />
                       {term.servicePrice} ({getCurrencySymbol()}) *
                     </label>
                     <div className="relative">
-                      <input
+                      <input id="services-price"
                         type="number"
                         name="price"
                         required
@@ -509,11 +508,11 @@ const Services = () => {
                 </div>
 
                 <div>
-                  <label className="label-premium flex items-center">
+                  <label htmlFor="services-category" className="label-premium flex items-center">
                     <TagIcon className="h-4 w-4 mr-1.5" />
                     {term.serviceCategory}
                   </label>
-                  <input
+                  <input id="services-category"
                     type="text"
                     name="category"
                     value={formData.category}
@@ -530,11 +529,11 @@ const Services = () => {
                 </div>
 
                 <div>
-                  <label className="label-premium flex items-center">
+                  <label htmlFor="services-slot-duration" className="label-premium flex items-center">
                     <ClockIcon className="h-4 w-4 mr-1.5" />
                     Durée de créneau personnalisée (optionnel)
                   </label>
-                  <input
+                  <input id="services-slot-duration"
                     type="text"
                     name="slot_duration"
                     value={formData.slot_duration}
@@ -569,25 +568,8 @@ const Services = () => {
                   </label>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="btn-premium-secondary"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="btn-premium"
-                  >
-                    {loading ? "Enregistrement..." : "Enregistrer"}
-                  </button>
-                </div>
               </form>
-            </div>
-          </div>
+          </Modal>
         )}
       </div>
     </DashboardLayout>

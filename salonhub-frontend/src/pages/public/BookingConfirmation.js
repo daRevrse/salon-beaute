@@ -38,7 +38,7 @@ const BookingConfirmation = () => {
       return {};
     }
   })();
-  const { service, date, slot, client, appointment, finalAmount } = confirmation;
+  const { service, date, slot, client, appointment, finalAmount, paymentPending } = confirmation;
   const totalAmount = finalAmount ?? service?.price;
   const isConfirmed = appointment?.status === "confirmed";
   const manageToken = appointment?.manage_token;
@@ -133,6 +133,17 @@ const BookingConfirmation = () => {
             Merci, {client?.first_name || `Cher ${term.client.toLowerCase()}`} !
           </p>
         </div>
+
+        {paymentPending && (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900" role="alert">
+            <p className="font-semibold">Acompte non confirmé</p>
+            <p className="mt-1 text-sm">
+              Votre {term.appointment.toLowerCase()} est bien enregistré, mais nous n'avons pas encore reçu la
+              confirmation du paiement. Si vous avez payé, elle arrivera sous peu ; sinon, contactez
+              {" "}{salon?.name || "l'établissement"}.
+            </p>
+          </div>
+        )}
 
         {/* Status Info - Enhanced Alert Style */}
         <div 

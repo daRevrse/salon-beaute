@@ -63,7 +63,7 @@ const GalleryLightbox = ({
       onClick={onClose}
     >
       {/* Close button */}
-      <button
+      <button aria-label="Fermer"
         onClick={onClose}
         className="absolute top-4 right-4 p-3 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10"
       >
@@ -72,7 +72,7 @@ const GalleryLightbox = ({
 
       {/* Navigation - Previous */}
       {images.length > 1 && (
-        <button
+        <button aria-label="Image précédente"
           onClick={(e) => {
             e.stopPropagation();
             goPrev();
@@ -85,7 +85,7 @@ const GalleryLightbox = ({
 
       {/* Navigation - Next */}
       {images.length > 1 && (
-        <button
+        <button aria-label="Image suivante"
           onClick={(e) => {
             e.stopPropagation();
             goNext();

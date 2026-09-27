@@ -28,6 +28,16 @@ const Login = () => {
   });
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+  // Message laissé par une autre page (ex. compte supprimé)
+  const [notice] = useState(() => {
+    try {
+      const value = sessionStorage.getItem("login_notice");
+      if (value) sessionStorage.removeItem("login_notice");
+      return value;
+    } catch (e) {
+      return null;
+    }
+  });
   const { isPWA, canInstall, installApp } = usePWA();
 
   // Auto-cocher Se souvenir de moi si en mode PWA
@@ -156,10 +166,16 @@ const Login = () => {
             {/* Form Card */}
             <div className="card-premium p-8 lg:p-10">
               <form onSubmit={handleSubmit} className="space-y-6">
+                {notice && !error && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800" role="status">
+                    {notice}
+                  </div>
+                )}
+
                 {/* Error Message */}
                 {error && (
-                  <div className="alert-error-premium">
-                    <XCircleIcon className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="alert-error-premium" role="alert">
+                    <XCircleIcon className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
                     <p className="text-sm text-red-800">{error}</p>
                   </div>
                 )}

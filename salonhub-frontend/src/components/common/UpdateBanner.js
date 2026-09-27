@@ -56,7 +56,7 @@ const UpdateBanner = () => {
                 <ArrowPathIcon className="h-4 w-4 mr-2" />
                 Mettre à jour maintenant
               </button>
-              <button
+              <button aria-label="Fermer"
                 onClick={handleDismiss}
                 className="flex items-center justify-center p-2 rounded-lg text-white hover:bg-white hover:bg-opacity-20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white"
               >

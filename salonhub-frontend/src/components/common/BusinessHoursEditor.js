@@ -108,12 +108,12 @@ const BusinessHoursEditor = ({
             Durée des créneaux
           </h3>
           <div className="max-w-md">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label htmlFor="businesshourseditor-duree-d-un-creneau-de-reservat" className="block text-sm font-medium text-slate-700 mb-2">
               Durée d'un créneau de réservation
             </label>
             <div className="flex gap-3">
               <div className="flex-1">
-                <input
+                <input id="businesshourseditor-duree-d-un-creneau-de-reservat"
                   type="number"
                   min="5"
                   max="480"
@@ -204,10 +204,11 @@ const BusinessHoursEditor = ({
                 {!day.closed ? (
                   <div className="flex items-center space-x-4 flex-1">
                     <div className="flex-1">
-                      <label className="block text-xs text-slate-500 mb-1">
+                      <label htmlFor={`hours-${key}-open`} className="block text-xs text-slate-500 mb-1">
                         Ouverture
                       </label>
                       <input
+                        id={`hours-${key}-open`}
                         type="time"
                         value={day.open}
                         onChange={(e) =>
@@ -217,10 +218,11 @@ const BusinessHoursEditor = ({
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-xs text-slate-500 mb-1">
+                      <label htmlFor={`hours-${key}-close`} className="block text-xs text-slate-500 mb-1">
                         Fermeture
                       </label>
                       <input
+                        id={`hours-${key}-close`}
                         type="time"
                         value={day.close}
                         onChange={(e) =>

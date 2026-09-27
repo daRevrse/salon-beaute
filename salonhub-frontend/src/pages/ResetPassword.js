@@ -308,12 +308,12 @@ function ResetPassword() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Password */}
             <div>
-              <label className="label-premium">Nouveau mot de passe</label>
+              <label htmlFor="resetpassword-nouveau-mot-de-passe" className="label-premium">Nouveau mot de passe</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <LockClosedIcon className="w-5 h-5 text-slate-300" />
                 </div>
-                <input
+                <input id="resetpassword-nouveau-mot-de-passe"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -356,12 +356,12 @@ function ResetPassword() {
 
             {/* Confirm Password */}
             <div>
-              <label className="label-premium">Confirmer le mot de passe</label>
+              <label htmlFor="resetpassword-confirmer-le-mot-de-passe" className="label-premium">Confirmer le mot de passe</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <LockClosedIcon className="w-5 h-5 text-slate-300" />
                 </div>
-                <input
+                <input id="resetpassword-confirmer-le-mot-de-passe"
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

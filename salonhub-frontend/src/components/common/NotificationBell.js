@@ -23,6 +23,7 @@ import {
 } from "@heroicons/react/24/outline";
 import api from "../../services/api";
 import { useSocket } from "../../contexts/SocketContext";
+import { clickableProps } from "../../utils/a11y";
 
 const NOTIF_STORAGE_KEY = "salonhub_notif_store";
 const MAX_NOTIFICATIONS = 50;
@@ -430,7 +431,7 @@ const NotificationBell = () => {
                   <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600"></div>
                 )}
               </button>
-              <button
+              <button aria-label="Fermer les notifications"
                 onClick={() => setShowNotifications(false)}
                 className="px-3 text-gray-400 hover:text-gray-600"
               >
@@ -496,7 +497,7 @@ const NotificationBell = () => {
                         return (
                           <div
                             key={notif.id}
-                            onClick={() => handleActivityClick(notif)}
+                            {...clickableProps(() => handleActivityClick(notif))}
                             className={`p-3.5 transition-colors cursor-pointer relative group
                               ${!notif.read ? "bg-indigo-50/60" : "hover:bg-gray-50"}
                             `}
@@ -591,10 +592,10 @@ const NotificationBell = () => {
                         return (
                           <div
                             key={`${item.type}-${item.id}`}
-                            onClick={() => {
+                            {...clickableProps(() => {
                               if (!item.is_read) markAdminAsRead(item);
                               setSelectedMessage(item);
-                            }}
+                            })}
                             className={`p-4 transition-colors cursor-pointer relative
                               ${!item.is_read ? (isAnnouncement ? "bg-rose-50" : "bg-indigo-50") : "hover:bg-gray-50"}
                             `}
@@ -694,7 +695,7 @@ const NotificationBell = () => {
                       <p className="text-xs text-gray-400 mt-1">{formatTimeAgo(selectedMessage.created_at)}</p>
                     </div>
                   </div>
-                  <button
+                  <button aria-label="Fermer le message"
                     onClick={() => setSelectedMessage(null)}
                     className="p-1.5 rounded-full hover:bg-gray-200 transition-colors"
                   >

@@ -3,7 +3,7 @@
  * Gère la sélection et l'upload réel d'une image avec FormData
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useId } from "react";
 import api from "../../services/api";
 import {
   PhotoIcon,
@@ -11,6 +11,7 @@ import {
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { getImageUrl } from "../../utils/imageUtils";
+import { clickableProps } from "../../utils/a11y";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -22,6 +23,7 @@ const ImageUploader = ({
   onDelete,
   aspectRatio = "aspect-[4/3]",
 }) => {
+  const inputId = useId();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
@@ -113,7 +115,7 @@ const ImageUploader = ({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <label htmlFor={inputId} className="block text-sm font-medium text-gray-700">{label}</label>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-2">
@@ -127,7 +129,7 @@ const ImageUploader = ({
         }`}
       >
         {/* Input File caché */}
-        <input
+        <input id={inputId}
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
@@ -157,8 +159,8 @@ const ImageUploader = ({
             </div>
           ) : (
             <div
-              className="flex flex-col items-center justify-center p-6 cursor-pointer hover:bg-gray-100 transition-colors w-full h-full"
-              onClick={() => fileInputRef.current.click()}
+              className="flex flex-col items-center justify-center p-6 cursor-pointer hover:bg-gray-100 transition-colors w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+              {...clickableProps(() => fileInputRef.current.click())}
             >
               <PhotoIcon className="h-8 w-8 text-gray-400" />
               <p className="mt-2 text-sm text-gray-600">
@@ -174,7 +176,7 @@ const ImageUploader = ({
         {/* Overlay / Actions */}
         {imageUrl && !loading && (
           <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-            <button
+            <button aria-label="Changer l'image"
               type="button"
               onClick={() => fileInputRef.current.click()}
               className="p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 mx-2 shadow-lg"
@@ -182,7 +184,7 @@ const ImageUploader = ({
             >
               <ArrowPathIcon className="h-5 w-5" />
             </button>
-            <button
+            <button aria-label="Supprimer l'image"
               type="button"
               onClick={handleDelete}
               className="p-3 bg-red-600 text-white rounded-full hover:bg-red-700 mx-2 shadow-lg"
