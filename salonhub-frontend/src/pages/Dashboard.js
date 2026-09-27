@@ -10,6 +10,9 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 import DashboardLayout from "../components/common/DashboardLayout";
 import OnboardingChecklistCard from "../components/onboarding/OnboardingChecklistCard";
+import AppointmentDetails from "../components/appointments/AppointmentDetails";
+import { STATUS_LABELS, STATUS_BADGE_STYLES } from "../utils/appointmentUtils";
+import { getBusinessTypeConfig } from "../utils/businessTypeConfig";
 import api from "../services/api";
 import {
   CalendarDaysIcon,
@@ -22,6 +25,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ShareIcon,
+  PlusIcon,
   ClipboardDocumentIcon,
   BuildingStorefrontIcon,
   AcademicCapIcon,
@@ -109,6 +113,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -329,25 +334,14 @@ const Dashboard = () => {
     img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
   }, [tenant]);
 
-  const getStatusBadge = (status) => {
-    const styles = {
-      pending: "bg-amber-100 text-amber-800 border border-amber-200",
-      confirmed: "bg-emerald-100 text-emerald-800 border border-emerald-200",
-      cancelled: "bg-red-100 text-red-800 border border-red-200",
-      completed: "bg-violet-100 text-violet-800 border border-violet-200",
-    };
-    const labels = {
-      pending: "En attente",
-      confirmed: "Confirmé",
-      cancelled: "Annulé",
-      completed: "Terminé",
-    };
-    return (
-      <span className={`px-3 py-1 text-xs font-medium rounded-full ${styles[status]}`}>
-        {labels[status]}
-      </span>
-    );
-  };
+  const getStatusBadge = (status) => (
+    <span className={`px-3 py-1 text-xs font-medium rounded-full ${STATUS_BADGE_STYLES[status] || ""}`}>
+      {STATUS_LABELS[status] || status}
+    </span>
+  );
+
+  // Les RDV du jour ouvrent leur fiche (hors restaurant : ce sont des commandes)
+  const canOpenAppointment = businessType !== "restaurant";
 
   // Le chiffre d'affaires n'est pas transmis aux employés (null)
   const showRevenue = stats.monthRevenue !== null && stats.monthRevenue !== undefined;
@@ -382,10 +376,19 @@ const Dashboard = () => {
             </p>
           </div>
           <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+            {canOpenAppointment && (
+              <Link
+                to="/appointments?new=1"
+                className={`inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-xl shadow-soft text-white bg-gradient-to-r ${config.gradient} hover:shadow-glow transition-all duration-300 w-full sm:w-auto`}
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                {getBusinessTypeConfig(businessType).terminology.appointmentNew}
+              </Link>
+            )}
             <Link
               to={`/book/${tenant?.slug}`}
               target="_blank"
-              className={`view-public-page-btn inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-xl shadow-soft text-white bg-gradient-to-r ${config.gradient} hover:shadow-glow transition-all duration-300 flex-1 sm:flex-none`}
+              className="view-public-page-btn inline-flex items-center justify-center px-4 py-2.5 border border-slate-200 text-sm font-medium rounded-xl shadow-soft text-slate-600 bg-white hover:bg-slate-50 transition-all duration-300 flex-1 sm:flex-none"
             >
               Page publique
             </Link>
@@ -641,7 +644,23 @@ const Dashboard = () => {
                 ) : (
                   <div className="divide-y divide-slate-100">
                     {todayAppointments.map((apt) => (
-                      <div key={apt.id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
+                      <div
+                        key={apt.id}
+                        role={canOpenAppointment ? "button" : undefined}
+                        tabIndex={canOpenAppointment ? 0 : undefined}
+                        onClick={canOpenAppointment ? () => setSelectedAppointment(apt) : undefined}
+                        onKeyDown={
+                          canOpenAppointment
+                            ? (e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setSelectedAppointment(apt);
+                                }
+                              }
+                            : undefined
+                        }
+                        className={`px-6 py-4 hover:bg-slate-50 transition-colors ${canOpenAppointment ? "cursor-pointer focus:outline-none focus:bg-slate-50" : ""}`}
+                      >
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                           <div className="flex items-center space-x-4 flex-1">
                             <div className={`h-12 w-12 rounded-xl ${config.lightBg} flex items-center justify-center`}>
@@ -653,7 +672,15 @@ const Dashboard = () => {
                               <p className="text-sm font-medium text-slate-800 truncate">
                                 {apt.client_first_name} {apt.client_last_name}
                               </p>
-                              <p className="text-sm text-slate-500 truncate">{apt.service_name}</p>
+                              <p className="text-sm text-slate-500 truncate">
+                                {apt.service_name}
+                                {canOpenAppointment && (
+                                  <span className="text-slate-400">
+                                    {" · "}
+                                    {apt.staff_first_name ? `avec ${apt.staff_first_name}` : "Non assigné"}
+                                  </span>
+                                )}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center justify-between sm:justify-end gap-4">
@@ -761,6 +788,13 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+      {selectedAppointment && (
+        <AppointmentDetails
+          appointment={selectedAppointment}
+          onClose={() => setSelectedAppointment(null)}
+          onUpdate={loadDashboardData}
+        />
+      )}
     </DashboardLayout>
   );
 };

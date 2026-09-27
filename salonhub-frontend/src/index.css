@@ -444,3 +444,69 @@ code {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Planning des rendez-vous (react-big-calendar)                        */
+/* ------------------------------------------------------------------ */
+.appointment-calendar .rbc-today {
+  background-color: #faf5ff; /* violet-50 : colonne du jour, discrète */
+}
+.appointment-calendar .rbc-time-view .rbc-today,
+.appointment-calendar .rbc-time-view .rbc-day-bg.rbc-today {
+  background-color: transparent;
+}
+.appointment-calendar .rbc-time-view .rbc-header.rbc-today {
+  background-color: #f5f3ff;
+}
+.appointment-calendar .rbc-toolbar button {
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 0.875rem;
+  padding: 0.4rem 0.9rem;
+}
+.appointment-calendar .rbc-toolbar button:hover,
+.appointment-calendar .rbc-toolbar button:focus {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+.appointment-calendar .rbc-toolbar button.rbc-active,
+.appointment-calendar .rbc-toolbar button.rbc-active:hover {
+  background-color: #ede9fe;
+  border-color: #c4b5fd;
+  color: #6d28d9;
+  box-shadow: none;
+}
+.appointment-calendar .rbc-btn-group > button:first-child:not(:last-child) {
+  border-radius: 0.75rem 0 0 0.75rem;
+}
+.appointment-calendar .rbc-btn-group > button:last-child:not(:first-child) {
+  border-radius: 0 0.75rem 0.75rem 0;
+}
+.appointment-calendar .rbc-toolbar-label {
+  font-weight: 600;
+  color: #1e293b;
+}
+.appointment-calendar .rbc-toolbar-label::first-letter {
+  text-transform: uppercase;
+}
+.appointment-calendar .rbc-time-view .rbc-timeslot-group {
+  min-height: 72px; /* une heure : laisse la place au client et à la prestation */
+}
+.appointment-calendar .rbc-header {
+  padding: 0.5rem 0.25rem;
+  font-weight: 600;
+  color: #334155;
+}
+.appointment-calendar .rbc-time-slot .rbc-label {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.appointment-calendar .rbc-current-time-indicator {
+  background-color: #8b5cf6;
+  height: 2px;
+}
+.appointment-calendar .rbc-event:focus {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 1px;
+}
+

@@ -21,6 +21,14 @@ import {
   XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { usePermissions } from "../../contexts/PermissionContext";
+import { useAuth } from "../../contexts/AuthContext";
+import {
+  STATUS_LABELS,
+  getDateKey,
+  addMinutesToTime,
+  hasStarted,
+  toDateKey,
+} from "../../utils/appointmentUtils";
 
 import { useToast } from "../../hooks/useToast";
 import Toast from "../common/Toast";
@@ -31,7 +39,8 @@ import { DocumentTextIcon } from "@heroicons/react/24/outline";
 const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
   const { formatPrice } = useCurrency();
   const { toast, success, error, hideToast } = useToast();
-  const { can } = usePermissions();
+  const { can, isStaff } = usePermissions();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
@@ -40,6 +49,16 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
   const [staffList, setStaffList] = useState([]);
   const [selectedStaffId, setSelectedStaffId] = useState(appointment.staff_id || "");
   const [isMultiStaff, setIsMultiStaff] = useState(false);
+  // Déplacement (date / heure / employé)
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [reschedule, setReschedule] = useState({
+    date: getDateKey(appointment.appointment_date),
+    time: appointment.start_time?.substring(0, 5) || "",
+    staffId: appointment.staff_id ? String(appointment.staff_id) : "",
+  });
+  const canReschedule =
+    ["pending", "confirmed"].includes(appointment.status) &&
+    (!isStaff || appointment.staff_id === user?.id);
 
   useEffect(() => {
     const loadStaff = async () => {
@@ -77,20 +96,14 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
       confirmed: "bg-green-100 text-green-800 border border-green-200",
       cancelled: "bg-red-100 text-red-800 border border-red-200",
       completed: "bg-blue-100 text-blue-800 border border-blue-200",
-    };
-
-    const labels = {
-      pending: "En attente",
-      confirmed: "Confirmé",
-      cancelled: "Annulé",
-      completed: "Terminé",
+      no_show: "bg-slate-100 text-slate-700 border border-slate-200",
     };
 
     return (
       <span
         className={`px-3 py-1 text-sm font-medium rounded-full ${styles[status]}`}
       >
-        {labels[status]}
+        {STATUS_LABELS[status]}
       </span>
     );
   };
@@ -101,7 +114,7 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
     setConfirmConfig({
       isOpen: true,
       title: "Changer le statut",
-      message: `Êtes-vous sûr de vouloir passer le statut à "${newStatus}" ?`,
+      message: `Passer ce rendez-vous au statut « ${STATUS_LABELS[newStatus] || newStatus} » ?`,
       type: newStatus === "cancelled" ? "danger" : "warning",
       onConfirm: () => processStatusChange(newStatus),
     });
@@ -143,6 +156,30 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
       onUpdate();
     } catch (err) {
       error(err.response?.data?.error || "Erreur lors de l'assignation");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReschedule = async () => {
+    if (!reschedule.date || !reschedule.time) {
+      error("Indiquez la date et l'heure");
+      return;
+    }
+    setLoading(true);
+    try {
+      const payload = {
+        appointment_date: reschedule.date,
+        start_time: reschedule.time,
+        end_time: addMinutesToTime(reschedule.time, appointment.service_duration || 30),
+      };
+      if (!isStaff) payload.staff_id = reschedule.staffId ? Number(reschedule.staffId) : null;
+      await api.put(`/appointments/${appointment.id}`, payload);
+      success("Rendez-vous déplacé");
+      onUpdate();
+      setTimeout(onClose, 500);
+    } catch (err) {
+      error(err.response?.data?.error || "Impossible de déplacer ce rendez-vous");
     } finally {
       setLoading(false);
     }
@@ -244,7 +281,7 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
   };
 
   const formatDate = (date) => {
-    return new Date(date).toLocaleDateString("fr-FR", {
+    return new Date(`${getDateKey(date)}T00:00:00`).toLocaleDateString("fr-FR", {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -385,7 +422,8 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
                     <option value="">-- Sélectionner un membre --</option>
                     {staffList.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.first_name} {s.last_name} ({s.role})
+                        {s.first_name} {s.last_name}
+                        {s.role === "owner" ? " (Propriétaire)" : s.role === "admin" ? " (Responsable)" : ""}
                       </option>
                     ))}
                   </select>
@@ -396,6 +434,83 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
                 )}
               </div>
             </div>
+
+            {/* Déplacer */}
+            {canReschedule && (
+              <div className="rounded-lg border border-slate-200 p-4">
+                {!showReschedule ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowReschedule(true)}
+                    className="flex items-center text-sm font-medium text-indigo-700 hover:text-indigo-900"
+                  >
+                    <CalendarIcon className="h-5 w-5 mr-2" />
+                    Déplacer ce rendez-vous
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-gray-900">Déplacer ce rendez-vous</p>
+                    <div className={`grid grid-cols-1 ${isStaff ? "sm:grid-cols-2" : "sm:grid-cols-3"} gap-3`}>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1" htmlFor="reschedule-date">Date</label>
+                        <input
+                          id="reschedule-date"
+                          type="date"
+                          value={reschedule.date}
+                          min={toDateKey(new Date())}
+                          onChange={(e) => setReschedule({ ...reschedule, date: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1" htmlFor="reschedule-time">Heure</label>
+                        <input
+                          id="reschedule-time"
+                          type="time"
+                          step="300"
+                          value={reschedule.time}
+                          onChange={(e) => setReschedule({ ...reschedule, time: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                      </div>
+                      {!isStaff && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1" htmlFor="reschedule-staff">Personnel</label>
+                          <select
+                            id="reschedule-staff"
+                            value={reschedule.staffId}
+                            onChange={(e) => setReschedule({ ...reschedule, staffId: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white"
+                          >
+                            <option value="">Non assigné</option>
+                            {staffList.map((s) => (
+                              <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowReschedule(false)}
+                        className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleReschedule}
+                        disabled={loading}
+                        className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                      >
+                        Enregistrer
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Notes */}
             {appointment.notes && (
@@ -442,6 +557,17 @@ const AppointmentDetails = ({ appointment, onClose, onUpdate }) => {
                   >
                     <CheckCircleIcon className="h-5 w-5 mr-2" />
                     Marquer comme terminé
+                  </button>
+                )}
+
+                {appointment.status === "confirmed" && hasStarted(appointment) && (
+                  <button
+                    onClick={() => initiateStatusChange("no_show")}
+                    disabled={loading}
+                    className="flex items-center justify-center px-4 py-3 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-200 disabled:opacity-50 font-medium transition-colors"
+                  >
+                    <XCircleIcon className="h-5 w-5 mr-2" />
+                    Client absent
                   </button>
                 )}
 

@@ -667,6 +667,27 @@ router.put("/:id", checkScope("appointments:write"), async (req, res) => {
       });
     }
 
+    // Employé cible : doit appartenir au salon et être actif.
+    // Un employé (rôle staff) ne peut pas confier un RDV à un collègue.
+    if (staff_id !== undefined && staff_id !== null && staff_id !== "") {
+      if (req.user.role === "staff" && Number(staff_id) !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          error: "Vous ne pouvez pas assigner ce rendez-vous à un autre employé",
+        });
+      }
+      const [member] = await query(
+        "SELECT id FROM users WHERE id = ? AND tenant_id = ? AND is_active = TRUE",
+        [staff_id, req.tenantId]
+      );
+      if (!member) {
+        return res.status(404).json({
+          success: false,
+          error: "Employé introuvable ou inactif",
+        });
+      }
+    }
+
     // Vérifier conflit horaire (si horaire changé)
     if (appointment_date || start_time || end_time || staff_id !== undefined) {
       const hasConflict = await checkTimeConflict(

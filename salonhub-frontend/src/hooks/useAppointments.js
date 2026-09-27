@@ -14,7 +14,7 @@ const cleanParams = (params) =>
     Object.entries(params).filter(([, value]) => value !== '' && value !== undefined && value !== null)
   );
 
-export const useAppointments = (initialFilters = {}) => {
+export const useAppointments = (initialFilters = {}, { autoLoad = true } = {}) => {
   const [appointments, setAppointments] = useState([]);
   const [pagination, setPagination] = useState({ total: 0, limit: APPOINTMENTS_PAGE_SIZE, offset: 0 });
   const [loading, setLoading] = useState(false);
@@ -63,7 +63,9 @@ export const useAppointments = (initialFilters = {}) => {
   );
 
   useEffect(() => {
-    fetchAppointments();
+    // autoLoad = false : la page pilote elle-même le chargement (ex. période du planning)
+    if (autoLoad) fetchAppointments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchAppointments]);
 
   // Rendez-vous du jour
