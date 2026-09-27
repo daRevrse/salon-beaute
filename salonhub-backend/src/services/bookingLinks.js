@@ -14,17 +14,34 @@ const DEFAULT_NOTICE_HOURS = 2;
 
 const frontendUrl = () => process.env.FRONTEND_URL || "http://localhost:3000";
 
-let manageTokenColumn = null;
-// La colonne n'existe qu'après la migration 024 : on s'adapte sans planter
-const hasManageTokenColumn = async () => {
-  if (manageTokenColumn === null) {
-    const rows = await db.query("SHOW COLUMNS FROM appointments LIKE 'manage_token'");
-    manageTokenColumn = rows.length > 0;
+// Colonnes ajoutées par migration (024, 025) : on s'adapte sans planter
+const columnCache = new Map();
+const hasAppointmentColumn = async (column) => {
+  if (!columnCache.has(column)) {
+    const rows = await db.query("SHOW COLUMNS FROM appointments LIKE ?", [column]);
+    columnCache.set(column, rows.length > 0);
   }
-  return manageTokenColumn;
+  return columnCache.get(column);
 };
+const hasManageTokenColumn = () => hasAppointmentColumn("manage_token");
+const hasBookingGroupColumn = () => hasAppointmentColumn("booking_group");
 
 const generateToken = () => crypto.randomBytes(32).toString("hex");
+const generateGroupId = () => crypto.randomUUID();
+
+/**
+ * RDV réservés ensemble (même groupe), dans l'ordre de passage.
+ * Pour un RDV isolé, retourne ses seules infos d'identifiant.
+ */
+const getGroupAppointmentIds = async (appointment) => {
+  if (!appointment.booking_group || !(await hasBookingGroupColumn())) return [appointment.id];
+  const rows = await db.query(
+    `SELECT id FROM appointments WHERE tenant_id = ? AND booking_group = ?
+     ORDER BY appointment_date, start_time, id`,
+    [appointment.tenant_id, appointment.booking_group]
+  );
+  return rows.length > 0 ? rows.map((row) => row.id) : [appointment.id];
+};
 
 /**
  * Jeton de gestion d'un RDV (créé s'il n'existe pas encore).
@@ -133,7 +150,10 @@ const buildIcs = ({ id, date, start_time, end_time, service_name, salon_name, ad
 module.exports = {
   DEFAULT_NOTICE_HOURS,
   hasManageTokenColumn,
+  hasBookingGroupColumn,
   generateToken,
+  generateGroupId,
+  getGroupAppointmentIds,
   ensureManageToken,
   getManageUrl,
   getBookingPolicy,

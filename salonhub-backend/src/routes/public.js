@@ -14,6 +14,28 @@ const { checkPublicSubscription } = require("../middleware/tenant");
 const availabilityService = require("../services/availabilityService");
 const bookingLinks = require("../services/bookingLinks");
 
+// Nombre maximum de prestations réservées à la suite
+const MAX_SERVICES_PER_BOOKING = 5;
+
+/**
+ * Prestations demandées : service_ids (liste ou "1,2,3") ou service_id.
+ * Retourne une liste d'identifiants sans doublon, dans l'ordre.
+ */
+const parseServiceIds = ({ service_ids, service_id }) => {
+  const raw = Array.isArray(service_ids)
+    ? service_ids
+    : service_ids
+    ? String(service_ids).split(",")
+    : [service_id];
+  return availabilityService.toServiceIdList(null, raw.filter((id) => id !== undefined && id !== null && id !== ""));
+};
+
+const addMinutes = (time, minutes) => {
+  const [h, m] = String(time).split(":").map(Number);
+  const total = h * 60 + (m || 0) + Number(minutes);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}:00`;
+};
+
 // ===== ABONNEMENTS =====
 
 /**
@@ -390,9 +412,9 @@ router.get("/salon/:slug/settings", checkPublicSubscription('slug'), async (req,
 router.get("/salon/:slug/staff", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
-    const { service_id } = req.query;
+    const serviceIds = parseServiceIds(req.query);
 
-    if (!service_id) {
+    if (serviceIds.length === 0) {
       return res.status(400).json({ error: "service_id est requis" });
     }
 
@@ -401,7 +423,8 @@ router.get("/salon/:slug/staff", checkPublicSubscription('slug'), async (req, re
       return res.status(404).json({ error: "Salon non trouvé" });
     }
 
-    const staff = await availabilityService.getStaffForService(tenant.id, service_id);
+    // Plusieurs prestations : professionnels qui les réalisent toutes
+    const staff = await availabilityService.getStaffForService(tenant.id, serviceIds);
 
     // Données publiques minimales : prénom + initiale du nom
     res.json({
@@ -429,10 +452,14 @@ router.get("/salon/:slug/staff", checkPublicSubscription('slug'), async (req, re
 router.get("/salon/:slug/availability", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
-    const { service_id, date, staff_id, exclude } = req.query;
+    const { date, staff_id, exclude } = req.query;
+    const serviceIds = parseServiceIds(req.query);
 
-    if (!service_id || !date) {
+    if (serviceIds.length === 0 || !date) {
       return res.status(400).json({ error: "service_id et date sont requis" });
+    }
+    if (serviceIds.length > MAX_SERVICES_PER_BOOKING) {
+      return res.status(400).json({ error: `${MAX_SERVICES_PER_BOOKING} prestations maximum par réservation` });
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ error: "Format de date invalide (YYYY-MM-DD)" });
@@ -443,19 +470,18 @@ router.get("/salon/:slug/availability", checkPublicSubscription('slug'), async (
       return res.status(404).json({ error: "Salon non trouvé" });
     }
 
-    // Déplacement par le client : son propre RDV ne bloque pas les créneaux
+    // Déplacement par le client : ses propres RDV (tout le groupe) ne bloquent pas les créneaux
     let excludeAppointmentId = null;
-    if (exclude && /^[a-f0-9]{64}$/.test(exclude) && (await bookingLinks.hasManageTokenColumn())) {
-      const [own] = await db.query(
-        "SELECT id FROM appointments WHERE manage_token = ? AND tenant_id = ?",
-        [exclude, tenant.id]
-      );
-      excludeAppointmentId = own?.id || null;
+    if (exclude) {
+      const booking = await findManagedBooking(exclude);
+      if (booking && booking.tenant_id === tenant.id) {
+        excludeAppointmentId = booking.items.map((item) => item.id);
+      }
     }
 
     const result = await availabilityService.getAvailableSlots({
       tenantId: tenant.id,
-      serviceId: service_id,
+      serviceIds,
       date,
       staffId: staff_id || null,
       excludeAppointmentId,
@@ -484,7 +510,6 @@ router.post("/appointments", async (req, res) => {
       last_name,
       phone,
       email,
-      service_id,
       appointment_date,
       start_time,
       notes,
@@ -493,6 +518,8 @@ router.post("/appointments", async (req, res) => {
       final_amount,
       staff_id,
     } = req.body;
+    // Une ou plusieurs prestations, réalisées à la suite par le même professionnel
+    const serviceIds = parseServiceIds(req.body);
 
     // Validation des champs obligatoires
     if (
@@ -500,13 +527,16 @@ router.post("/appointments", async (req, res) => {
       !first_name ||
       !last_name ||
       !phone ||
-      !service_id ||
+      serviceIds.length === 0 ||
       !appointment_date ||
       !start_time
     ) {
       return res.status(400).json({
         error: "Tous les champs obligatoires doivent être remplis",
       });
+    }
+    if (serviceIds.length > MAX_SERVICES_PER_BOOKING) {
+      return res.status(400).json({ error: `${MAX_SERVICES_PER_BOOKING} prestations maximum par réservation` });
     }
 
     // Récupérer le tenant
@@ -522,31 +552,29 @@ router.post("/appointments", async (req, res) => {
     const tenantId = tenant[0].id;
     const policy = await bookingLinks.getBookingPolicy(tenantId);
 
-    // Récupérer le service
-    const service = await db.query(
-      "SELECT id, name, duration, price FROM services WHERE id = ? AND tenant_id = ? AND is_active = 1",
-      [service_id, tenantId]
-    );
+    // Récupérer les prestations (dans l'ordre choisi par le client)
+    const services = await availabilityService.getServicesInOrder(tenantId, serviceIds);
 
-    if (service.length === 0) {
+    if (!services) {
       return res.status(404).json({ error: "Service non trouvé ou inactif" });
     }
 
-    const serviceDuration = service[0].duration;
+    const totalPrice = services.reduce((sum, item) => sum + Number(item.price || 0), 0);
+    const serviceNames = services.map((item) => item.name).join(" + ");
 
-    // Calculer l'heure de fin
-    const [startHour, startMinute] = start_time.split(":").map(Number);
-    const endMinutes = startHour * 60 + startMinute + serviceDuration;
-    const endHour = Math.floor(endMinutes / 60);
-    const endMinute = endMinutes % 60;
-    const end_time = `${String(endHour).padStart(2, "0")}:${String(
-      endMinute
-    ).padStart(2, "0")}:00`;
+    // Horaires de chaque prestation, enchaînées à partir de l'heure choisie
+    let cursor = `${start_time.slice(0, 5)}:00`;
+    const schedule = services.map((item) => {
+      const slot = { service: item, start: cursor, end: addMinutes(cursor, item.duration) };
+      cursor = slot.end;
+      return slot;
+    });
 
-    // Vérifier la disponibilité et choisir l'employé (préférence du client ou le moins chargé)
+    // Vérifier la disponibilité (durée cumulée) et choisir l'employé
+    // (préférence du client ou le moins chargé)
     const assignment = await availabilityService.findStaffForSlot({
       tenantId,
-      serviceId: service_id,
+      serviceIds,
       date: appointment_date,
       startTime: start_time,
       staffId: staff_id || null,
@@ -626,8 +654,6 @@ router.post("/appointments", async (req, res) => {
     // Gérer le code promo si fourni
     let promotionId = null;
     let discountAmount = 0;
-    let appointmentPrice = service[0].price;
-
     if (promo_code && final_amount !== undefined) {
       // Valider et récupérer la promotion
       const promotion = await db.query(
@@ -640,35 +666,51 @@ router.post("/appointments", async (req, res) => {
 
       if (promotion.length > 0) {
         promotionId = promotion[0].id;
-        discountAmount = service[0].price - final_amount;
-        appointmentPrice = final_amount;
+        discountAmount = totalPrice - final_amount;
       }
     }
 
-    // Créer le rendez-vous : "pending" (à valider par le salon) ou "confirmed"
-    // si le salon a activé la confirmation automatique des réservations en ligne
+    // Créer le(s) rendez-vous : "pending" (à valider par le salon) ou "confirmed"
+    // si le salon a activé la confirmation automatique des réservations en ligne.
+    // Plusieurs prestations = un RDV par prestation, reliés par un groupe.
     const initialStatus = policy.autoConfirm ? "confirmed" : "pending";
-    const manageToken = (await bookingLinks.hasManageTokenColumn())
-      ? bookingLinks.generateToken()
-      : null;
-    const appointment = await db.query(
-      `INSERT INTO appointments
-       (tenant_id, client_id, service_id, staff_id, appointment_date, start_time, end_time,
-        status, notes, booked_by, booking_source, created_at${manageToken ? ", manage_token" : ""})
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'client', 'website', NOW()${manageToken ? ", ?" : ""})`,
-      [
-        tenantId,
-        clientId,
-        service_id,
-        assignedStaffId,
-        appointment_date,
-        start_time,
-        end_time,
-        initialStatus,
-        [bookedAsNote, notes].filter(Boolean).join("\n") || null,
-        ...(manageToken ? [manageToken] : []),
-      ]
-    );
+    const withToken = await bookingLinks.hasManageTokenColumn();
+    const bookingGroup =
+      schedule.length > 1 && (await bookingLinks.hasBookingGroupColumn())
+        ? bookingLinks.generateGroupId()
+        : null;
+    const combinedNote =
+      schedule.length > 1 ? `Réservation groupée : ${serviceNames}` : null;
+    const created = [];
+    for (const slot of schedule) {
+      const token = withToken ? bookingLinks.generateToken() : null;
+      const extraColumns = [
+        ...(token ? [["manage_token", token]] : []),
+        ...(bookingGroup ? [["booking_group", bookingGroup]] : []),
+      ];
+      const result = await db.query(
+        `INSERT INTO appointments
+         (tenant_id, client_id, service_id, staff_id, appointment_date, start_time, end_time,
+          status, notes, booked_by, booking_source, created_at${extraColumns.map(([col]) => `, ${col}`).join("")})
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'client', 'website', NOW()${extraColumns.map(() => ", ?").join("")})`,
+        [
+          tenantId,
+          clientId,
+          slot.service.id,
+          assignedStaffId,
+          appointment_date,
+          slot.start,
+          slot.end,
+          initialStatus,
+          [bookedAsNote, combinedNote, notes].filter(Boolean).join("\n") || null,
+          ...extraColumns.map(([, value]) => value),
+        ]
+      );
+      created.push({ id: result.insertId, token });
+    }
+    const appointment = { insertId: created[0].id };
+    // Le lien du premier RDV gère toute la réservation
+    const manageToken = created[0].token;
     const manageUrl = bookingLinks.getManageUrl(salon_slug, manageToken);
 
     // Si un code promo a été utilisé, enregistrer l'utilisation
@@ -683,7 +725,7 @@ router.post("/appointments", async (req, res) => {
           clientId,
           appointment.insertId,
           discountAmount,
-          service[0].price,
+          totalPrice,
         ]
       );
     }
@@ -741,12 +783,12 @@ router.post("/appointments", async (req, res) => {
         firstName: newApt.client_first_name,
         appointmentDate: formattedDate,
         appointmentTime: formattedTime,
-        serviceName: newApt.service_name,
+        serviceName: serviceNames,
         salonName: newApt.salon_name || "Le Salon", // Fallback si le nom n'est pas récupéré
         manageUrl,
       };
       (initialStatus === "confirmed"
-        ? emailService.sendAppointmentConfirmation({ ...emailData, price: newApt.service_price })
+        ? emailService.sendAppointmentConfirmation({ ...emailData, price: totalPrice })
         : emailService.sendBookingRequestReceived(emailData)
       )
         .catch((err) =>
@@ -775,7 +817,7 @@ router.post("/appointments", async (req, res) => {
       // Web Push (navigateurs/PWA)
       await pushService.sendToTenant(tenantId, {
         title: "Nouveau rendez-vous !",
-        body: `${newApt.client_first_name} ${newApt.client_last_name} a réservé : ${newApt.service_name}`,
+        body: `${newApt.client_first_name} ${newApt.client_last_name} a réservé : ${serviceNames}`,
         icon: "/logo192.png",
         data: {
           url: `/dashboard/appointments/${newApt.id}`,
@@ -790,7 +832,7 @@ router.post("/appointments", async (req, res) => {
     try {
       await expoPushService.sendToTenant(tenantId, {
         title: "Nouveau rendez-vous !",
-        body: `${newApt.client_first_name} ${newApt.client_last_name} a réservé : ${newApt.service_name}`,
+        body: `${newApt.client_first_name} ${newApt.client_last_name} a réservé : ${serviceNames}`,
         data: {
           type: "new_appointment",
           appointmentId: newApt.id,
@@ -803,7 +845,15 @@ router.post("/appointments", async (req, res) => {
 
     res.status(201).json({
       success: true,
-      appointment: { ...newApt, manage_token: manageToken },
+      appointment: {
+        ...newApt,
+        manage_token: manageToken,
+        // Réservation groupée : horaire global et liste des prestations
+        end_time: schedule[schedule.length - 1].end,
+        service_name: serviceNames,
+        total_price: totalPrice,
+        appointment_ids: created.map((item) => item.id),
+      },
       message:
         initialStatus === "confirmed"
           ? "Votre rendez-vous est confirmé."
@@ -819,12 +869,7 @@ router.post("/appointments", async (req, res) => {
 
 // ===== GÉRER MON RENDEZ-VOUS (lien client, sans compte) =====
 
-// RDV associé à un jeton de gestion, avec les infos utiles au client
-const findManagedAppointment = async (token) => {
-  if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
-  if (!(await bookingLinks.hasManageTokenColumn())) return null;
-  const [apt] = await db.query(
-    `SELECT a.id, a.tenant_id, a.service_id, a.staff_id, a.status,
+const MANAGED_COLUMNS = `a.id, a.tenant_id, a.client_id, a.service_id, a.staff_id, a.status,
             DATE_FORMAT(a.appointment_date, '%Y-%m-%d') AS date,
             TIME_FORMAT(a.start_time, '%H:%i') AS start_time,
             TIME_FORMAT(a.end_time, '%H:%i') AS end_time,
@@ -832,16 +877,64 @@ const findManagedAppointment = async (token) => {
             c.first_name AS client_first_name,
             u.first_name AS staff_first_name,
             t.name AS salon_name, t.slug AS salon_slug, t.phone AS salon_phone,
-            t.address AS salon_address, t.city AS salon_city, t.logo_url AS salon_logo
-     FROM appointments a
+            t.address AS salon_address, t.city AS salon_city, t.logo_url AS salon_logo`;
+const MANAGED_JOINS = `FROM appointments a
      JOIN services s ON s.id = a.service_id
      JOIN clients c ON c.id = a.client_id
      JOIN tenants t ON t.id = a.tenant_id
-     LEFT JOIN users u ON u.id = a.staff_id
-     WHERE a.manage_token = ?`,
+     LEFT JOIN users u ON u.id = a.staff_id`;
+
+const ACTIVE_STATUSES = ["pending", "confirmed"];
+
+/**
+ * Réservation associée à un jeton de gestion : le RDV du lien et, pour une
+ * réservation de plusieurs prestations, les autres RDV du groupe.
+ *  - items   : prestations concernées (celles encore actives, sinon toutes)
+ *  - status  : "confirmed" si tout est confirmé, "pending" s'il reste une
+ *              prestation à confirmer, sinon le statut du RDV du lien
+ *  - date / start_time / end_time : du début de la 1re à la fin de la dernière
+ */
+const findManagedBooking = async (token) => {
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
+  if (!(await bookingLinks.hasManageTokenColumn())) return null;
+  const withGroup = await bookingLinks.hasBookingGroupColumn();
+  const [primary] = await db.query(
+    `SELECT ${MANAGED_COLUMNS}${withGroup ? ", a.booking_group" : ""} ${MANAGED_JOINS} WHERE a.manage_token = ?`,
     [token]
   );
-  return apt || null;
+  if (!primary) return null;
+
+  let group = [primary];
+  if (withGroup && primary.booking_group) {
+    group = await db.query(
+      `SELECT ${MANAGED_COLUMNS} ${MANAGED_JOINS}
+       WHERE a.tenant_id = ? AND a.booking_group = ?
+       ORDER BY a.appointment_date, a.start_time, a.id`,
+      [primary.tenant_id, primary.booking_group]
+    );
+  }
+  const active = group.filter((item) => ACTIVE_STATUSES.includes(item.status));
+  const items = active.length > 0 ? active : group;
+  const first = items[0];
+  const last = items[items.length - 1];
+  const status =
+    active.length === 0
+      ? primary.status
+      : active.every((item) => item.status === "confirmed")
+      ? "confirmed"
+      : "pending";
+
+  return {
+    ...first,
+    token,
+    status,
+    end_time: last.end_time,
+    items,
+    service_ids: items.map((item) => item.service_id),
+    service_name: items.map((item) => item.service_name).join(" + "),
+    service_duration: items.reduce((sum, item) => sum + Number(item.service_duration), 0),
+    service_price: items.reduce((sum, item) => sum + Number(item.service_price || 0), 0),
+  };
 };
 
 // Prévient le salon (temps réel + push) d'une action du client
@@ -881,42 +974,51 @@ const formatLongDate = (date) =>
 
 /**
  * GET /api/public/manage/:token
- * Détails d'un RDV pour le client (lien "Gérer mon rendez-vous")
+ * Détails d'un RDV (ou d'une réservation de plusieurs prestations) pour le client
  */
 router.get("/manage/:token", async (req, res) => {
   try {
-    const apt = await findManagedAppointment(req.params.token);
-    if (!apt) return res.status(404).json({ error: "Rendez-vous introuvable" });
+    const booking = await findManagedBooking(req.params.token);
+    if (!booking) return res.status(404).json({ error: "Rendez-vous introuvable" });
 
-    const policy = await bookingLinks.getBookingPolicy(apt.tenant_id);
-    const canChange = bookingLinks.canClientChange(apt, policy.noticeHours);
+    const policy = await bookingLinks.getBookingPolicy(booking.tenant_id);
+    const canChange = bookingLinks.canClientChange(booking, policy.noticeHours);
     res.json({
       appointment: {
-        status: apt.status,
-        date: apt.date,
-        start_time: apt.start_time,
-        end_time: apt.end_time,
-        service_id: apt.service_id,
-        service_name: apt.service_name,
-        service_duration: apt.service_duration,
-        service_price: apt.service_price,
-        client_first_name: apt.client_first_name,
-        staff_id: apt.staff_id,
-        staff_first_name: apt.staff_first_name,
+        status: booking.status,
+        date: booking.date,
+        start_time: booking.start_time,
+        end_time: booking.end_time,
+        service_id: booking.service_id,
+        service_ids: booking.service_ids,
+        service_name: booking.service_name,
+        service_duration: booking.service_duration,
+        service_price: booking.service_price,
+        services: booking.items.map((item) => ({
+          name: item.service_name,
+          start_time: item.start_time,
+          end_time: item.end_time,
+          duration: item.service_duration,
+          price: item.service_price,
+          status: item.status,
+        })),
+        client_first_name: booking.client_first_name,
+        staff_id: booking.staff_id,
+        staff_first_name: booking.staff_first_name,
       },
       salon: {
-        name: apt.salon_name,
-        slug: apt.salon_slug,
-        phone: apt.salon_phone,
-        address: apt.salon_address,
-        city: apt.salon_city,
-        logo_url: apt.salon_logo,
+        name: booking.salon_name,
+        slug: booking.salon_slug,
+        phone: booking.salon_phone,
+        address: booking.salon_address,
+        city: booking.salon_city,
+        logo_url: booking.salon_logo,
       },
       policy: {
         can_change: canChange,
         notice_hours: policy.noticeHours,
         change_deadline: policy.noticeHours >= 0
-          ? bookingLinks.getChangeDeadline(apt, policy.noticeHours).toISOString()
+          ? bookingLinks.getChangeDeadline(booking, policy.noticeHours).toISOString()
           : null,
       },
     });
@@ -932,21 +1034,21 @@ router.get("/manage/:token", async (req, res) => {
  */
 router.get("/manage/:token/calendar.ics", async (req, res) => {
   try {
-    const apt = await findManagedAppointment(req.params.token);
-    if (!apt) return res.status(404).send("Rendez-vous introuvable");
+    const booking = await findManagedBooking(req.params.token);
+    if (!booking) return res.status(404).send("Rendez-vous introuvable");
     const ics = bookingLinks.buildIcs({
-      id: apt.id,
-      date: apt.date,
-      start_time: apt.start_time,
-      end_time: apt.end_time,
-      service_name: apt.service_name,
-      salon_name: apt.salon_name,
-      address: [apt.salon_address, apt.salon_city].filter(Boolean).join(", "),
-      staff_first_name: apt.staff_first_name,
-      manageUrl: bookingLinks.getManageUrl(apt.salon_slug, req.params.token),
+      id: booking.id,
+      date: booking.date,
+      start_time: booking.start_time,
+      end_time: booking.end_time,
+      service_name: booking.service_name,
+      salon_name: booking.salon_name,
+      address: [booking.salon_address, booking.salon_city].filter(Boolean).join(", "),
+      staff_first_name: booking.staff_first_name,
+      manageUrl: bookingLinks.getManageUrl(booking.salon_slug, req.params.token),
     });
     res.setHeader("Content-Type", "text/calendar; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="rendez-vous-${apt.date}.ics"`);
+    res.setHeader("Content-Disposition", `attachment; filename="rendez-vous-${booking.date}.ics"`);
     res.send(ics);
   } catch (error) {
     console.error("Erreur export calendrier:", error);
@@ -956,33 +1058,34 @@ router.get("/manage/:token/calendar.ics", async (req, res) => {
 
 /**
  * POST /api/public/manage/:token/cancel
- * Annulation par le client (dans le délai fixé par le salon)
+ * Annulation par le client (dans le délai fixé par le salon), de toute la réservation
  */
 router.post("/manage/:token/cancel", async (req, res) => {
   try {
-    const apt = await findManagedAppointment(req.params.token);
-    if (!apt) return res.status(404).json({ error: "Rendez-vous introuvable" });
+    const booking = await findManagedBooking(req.params.token);
+    if (!booking) return res.status(404).json({ error: "Rendez-vous introuvable" });
 
-    const policy = await bookingLinks.getBookingPolicy(apt.tenant_id);
-    if (!bookingLinks.canClientChange(apt, policy.noticeHours)) {
+    const policy = await bookingLinks.getBookingPolicy(booking.tenant_id);
+    if (!bookingLinks.canClientChange(booking, policy.noticeHours)) {
       return res.status(400).json({
         error: "Ce rendez-vous ne peut plus être annulé en ligne. Contactez directement l'établissement.",
       });
     }
 
     const reason = String(req.body?.reason || "").trim().slice(0, 255);
+    const ids = booking.items.map((item) => item.id);
     await db.query(
       `UPDATE appointments
        SET status = 'cancelled', cancelled_at = NOW(), cancellation_reason = ?
-       WHERE id = ?`,
-      [reason ? `Annulé par le client : ${reason}` : "Annulé par le client", apt.id]
+       WHERE id IN (${ids.map(() => "?").join(", ")}) AND status IN ('pending', 'confirmed')`,
+      [reason ? `Annulé par le client : ${reason}` : "Annulé par le client", ...ids]
     );
 
     await notifySalonOfClientChange(
       req,
-      apt,
+      booking,
       "Rendez-vous annulé",
-      `${apt.client_first_name} a annulé son rendez-vous du ${formatLongDate(apt.date)} à ${apt.start_time} (${apt.service_name})`
+      `${booking.client_first_name} a annulé son rendez-vous du ${formatLongDate(booking.date)} à ${booking.start_time} (${booking.service_name})`
     );
 
     res.json({ success: true, status: "cancelled" });
@@ -994,7 +1097,8 @@ router.post("/manage/:token/cancel", async (req, res) => {
 
 /**
  * POST /api/public/manage/:token/reschedule
- * Déplacement par le client, avec le même professionnel
+ * Déplacement par le client, avec le même professionnel. Les prestations
+ * d'une réservation groupée restent enchaînées dans le même ordre.
  * Body: date (YYYY-MM-DD), start_time (HH:MM)
  */
 router.post("/manage/:token/reschedule", async (req, res) => {
@@ -1004,47 +1108,50 @@ router.post("/manage/:token/reschedule", async (req, res) => {
       return res.status(400).json({ error: "Date et heure requises" });
     }
 
-    const apt = await findManagedAppointment(req.params.token);
-    if (!apt) return res.status(404).json({ error: "Rendez-vous introuvable" });
+    const booking = await findManagedBooking(req.params.token);
+    if (!booking) return res.status(404).json({ error: "Rendez-vous introuvable" });
 
-    const policy = await bookingLinks.getBookingPolicy(apt.tenant_id);
-    if (!bookingLinks.canClientChange(apt, policy.noticeHours)) {
+    const policy = await bookingLinks.getBookingPolicy(booking.tenant_id);
+    if (!bookingLinks.canClientChange(booking, policy.noticeHours)) {
       return res.status(400).json({
         error: "Ce rendez-vous ne peut plus être déplacé en ligne. Contactez directement l'établissement.",
       });
     }
 
+    const ids = booking.items.map((item) => item.id);
     const assignment = await availabilityService.findStaffForSlot({
-      tenantId: apt.tenant_id,
-      serviceId: apt.service_id,
+      tenantId: booking.tenant_id,
+      serviceIds: booking.service_ids,
       date,
       startTime: start_time,
-      staffId: apt.staff_id || null,
-      excludeAppointmentId: apt.id,
+      staffId: booking.staff_id || null,
+      excludeAppointmentId: ids,
     });
     if (!assignment.available) {
       return res.status(400).json({ error: "Ce créneau n'est plus disponible. Veuillez en choisir un autre." });
     }
 
-    const [h, m] = start_time.split(":").map(Number);
-    const endMinutes = h * 60 + m + Number(apt.service_duration);
-    const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}:00`;
     // Sans confirmation automatique, le salon revalide le nouveau créneau
     const status = policy.autoConfirm ? "confirmed" : "pending";
-
-    await db.query(
-      `UPDATE appointments
-       SET appointment_date = ?, start_time = ?, end_time = ?, staff_id = ?,
-           status = ?, reminder_sent = 0
-       WHERE id = ?`,
-      [date, `${start_time}:00`, endTime, assignment.staffId ?? apt.staff_id, status, apt.id]
-    );
+    const staffId = assignment.staffId ?? booking.staff_id;
+    let cursor = `${start_time}:00`;
+    for (const item of booking.items) {
+      const end = addMinutes(cursor, item.service_duration);
+      await db.query(
+        `UPDATE appointments
+         SET appointment_date = ?, start_time = ?, end_time = ?, staff_id = ?,
+             status = ?, reminder_sent = 0
+         WHERE id = ?`,
+        [date, cursor, end, staffId, status, item.id]
+      );
+      cursor = end;
+    }
 
     await notifySalonOfClientChange(
       req,
-      apt,
+      booking,
       "Rendez-vous déplacé",
-      `${apt.client_first_name} a déplacé son rendez-vous (${apt.service_name}) du ${formatLongDate(apt.date)} ${apt.start_time} au ${formatLongDate(date)} ${start_time}`
+      `${booking.client_first_name} a déplacé son rendez-vous (${booking.service_name}) du ${formatLongDate(booking.date)} ${booking.start_time} au ${formatLongDate(date)} ${start_time}`
     );
 
     res.json({ success: true, status, date, start_time });

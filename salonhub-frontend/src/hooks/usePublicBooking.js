@@ -48,10 +48,11 @@ export const usePublicBooking = (salonSlug) => {
   /**
    * Charger les services disponibles du salon
    */
-  const fetchServices = useCallback(async () => {
+  // silent : chargement en arrière-plan, sans toucher à l'indicateur de chargement
+  const fetchServices = useCallback(async ({ silent = false } = {}) => {
     if (!salonSlug) return;
 
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
 
     try {
@@ -67,7 +68,7 @@ export const usePublicBooking = (salonSlug) => {
       console.error("Erreur fetchServices:", err);
       throw err;
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [salonSlug]);
 
@@ -102,7 +103,9 @@ export const usePublicBooking = (salonSlug) => {
    */
   const fetchAvailability = useCallback(
     async (serviceId, date, staffId = null, excludeToken = null) => {
-      if (!salonSlug || !serviceId || !date) {
+      // serviceId : un identifiant, ou une liste pour plusieurs prestations à la suite
+      const ids = Array.isArray(serviceId) ? serviceId : [serviceId];
+      if (!salonSlug || !ids[0] || !date) {
         setError("Paramètres manquants pour récupérer les disponibilités");
         return;
       }
@@ -115,7 +118,7 @@ export const usePublicBooking = (salonSlug) => {
           `${API_URL}/public/salon/${salonSlug}/availability`,
           {
             params: {
-              service_id: serviceId,
+              ...(ids.length > 1 ? { service_ids: ids.join(",") } : { service_id: ids[0] }),
               date: date,
               ...(staffId ? { staff_id: staffId } : {}),
               // Déplacement d'un RDV : son propre créneau reste proposé
@@ -148,11 +151,12 @@ export const usePublicBooking = (salonSlug) => {
    */
   const fetchStaff = useCallback(
     async (serviceId) => {
-      if (!salonSlug || !serviceId) return [];
+      const ids = Array.isArray(serviceId) ? serviceId : [serviceId];
+      if (!salonSlug || !ids[0]) return [];
       try {
         const response = await axios.get(
           `${API_URL}/public/salon/${salonSlug}/staff`,
-          { params: { service_id: serviceId } }
+          { params: ids.length > 1 ? { service_ids: ids.join(",") } : { service_id: ids[0] } }
         );
         return response.data.staff || [];
       } catch (err) {

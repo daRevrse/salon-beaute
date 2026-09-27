@@ -3,9 +3,10 @@
  * Multi-Sector Adaptive with Business Type Terminology
  *
  * Étape 2 : choix du professionnel, du jour (bandeau des 14 prochains jours,
- * jours fermés grisés) et du créneau. La prestation, le jour et le
- * professionnel sont repris de l'URL : un rafraîchissement ou un lien
- * partagé conserve la sélection.
+ * jours fermés grisés) et du créneau. Le client peut ajouter d'autres
+ * prestations, réalisées à la suite par le même professionnel. Les
+ * prestations (?service=12,15), le jour et le professionnel sont repris de
+ * l'URL : un rafraîchissement ou un lien partagé conserve la sélection.
  */
 
 import React, { useState, useEffect, useRef } from "react";
@@ -15,7 +16,13 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 import { usePublicTheme, formatDuration } from "../../contexts/PublicThemeContext";
 import { getImageUrl } from "../../utils/imageUtils";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
-import { getMapsUrl, getPhoneHref } from "../../utils/publicSalon";
+import {
+  getMapsUrl,
+  getPhoneHref,
+  combineServices,
+  parseServiceIds,
+  serviceIdsOf,
+} from "../../utils/publicSalon";
 import DayStrip, { fromDateKey, useUpcomingDays } from "../../components/public/DayStrip";
 import SlotGrid from "../../components/public/SlotGrid";
 import {
@@ -27,7 +34,12 @@ import {
   MapPinIcon,
   UserCircleIcon,
   SparklesIcon,
+  PlusIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
+
+// Nombre maximum de prestations réservées à la suite (aligné sur l'API)
+const MAX_SERVICES = 5;
 
 const BookingDateTime = () => {
   const { slug } = useParams();
@@ -51,7 +63,17 @@ const BookingDateTime = () => {
   const term = config.terminology;
 
   const serviceParam = searchParams.get("service");
-  const [service, setService] = useState(location.state?.service || null);
+  // Prestation(s) choisie(s), présentées comme une seule (durée et prix cumulés)
+  const [service, setService] = useState(() => {
+    const initial = location.state?.service;
+    if (!initial) return null;
+    const combined = combineServices(initial.items || [initial]);
+    // L'URL fait foi (rafraîchissement après ajout d'une prestation)
+    const urlIds = parseServiceIds(serviceParam);
+    return urlIds.length === 0 || urlIds.join(",") === combined.ids.join(",") ? combined : null;
+  });
+  const [catalog, setCatalog] = useState(null);
+  const [showAddPicker, setShowAddPicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(
     location.state?.date || searchParams.get("date") || ""
   );
@@ -67,10 +89,11 @@ const BookingDateTime = () => {
   // 14 prochains jours, jours fermés signalés
   const days = useUpcomingDays(salon?.business_hours);
 
-  // Prestation : état de navigation, sinon ?service= (rafraîchissement / lien partagé)
+  // Prestation(s) : état de navigation, sinon ?service= (rafraîchissement / lien partagé)
   useEffect(() => {
     if (service) return;
-    if (!serviceParam) {
+    const ids = parseServiceIds(serviceParam);
+    if (ids.length === 0) {
       navigate(`/book/${slug}`, { replace: true });
       return;
     }
@@ -78,8 +101,9 @@ const BookingDateTime = () => {
     fetchServices()
       .then((list) => {
         if (!active) return;
-        const found = (list || []).find((s) => String(s.id) === serviceParam);
-        if (found) setService(found);
+        setCatalog(list || []);
+        const found = ids.map((id) => (list || []).find((s) => s.id === id)).filter(Boolean);
+        if (found.length > 0) setService(combineServices(found));
         else navigate(`/book/${slug}`, { replace: true });
       })
       .catch(() => active && navigate(`/book/${slug}`, { replace: true }));
@@ -98,7 +122,8 @@ const BookingDateTime = () => {
   useEffect(() => {
     if (!service) return;
     let active = true;
-    fetchStaff(service.id).then((staff) => {
+    // Plusieurs prestations : professionnels qui les réalisent toutes
+    fetchStaff(serviceIdsOf(service)).then((staff) => {
       if (!active) return;
       setStaffOptions(staff);
       // Préférence devenue invalide (pro qui ne réalise plus la prestation)
@@ -114,7 +139,7 @@ const BookingDateTime = () => {
   useEffect(() => {
     if (selectedDate && service) {
       setAvailabilityMessage(null);
-      fetchAvailability(service.id, selectedDate, selectedStaffId)
+      fetchAvailability(serviceIdsOf(service), selectedDate, selectedStaffId)
         .then((result) => {
           setAvailabilityMessage(result?.message || null);
           if (autoPickRef.current && (result?.slots || []).length === 0) {
@@ -140,15 +165,36 @@ const BookingDateTime = () => {
   // Garder la sélection dans l'URL
   useEffect(() => {
     if (!service) return;
-    const next = { service: String(service.id) };
+    const next = { service: serviceIdsOf(service).join(",") };
     if (selectedDate) next.date = selectedDate;
     if (selectedStaffId) next.staff = String(selectedStaffId);
-    setSearchParams(next, { replace: true, state: location.state });
+    setSearchParams(next, { replace: true, state: { ...location.state, service } });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [service, selectedDate, selectedStaffId]);
 
+  const toggleAddPicker = () => {
+    if (!catalog) {
+      fetchServices({ silent: true })
+        .then((list) => setCatalog(list || []))
+        .catch(() => setCatalog([]));
+    }
+    setShowAddPicker((open) => !open);
+  };
+
+  const addService = (item) => {
+    setService(combineServices([...service.items, item]));
+    setShowAddPicker(false);
+  };
+
+  const removeService = (id) => {
+    setService(combineServices(service.items.filter((item) => item.id !== id)));
+  };
+
+  const addableServices = (catalog || []).filter((item) => !serviceIdsOf(service).includes(item.id));
+  const canAddService = service && service.items.length < MAX_SERVICES;
+
   const handleSlotSelect = (slot) => {
-    const params = new URLSearchParams({ service: service.id, date: selectedDate, time: slot.time });
+    const params = new URLSearchParams({ service: serviceIdsOf(service).join(","), date: selectedDate, time: slot.time });
     if (selectedStaff) params.set("staff", selectedStaff.id);
     navigate(`/book/${slug}/info?${params.toString()}`, {
       state: {
@@ -222,32 +268,100 @@ const BookingDateTime = () => {
             </h2>
           </div>
 
-          {/* Selected Service */}
+          {/* Selected Service(s) */}
           {service && (
             <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 mb-6 shadow-soft relative overflow-hidden">
               <div className="absolute left-0 top-0 bottom-0 w-1.5" style={dynamicStyles.primaryButton} />
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-bold text-slate-900 text-lg sm:text-xl">{service.name}</p>
-                  <p className="text-sm text-slate-600 mt-2 flex items-center gap-3">
-                    <span className="flex items-center">
-                      <ClockIcon className="w-4 h-4 mr-1.5" style={dynamicStyles.primaryText} />
-                      {formatDuration(service.duration)}
-                    </span>
-                    <span className="flex items-center">
-                      <CurrencyDollarIcon className="w-4 h-4 mr-1.5" style={dynamicStyles.primaryText} />
-                      {formatPrice(service.price)}
-                    </span>
-                  </p>
+              <ul className="space-y-4" aria-label="Prestations choisies">
+                {service.items.map((item) => (
+                  <li key={item.id} className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-900 text-lg sm:text-xl">{item.name}</p>
+                      <p className="text-sm text-slate-600 mt-1 flex items-center gap-3">
+                        <span className="flex items-center">
+                          <ClockIcon className="w-4 h-4 mr-1.5" style={dynamicStyles.primaryText} aria-hidden="true" />
+                          {formatDuration(item.duration)}
+                        </span>
+                        <span className="flex items-center">
+                          <CurrencyDollarIcon className="w-4 h-4 mr-1.5" style={dynamicStyles.primaryText} aria-hidden="true" />
+                          {formatPrice(item.price)}
+                        </span>
+                      </p>
+                    </div>
+                    {service.items.length > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => removeService(item.id)}
+                        aria-label={`Retirer ${item.name}`}
+                        className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleBack}
+                        className="px-4 py-2 rounded-xl text-sm font-bold transition-all hover:bg-slate-50"
+                        style={dynamicStyles.primaryText}
+                      >
+                        Changer
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+
+              {service.items.length > 1 && (
+                <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span className="text-slate-600">À la suite, avec le même {term.staffMember.toLowerCase()}</span>
+                  <span className="font-semibold text-slate-900">
+                    {formatDuration(service.duration)} • {formatPrice(service.price)}
+                  </span>
                 </div>
+              )}
+
+              {canAddService && (
                 <button
-                  onClick={handleBack}
-                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all hover:bg-slate-50"
+                  type="button"
+                  onClick={toggleAddPicker}
+                  aria-expanded={showAddPicker}
+                  className="mt-4 inline-flex items-center text-sm font-semibold rounded-lg hover:underline"
                   style={dynamicStyles.primaryText}
                 >
-                  Changer
+                  <PlusIcon className="w-4 h-4 mr-1" aria-hidden="true" />
+                  Ajouter une prestation
                 </button>
-              </div>
+              )}
+
+              {showAddPicker && (
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  {!catalog ? (
+                    <p className="text-sm text-slate-500" role="status">Chargement des prestations...</p>
+                  ) : addableServices.length === 0 ? (
+                    <p className="text-sm text-slate-500">Aucune autre prestation disponible.</p>
+                  ) : (
+                    <ul className="divide-y divide-slate-100 max-h-72 overflow-y-auto" aria-label="Prestations à ajouter">
+                      {addableServices.map((item) => (
+                        <li key={item.id}>
+                          <button
+                            type="button"
+                            onClick={() => addService(item)}
+                            aria-label={`Ajouter ${item.name}`}
+                            className="w-full flex items-center justify-between gap-3 px-2 py-3 rounded-xl text-left hover:bg-slate-50 transition-colors"
+                          >
+                            <span className="min-w-0">
+                              <span className="block font-medium text-slate-800 truncate">{item.name}</span>
+                              <span className="block text-xs text-slate-500">
+                                {formatDuration(item.duration)} • {formatPrice(item.price)}
+                              </span>
+                            </span>
+                            <PlusIcon className="w-5 h-5 flex-shrink-0" style={dynamicStyles.primaryText} aria-hidden="true" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

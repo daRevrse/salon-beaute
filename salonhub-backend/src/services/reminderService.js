@@ -8,6 +8,30 @@ const emailService = require("./emailService");
 const pushService = require("./pushService");
 const bookingLinks = require("./bookingLinks");
 
+/**
+ * Réservations de plusieurs prestations : un seul rappel, envoyé pour la
+ * première prestation du groupe, avec la liste de toutes les prestations.
+ */
+const groupSqlFragments = async () => {
+  if (!(await bookingLinks.hasBookingGroupColumn())) return { select: "", filter: "" };
+  return {
+    select: `,
+          (SELECT GROUP_CONCAT(gs.name ORDER BY ga.start_time, ga.id SEPARATOR ' + ')
+           FROM appointments ga JOIN services gs ON gs.id = ga.service_id
+           WHERE a.booking_group IS NOT NULL AND ga.tenant_id = a.tenant_id
+             AND ga.booking_group = a.booking_group
+             AND ga.status IN ('pending', 'confirmed')) AS group_service_names`,
+    filter: `
+          AND (a.booking_group IS NULL OR NOT EXISTS (
+            SELECT 1 FROM appointments gf
+            WHERE gf.tenant_id = a.tenant_id AND gf.booking_group = a.booking_group
+              AND gf.status IN ('pending', 'confirmed')
+              AND gf.appointment_date = a.appointment_date
+              AND (gf.start_time < a.start_time OR (gf.start_time = a.start_time AND gf.id < a.id))
+          ))`,
+  };
+};
+
 class ReminderService {
   /**
    * Vérifie si un rappel a déjà été envoyé
@@ -59,6 +83,7 @@ class ReminderService {
   async send24HourReminders() {
     try {
       console.log("🔔 Vérification des rappels 24h...");
+      const group = await groupSqlFragments();
 
       // Récupérer tous les RDV confirmés dans 24h (+/- 30 minutes)
       const appointments = await db.query(
@@ -78,7 +103,7 @@ class ReminderService {
           t.name as salon_name,
           t.phone as salon_phone,
           t.address as salon_address,
-          t.slug as salon_slug
+          t.slug as salon_slug${group.select}
         FROM appointments a
         JOIN clients c ON a.client_id = c.id
         JOIN services s ON a.service_id = s.id
@@ -87,7 +112,7 @@ class ReminderService {
           AND a.appointment_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
           AND a.start_time BETWEEN
             TIME(DATE_ADD(NOW(), INTERVAL 1410 MINUTE)) 
-            AND TIME(DATE_ADD(NOW(), INTERVAL 1470 MINUTE))
+            AND TIME(DATE_ADD(NOW(), INTERVAL 1470 MINUTE))${group.filter}
         ORDER BY a.appointment_date, a.start_time`
       );
 
@@ -141,7 +166,7 @@ class ReminderService {
               firstName: apt.client_first_name,
               appointmentDate: formattedDate,
               appointmentTime: formattedTime,
-              serviceName: apt.service_name,
+              serviceName: apt.group_service_names || apt.service_name,
               salonName: apt.salon_name,
               salonPhone: apt.salon_phone,
               salonAddress: apt.salon_address,
@@ -163,7 +188,7 @@ class ReminderService {
             try {
               await pushService.sendToClient(apt.client_id, {
                 title: "Rappel de rendez-vous demain",
-                body: `${apt.service_name} chez ${apt.salon_name} à ${formattedTime}`,
+                body: `${apt.group_service_names || apt.service_name} chez ${apt.salon_name} à ${formattedTime}`,
                 icon: "/logo192.png",
                 badge: "/logo192.png",
                 tag: `reminder-24h-${apt.appointment_id}`,
@@ -232,6 +257,7 @@ class ReminderService {
   async send2HourReminders() {
     try {
       console.log("🔔 Vérification des rappels 2h...");
+      const group = await groupSqlFragments();
 
       // Récupérer tous les RDV confirmés dans 2h (+/- 15 minutes)
       const appointments = await db.query(
@@ -250,7 +276,7 @@ class ReminderService {
           s.duration as service_duration,
           t.name as salon_name,
           t.phone as salon_phone,
-          t.address as salon_address
+          t.address as salon_address${group.select}
         FROM appointments a
         JOIN clients c ON a.client_id = c.id
         JOIN services s ON a.service_id = s.id
@@ -259,7 +285,7 @@ class ReminderService {
           AND a.appointment_date = CURDATE()
           AND a.start_time BETWEEN
             TIME(DATE_ADD(NOW(), INTERVAL 105 MINUTE))
-            AND TIME(DATE_ADD(NOW(), INTERVAL 135 MINUTE))
+            AND TIME(DATE_ADD(NOW(), INTERVAL 135 MINUTE))${group.filter}
         ORDER BY a.appointment_date, a.start_time`
       );
 
@@ -302,7 +328,7 @@ class ReminderService {
               firstName: apt.client_first_name,
               appointmentDate: formattedDate,
               appointmentTime: formattedTime,
-              serviceName: apt.service_name,
+              serviceName: apt.group_service_names || apt.service_name,
               salonName: apt.salon_name,
               salonPhone: apt.salon_phone,
               salonAddress: apt.salon_address,
@@ -323,7 +349,7 @@ class ReminderService {
             try {
               await pushService.sendToClient(apt.client_id, {
                 title: "Rappel de rendez-vous dans 2h",
-                body: `${apt.service_name} chez ${apt.salon_name} à ${formattedTime}`,
+                body: `${apt.group_service_names || apt.service_name} chez ${apt.salon_name} à ${formattedTime}`,
                 icon: "/logo192.png",
                 badge: "/logo192.png",
                 tag: `reminder-2h-${apt.appointment_id}`,

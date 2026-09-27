@@ -870,6 +870,17 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
 
     await query(updateSql, params);
 
+    // Réservation de plusieurs prestations : confirmer l'une confirme les autres
+    // (même client, même professionnel), avec un seul message au client
+    if (status === "confirmed" && appointment.booking_group) {
+      await query(
+        `UPDATE appointments
+         SET status = 'confirmed', staff_id = COALESCE(staff_id, ?)
+         WHERE tenant_id = ? AND booking_group = ? AND status = 'pending'`,
+        [appointment.staff_id || null, req.tenantId, appointment.booking_group]
+      );
+    }
+
     // Si le rendez-vous est confirmé ou annulé, envoyer une notification au client
     if (status === "confirmed" || status === "cancelled") {
       // Exécuter les notifications en arrière-plan pour ne pas bloquer la réponse API
@@ -887,7 +898,8 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
               s.name as service_name,
               s.duration as service_duration,
               t.name as salon_name,
-              t.slug as salon_slug
+              t.slug as salon_slug,
+              t.phone as salon_phone
             FROM appointments a
             JOIN clients c ON a.client_id = c.id
             JOIN services s ON a.service_id = s.id
@@ -896,7 +908,25 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
             [id]
           );
 
+          // Réservation groupée confirmée : un seul message pour toutes les prestations
+          if (fullAppointment && status === "confirmed" && fullAppointment.booking_group) {
+            const items = await query(
+              `SELECT s.name, a.start_time FROM appointments a
+               JOIN services s ON s.id = a.service_id
+               WHERE a.tenant_id = ? AND a.booking_group = ? AND a.status = 'confirmed'
+               ORDER BY a.start_time, a.id`,
+              [req.tenantId, fullAppointment.booking_group]
+            );
+            if (items.length > 1) {
+              fullAppointment.service_name = items.map((item) => item.name).join(" + ");
+              fullAppointment.start_time = items[0].start_time;
+            }
+          }
+
           if (fullAppointment) {
+            const bookingUrl = fullAppointment.salon_slug
+              ? `${process.env.FRONTEND_URL || "http://localhost:3000"}/book/${fullAppointment.salon_slug}`
+              : null;
             // Formater la date
             const appointmentDate = new Date(
               fullAppointment.appointment_date
@@ -914,14 +944,20 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
                 fullAppointment.preferred_contact_method === "both")
             ) {
               try {
-                await whatsappService.sendAppointmentConfirmation({
+                const whatsappData = {
                   to: fullAppointment.client_phone,
                   firstName: fullAppointment.client_first_name,
                   serviceName: fullAppointment.service_name,
                   date: appointmentDate,
-                  time: fullAppointment.start_time,
+                  time: String(fullAppointment.start_time).substring(0, 5),
                   salonName: fullAppointment.salon_name,
-                });
+                };
+                // Annulation par le salon : message d'annulation, pas de confirmation
+                if (status === "cancelled") {
+                  await whatsappService.sendAppointmentCancellation({ ...whatsappData, bookingUrl });
+                } else {
+                  await whatsappService.sendAppointmentConfirmation(whatsappData);
+                }
                 console.log(
                   `✓ Confirmation WhatsApp envoyée à ${fullAppointment.client_phone}`
                 );
@@ -941,18 +977,32 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
                 !fullAppointment.client_phone)
             ) {
               try {
-                const manageToken = await bookingLinks.ensureManageToken(fullAppointment.id);
-                await emailService.sendAppointmentConfirmation({
-                  to: fullAppointment.client_email,
-                  firstName: fullAppointment.client_first_name,
-                  appointmentDate: appointmentDate,
-                  appointmentTime: fullAppointment.start_time,
-                  serviceName: fullAppointment.service_name,
-                  salonName: fullAppointment.salon_name,
-                  manageUrl: bookingLinks.getManageUrl(fullAppointment.salon_slug, manageToken),
-                });
+                if (status === "cancelled") {
+                  await emailService.sendAppointmentCancellation({
+                    to: fullAppointment.client_email,
+                    firstName: fullAppointment.client_first_name,
+                    appointmentDate: appointmentDate,
+                    appointmentTime: String(fullAppointment.start_time).substring(0, 5),
+                    serviceName: fullAppointment.service_name,
+                    salonName: fullAppointment.salon_name,
+                    salonPhone: fullAppointment.salon_phone,
+                    reason: cancellation_reason || null,
+                    bookingUrl,
+                  });
+                } else {
+                  const manageToken = await bookingLinks.ensureManageToken(fullAppointment.id);
+                  await emailService.sendAppointmentConfirmation({
+                    to: fullAppointment.client_email,
+                    firstName: fullAppointment.client_first_name,
+                    appointmentDate: appointmentDate,
+                    appointmentTime: String(fullAppointment.start_time).substring(0, 5),
+                    serviceName: fullAppointment.service_name,
+                    salonName: fullAppointment.salon_name,
+                    manageUrl: bookingLinks.getManageUrl(fullAppointment.salon_slug, manageToken),
+                  });
+                }
                 console.log(
-                  `✓ Confirmation email envoyée à ${fullAppointment.client_email}`
+                  `✓ Email (${status}) envoyé à ${fullAppointment.client_email}`
                 );
               } catch (error) {
                 console.error(

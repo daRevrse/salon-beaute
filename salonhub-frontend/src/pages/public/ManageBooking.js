@@ -43,6 +43,10 @@ const formatLongDate = (key) => {
   return label.charAt(0).toUpperCase() + label.slice(1);
 };
 
+// Réservation de plusieurs prestations : toutes sont recherchées ensemble
+const serviceIds = (appointment) =>
+  appointment.service_ids?.length ? appointment.service_ids : appointment.service_id;
+
 const formatDeadline = (iso) => {
   const date = new Date(iso);
   return `${date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} à ${date
@@ -94,7 +98,7 @@ const ManageBooking = () => {
   useEffect(() => {
     if (mode !== "reschedule" || !selectedDate || !appointment) return;
     setSelectedSlot(null);
-    fetchAvailability(appointment.service_id, selectedDate, appointment.staff_id, token).catch(() => {});
+    fetchAvailability(serviceIds(appointment), selectedDate, appointment.staff_id, token).catch(() => {});
   }, [mode, selectedDate, appointment, token, fetchAvailability]);
 
   const openReschedule = () => {
@@ -138,7 +142,7 @@ const ManageBooking = () => {
       );
     } catch (err) {
       setActionError(err.response?.data?.error || "Impossible de déplacer le rendez-vous");
-      fetchAvailability(appointment.service_id, selectedDate, appointment.staff_id, token).catch(() => {});
+      fetchAvailability(serviceIds(appointment), selectedDate, appointment.staff_id, token).catch(() => {});
     } finally {
       setSubmitting(false);
     }
@@ -188,6 +192,7 @@ const ManageBooking = () => {
   const status = STATUS_INFO[appointment.status] || STATUS_INFO.pending;
   const isActive = ["pending", "confirmed"].includes(appointment.status);
   const canChange = isActive && policy?.can_change;
+  const isGroup = (appointment.services || []).length > 1;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col" style={dynamicStyles.fontFamily}>
@@ -216,8 +221,23 @@ const ManageBooking = () => {
           </div>
           <dl className="px-6 py-5 space-y-3">
             <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">Prestation</dt>
-              <dd className="font-medium text-slate-900 text-right">{appointment.service_name}</dd>
+              <dt className="text-slate-500">{isGroup ? "Prestations" : "Prestation"}</dt>
+              <dd className="font-medium text-slate-900 text-right">
+                {isGroup ? (
+                  <ul className="space-y-1">
+                    {appointment.services.map((item) => (
+                      <li key={`${item.name}-${item.start_time}`}>
+                        {item.name}{" "}
+                        <span className="text-slate-500 font-normal">
+                          {item.start_time.replace(":", "h")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  appointment.service_name
+                )}
+              </dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-slate-500 flex items-center">
@@ -321,7 +341,7 @@ const ManageBooking = () => {
             <h2 id="reschedule-title" className="text-lg font-semibold text-slate-900 mb-1">Choisir un nouveau créneau</h2>
             <p className="text-sm text-slate-500 mb-4">
               {appointment.staff_first_name ? `Avec ${appointment.staff_first_name}, ` : ""}
-              même prestation ({formatDuration(appointment.service_duration)}).
+              {isGroup ? "mêmes prestations, à la suite" : "même prestation"} ({formatDuration(appointment.service_duration)}).
             </p>
             <DayStrip days={days} selectedDate={selectedDate} onSelect={setSelectedDate} />
 

@@ -168,30 +168,59 @@ const isMissingSchemaError = (error) =>
 const canPerformService = (member, serviceId) =>
   !member.serviceIds || member.serviceIds.has(Number(serviceId));
 
+// Plusieurs prestations enchaînées : l'employé doit toutes les réaliser
+const canPerformAll = (member, serviceIds) =>
+  serviceIds.every((id) => canPerformService(member, id));
+
+// Une prestation (serviceId) ou plusieurs (serviceIds), sans doublon, dans l'ordre
+const toServiceIdList = (serviceId, serviceIds) => {
+  const raw = Array.isArray(serviceIds) && serviceIds.length > 0 ? serviceIds : [serviceId];
+  return [...new Set(raw.map(Number).filter((id) => Number.isInteger(id) && id > 0))];
+};
+
+const toIdList = (value) =>
+  (Array.isArray(value) ? value : [value]).map(Number).filter((id) => id > 0);
+
 /**
- * Employés proposés au client pour une prestation (étape "Avec qui ?").
+ * Prestations actives du salon, dans l'ordre demandé (null si l'une manque).
  */
-const getStaffForService = async (tenantId, serviceId) => {
-  const staff = await getBookableStaff(tenantId);
-  return staff.filter((member) => canPerformService(member, serviceId));
+const getServicesInOrder = async (tenantId, serviceIds) => {
+  if (serviceIds.length === 0) return null;
+  const rows = await db.query(
+    `SELECT id, name, duration, price, slot_duration FROM services
+     WHERE tenant_id = ? AND is_active = 1 AND id IN (${serviceIds.map(() => "?").join(", ")})`,
+    [tenantId, ...serviceIds]
+  );
+  const byId = new Map(rows.map((row) => [Number(row.id), row]));
+  const ordered = serviceIds.map((id) => byId.get(id));
+  return ordered.every(Boolean) ? ordered : null;
 };
 
 /**
- * Prépare le contexte de calcul d'une journée.
- * Retourne null si la prestation n'existe pas.
+ * Employés proposés au client pour une ou plusieurs prestations (étape "Avec qui ?").
+ */
+const getStaffForService = async (tenantId, serviceIdOrIds) => {
+  const serviceIds = toServiceIdList(null, toIdList(serviceIdOrIds));
+  const staff = await getBookableStaff(tenantId);
+  return staff.filter((member) => canPerformAll(member, serviceIds));
+};
+
+/**
+ * Prépare le contexte de calcul d'une journée, pour une prestation ou
+ * plusieurs prestations enchaînées (durée cumulée, même employé).
+ * Retourne null si une prestation n'existe pas.
  */
 const buildDayContext = async ({
   tenantId,
   serviceId,
+  serviceIds = null,
   date,
   excludeAppointmentId = null,
 }) => {
-  const [service] = await db.query(
-    `SELECT id, duration, slot_duration FROM services
-     WHERE id = ? AND tenant_id = ? AND is_active = 1`,
-    [serviceId, tenantId]
-  );
-  if (!service) return null;
+  const ids = toServiceIdList(serviceId, serviceIds);
+  const services = await getServicesInOrder(tenantId, ids);
+  if (!services) return null;
+  const totalDuration = services.reduce((sum, service) => sum + Number(service.duration), 0);
 
   const { businessHours, slotDuration } = await getSchedulingSettings(tenantId);
   const dayName = getDayName(date);
@@ -209,9 +238,9 @@ const buildDayContext = async ({
       );
   const offIds = new Set(timeOff.map((row) => row.user_id));
 
-  // Employés en mesure de réaliser la prestation ce jour-là, avec leur plage horaire
+  // Employés en mesure de réaliser la (les) prestation(s) ce jour-là, avec leur plage horaire
   const candidates = allStaff
-    .filter((member) => canPerformService(member, serviceId))
+    .filter((member) => canPerformAll(member, ids))
     .filter((member) => !offIds.has(member.id))
     .map((member) => {
       const ownWindow = member.working_hours
@@ -226,9 +255,11 @@ const buildDayContext = async ({
      WHERE tenant_id = ? AND appointment_date = ?
        AND status NOT IN ('cancelled', 'no_show')`;
   const params = [tenantId, date];
-  if (excludeAppointmentId) {
-    appointmentsSql += " AND id != ?";
-    params.push(excludeAppointmentId);
+  // RDV déplacé (ou groupe de RDV enchaînés) : ne bloque pas ses propres créneaux
+  const excluded = excludeAppointmentId ? toIdList(excludeAppointmentId) : [];
+  if (excluded.length > 0) {
+    appointmentsSql += ` AND id NOT IN (${excluded.map(() => "?").join(", ")})`;
+    params.push(...excluded);
   }
   const appointments = await db.query(appointmentsSql, params);
 
@@ -249,8 +280,9 @@ const buildDayContext = async ({
 
   return {
     date,
-    duration: Number(service.duration),
-    step: Number(service.slot_duration) || slotDuration || 30,
+    services,
+    duration: totalDuration,
+    step: Number(services[0].slot_duration) || slotDuration || 30,
     salonWindow,
     legacyMode,
     candidates,
@@ -312,13 +344,14 @@ const evaluateSlot = (ctx, start, staffId = null) => {
 const getAvailableSlots = async ({
   tenantId,
   serviceId,
+  serviceIds = null,
   date,
   staffId = null,
   includePast = false,
   excludeAppointmentId = null,
   now = new Date(),
 }) => {
-  const ctx = await buildDayContext({ tenantId, serviceId, date, excludeAppointmentId });
+  const ctx = await buildDayContext({ tenantId, serviceId, serviceIds, date, excludeAppointmentId });
   if (!ctx) return { error: "SERVICE_NOT_FOUND" };
 
   if (!ctx.salonWindow) {
@@ -364,6 +397,7 @@ const getAvailableSlots = async ({
 const findStaffForSlot = async ({
   tenantId,
   serviceId,
+  serviceIds = null,
   date,
   startTime,
   staffId = null,
@@ -374,6 +408,7 @@ const findStaffForSlot = async ({
   const ctx = await buildDayContext({
     tenantId,
     serviceId,
+    serviceIds,
     date,
     excludeAppointmentId,
   });
@@ -398,6 +433,8 @@ const findStaffForSlot = async ({
 
 module.exports = {
   DEFAULT_BUSINESS_HOURS,
+  toServiceIdList,
+  getServicesInOrder,
   getStaffForService,
   getAvailableSlots,
   findStaffForSlot,

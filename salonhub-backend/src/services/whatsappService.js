@@ -242,6 +242,27 @@ Votre rendez-vous a été confirmé ✓
   }
 
   /**
+   * Prévenir le client de l'annulation de son rendez-vous par l'établissement
+   * @param {Object} options
+   * @returns {Promise<Object>}
+   */
+  async sendAppointmentCancellation(options) {
+    const { to, firstName, serviceName, date, time, salonName, bookingUrl } = options;
+
+    const message = `Bonjour ${firstName},
+
+${salonName} a dû annuler votre rendez-vous.
+
+📅 Service: ${serviceName}
+📆 Date: ${date}
+🕐 Heure: ${time}
+${bookingUrl ? `\nPour choisir un autre créneau : ${bookingUrl}\n` : ""}
+Veuillez nous excuser pour ce contretemps.`;
+
+    return await this.sendMessage({ to, message });
+  }
+
+  /**
    * Envoyer un rappel de rendez-vous via WhatsApp
    * @param {Object} options
    * @returns {Promise<Object>}

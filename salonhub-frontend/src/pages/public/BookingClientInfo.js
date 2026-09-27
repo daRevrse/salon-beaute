@@ -10,7 +10,7 @@ import { usePublicTheme } from "../../contexts/PublicThemeContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { formatDuration } from "../../contexts/PublicThemeContext";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
-import { confirmationStorageKey } from "../../utils/publicSalon";
+import { confirmationStorageKey, combineServices, parseServiceIds, serviceIdsOf } from "../../utils/publicSalon";
 import PromoCodeInput from "../../components/common/PromoCodeInput";
 import api from "../../services/api";
 import pwaService from "../../services/pwaService";
@@ -92,10 +92,10 @@ const BookingClientInfo = () => {
 
   useEffect(() => {
     if (booking) return;
-    const serviceId = searchParams.get("service");
+    const serviceIds = parseServiceIds(searchParams.get("service"));
     const dateParam = searchParams.get("date");
     const timeParam = searchParams.get("time");
-    if (!serviceId || !dateParam || !timeParam) {
+    if (serviceIds.length === 0 || !dateParam || !timeParam) {
       navigate(`/book/${slug}`, { replace: true });
       return;
     }
@@ -103,13 +103,14 @@ const BookingClientInfo = () => {
     (async () => {
       try {
         const services = await fetchServices();
-        const found = (services || []).find((s) => String(s.id) === serviceId);
-        if (!found) throw new Error("service introuvable");
+        const found = serviceIds.map((id) => (services || []).find((s) => s.id === id));
+        if (found.length === 0 || !found.every(Boolean)) throw new Error("service introuvable");
+        const combined = combineServices(found);
         const staffId = Number(searchParams.get("staff")) || null;
-        const staffList = staffId ? await fetchStaff(found.id) : [];
+        const staffList = staffId ? await fetchStaff(combined.ids) : [];
         if (!active) return;
         setBooking({
-          service: found,
+          service: combined,
           date: dateParam,
           slot: { time: timeParam },
           staff: staffList.find((m) => m.id === staffId) || null,
@@ -197,7 +198,8 @@ const BookingClientInfo = () => {
         last_name: formData.last_name.trim(),
         phone: formData.phone.trim(),
         email: formData.email.trim() || null,
-        service_id: service.id,
+        // Plusieurs prestations : réalisées à la suite, dans cet ordre
+        service_ids: serviceIdsOf(service),
         appointment_date: date,
         start_time: slot.time + ":00",
         notes: formData.notes.trim() || null,
@@ -302,6 +304,7 @@ const BookingClientInfo = () => {
         salon_slug: slug,
         order_amount: service.price,
         service_id: service.id,
+        service_ids: serviceIdsOf(service),
       });
 
       if (response.data.success) {

@@ -55,3 +55,32 @@ export const getPhoneHref = (phone) => (phone ? `tel:${String(phone).replace(/[^
 
 // Dernière confirmation de réservation (sessionStorage) : survit au rafraîchissement
 export const confirmationStorageKey = (slug) => `booking-confirmation-${slug}`;
+
+// ---------- Réservation de plusieurs prestations ----------
+
+// "12" ou "12,15" (paramètre ?service=) → [12, 15]
+export const parseServiceIds = (value) =>
+  [...new Set(String(value || "").split(",").map(Number).filter((id) => Number.isInteger(id) && id > 0))];
+
+/**
+ * Prestations enchaînées présentées comme une seule : noms, durée et prix
+ * cumulés. Une prestation seule est retournée telle quelle (avec ids).
+ */
+export const combineServices = (list) => {
+  const services = (list || []).filter(Boolean);
+  if (services.length === 0) return null;
+  if (services.length === 1) return { ...services[0], ids: [services[0].id], items: services };
+  const deposits = services.filter((s) => s.requires_deposit === 1 || s.requires_deposit === true);
+  return {
+    ...services[0],
+    ids: services.map((s) => s.id),
+    items: services,
+    name: services.map((s) => s.name).join(" + "),
+    duration: services.reduce((sum, s) => sum + Number(s.duration || 0), 0),
+    price: services.reduce((sum, s) => sum + Number(s.price || 0), 0),
+    requires_deposit: deposits.length > 0,
+    deposit_amount: deposits.reduce((sum, s) => sum + (parseFloat(s.deposit_amount) || 0), 0) || null,
+  };
+};
+
+export const serviceIdsOf = (service) => (service?.ids?.length ? service.ids : service ? [service.id] : []);
