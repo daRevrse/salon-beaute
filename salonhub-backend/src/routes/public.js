@@ -12,6 +12,7 @@ const pushService = require("../services/pushService");
 const expoPushService = require("../services/expoPushService");
 const { checkPublicSubscription } = require("../middleware/tenant");
 const availabilityService = require("../services/availabilityService");
+const bookingLinks = require("../services/bookingLinks");
 
 // ===== ABONNEMENTS =====
 
@@ -428,7 +429,7 @@ router.get("/salon/:slug/staff", checkPublicSubscription('slug'), async (req, re
 router.get("/salon/:slug/availability", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
-    const { service_id, date, staff_id } = req.query;
+    const { service_id, date, staff_id, exclude } = req.query;
 
     if (!service_id || !date) {
       return res.status(400).json({ error: "service_id et date sont requis" });
@@ -442,11 +443,22 @@ router.get("/salon/:slug/availability", checkPublicSubscription('slug'), async (
       return res.status(404).json({ error: "Salon non trouvé" });
     }
 
+    // Déplacement par le client : son propre RDV ne bloque pas les créneaux
+    let excludeAppointmentId = null;
+    if (exclude && /^[a-f0-9]{64}$/.test(exclude) && (await bookingLinks.hasManageTokenColumn())) {
+      const [own] = await db.query(
+        "SELECT id FROM appointments WHERE manage_token = ? AND tenant_id = ?",
+        [exclude, tenant.id]
+      );
+      excludeAppointmentId = own?.id || null;
+    }
+
     const result = await availabilityService.getAvailableSlots({
       tenantId: tenant.id,
       serviceId: service_id,
       date,
       staffId: staff_id || null,
+      excludeAppointmentId,
     });
 
     if (result.error === "SERVICE_NOT_FOUND") {
@@ -508,6 +520,7 @@ router.post("/appointments", async (req, res) => {
     }
 
     const tenantId = tenant[0].id;
+    const policy = await bookingLinks.getBookingPolicy(tenantId);
 
     // Récupérer le service
     const service = await db.query(
@@ -632,12 +645,17 @@ router.post("/appointments", async (req, res) => {
       }
     }
 
-    // Créer le rendez-vous avec statut "pending" (en attente de validation)
+    // Créer le rendez-vous : "pending" (à valider par le salon) ou "confirmed"
+    // si le salon a activé la confirmation automatique des réservations en ligne
+    const initialStatus = policy.autoConfirm ? "confirmed" : "pending";
+    const manageToken = (await bookingLinks.hasManageTokenColumn())
+      ? bookingLinks.generateToken()
+      : null;
     const appointment = await db.query(
       `INSERT INTO appointments
        (tenant_id, client_id, service_id, staff_id, appointment_date, start_time, end_time,
-        status, notes, booked_by, booking_source, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'client', 'website', NOW())`,
+        status, notes, booked_by, booking_source, created_at${manageToken ? ", manage_token" : ""})
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'client', 'website', NOW()${manageToken ? ", ?" : ""})`,
       [
         tenantId,
         clientId,
@@ -646,9 +664,12 @@ router.post("/appointments", async (req, res) => {
         appointment_date,
         start_time,
         end_time,
+        initialStatus,
         [bookedAsNote, notes].filter(Boolean).join("\n") || null,
+        ...(manageToken ? [manageToken] : []),
       ]
     );
+    const manageUrl = bookingLinks.getManageUrl(salon_slug, manageToken);
 
     // Si un code promo a été utilisé, enregistrer l'utilisation
     if (promotionId && discountAmount > 0) {
@@ -715,15 +736,19 @@ router.post("/appointments", async (req, res) => {
 
       const formattedTime = newApt.start_time.substring(0, 5);
 
-      emailService
-        .sendBookingRequestReceived({
-          to: newApt.client_email,
-          firstName: newApt.client_first_name,
-          appointmentDate: formattedDate,
-          appointmentTime: formattedTime,
-          serviceName: newApt.service_name,
-          salonName: newApt.salon_name || "Le Salon", // Fallback si le nom n'est pas récupéré
-        })
+      const emailData = {
+        to: newApt.client_email,
+        firstName: newApt.client_first_name,
+        appointmentDate: formattedDate,
+        appointmentTime: formattedTime,
+        serviceName: newApt.service_name,
+        salonName: newApt.salon_name || "Le Salon", // Fallback si le nom n'est pas récupéré
+        manageUrl,
+      };
+      (initialStatus === "confirmed"
+        ? emailService.sendAppointmentConfirmation({ ...emailData, price: newApt.service_price })
+        : emailService.sendBookingRequestReceived(emailData)
+      )
         .catch((err) =>
           console.error("❌ Erreur envoi accusé réception:", err)
         );
@@ -778,15 +803,254 @@ router.post("/appointments", async (req, res) => {
 
     res.status(201).json({
       success: true,
-      appointment: newApt,
+      appointment: { ...newApt, manage_token: manageToken },
       message:
-        "Votre rendez-vous a été enregistré avec succès. Vous recevrez une confirmation prochainement.",
+        initialStatus === "confirmed"
+          ? "Votre rendez-vous est confirmé."
+          : "Votre rendez-vous a été enregistré avec succès. Vous recevrez une confirmation prochainement.",
     });
   } catch (error) {
     console.error("Erreur lors de la création du rendez-vous:", error);
     res
       .status(500)
       .json({ error: "Erreur serveur lors de la création du rendez-vous" });
+  }
+});
+
+// ===== GÉRER MON RENDEZ-VOUS (lien client, sans compte) =====
+
+// RDV associé à un jeton de gestion, avec les infos utiles au client
+const findManagedAppointment = async (token) => {
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
+  if (!(await bookingLinks.hasManageTokenColumn())) return null;
+  const [apt] = await db.query(
+    `SELECT a.id, a.tenant_id, a.service_id, a.staff_id, a.status,
+            DATE_FORMAT(a.appointment_date, '%Y-%m-%d') AS date,
+            TIME_FORMAT(a.start_time, '%H:%i') AS start_time,
+            TIME_FORMAT(a.end_time, '%H:%i') AS end_time,
+            s.name AS service_name, s.duration AS service_duration, s.price AS service_price,
+            c.first_name AS client_first_name,
+            u.first_name AS staff_first_name,
+            t.name AS salon_name, t.slug AS salon_slug, t.phone AS salon_phone,
+            t.address AS salon_address, t.city AS salon_city, t.logo_url AS salon_logo
+     FROM appointments a
+     JOIN services s ON s.id = a.service_id
+     JOIN clients c ON c.id = a.client_id
+     JOIN tenants t ON t.id = a.tenant_id
+     LEFT JOIN users u ON u.id = a.staff_id
+     WHERE a.manage_token = ?`,
+    [token]
+  );
+  return apt || null;
+};
+
+// Prévient le salon (temps réel + push) d'une action du client
+const notifySalonOfClientChange = async (req, apt, title, body) => {
+  try {
+    req.io.to(`tenant_${apt.tenant_id}`).emit("appointment_updated", {
+      appointmentId: apt.id,
+      action: "client_change",
+      message: body,
+    });
+  } catch (e) {
+    console.error("Erreur socket:", e);
+  }
+  try {
+    await pushService.sendToTenant(apt.tenant_id, {
+      title,
+      body,
+      icon: "/logo192.png",
+      data: { url: `/appointments?date=${apt.date}`, appointmentId: apt.id },
+    }, true);
+  } catch (e) {
+    console.error("Erreur push salon:", e.message);
+  }
+  try {
+    await expoPushService.sendToTenant(apt.tenant_id, {
+      title,
+      body,
+      data: { type: "appointment_updated", appointmentId: apt.id },
+    });
+  } catch (e) {
+    console.error("Erreur expo push salon:", e.message);
+  }
+};
+
+const formatLongDate = (date) =>
+  new Date(`${date}T00:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
+/**
+ * GET /api/public/manage/:token
+ * Détails d'un RDV pour le client (lien "Gérer mon rendez-vous")
+ */
+router.get("/manage/:token", async (req, res) => {
+  try {
+    const apt = await findManagedAppointment(req.params.token);
+    if (!apt) return res.status(404).json({ error: "Rendez-vous introuvable" });
+
+    const policy = await bookingLinks.getBookingPolicy(apt.tenant_id);
+    const canChange = bookingLinks.canClientChange(apt, policy.noticeHours);
+    res.json({
+      appointment: {
+        status: apt.status,
+        date: apt.date,
+        start_time: apt.start_time,
+        end_time: apt.end_time,
+        service_id: apt.service_id,
+        service_name: apt.service_name,
+        service_duration: apt.service_duration,
+        service_price: apt.service_price,
+        client_first_name: apt.client_first_name,
+        staff_id: apt.staff_id,
+        staff_first_name: apt.staff_first_name,
+      },
+      salon: {
+        name: apt.salon_name,
+        slug: apt.salon_slug,
+        phone: apt.salon_phone,
+        address: apt.salon_address,
+        city: apt.salon_city,
+        logo_url: apt.salon_logo,
+      },
+      policy: {
+        can_change: canChange,
+        notice_hours: policy.noticeHours,
+        change_deadline: policy.noticeHours >= 0
+          ? bookingLinks.getChangeDeadline(apt, policy.noticeHours).toISOString()
+          : null,
+      },
+    });
+  } catch (error) {
+    console.error("Erreur consultation RDV client:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+/**
+ * GET /api/public/manage/:token/calendar.ics
+ * Ajout du RDV à l'agenda du client
+ */
+router.get("/manage/:token/calendar.ics", async (req, res) => {
+  try {
+    const apt = await findManagedAppointment(req.params.token);
+    if (!apt) return res.status(404).send("Rendez-vous introuvable");
+    const ics = bookingLinks.buildIcs({
+      id: apt.id,
+      date: apt.date,
+      start_time: apt.start_time,
+      end_time: apt.end_time,
+      service_name: apt.service_name,
+      salon_name: apt.salon_name,
+      address: [apt.salon_address, apt.salon_city].filter(Boolean).join(", "),
+      staff_first_name: apt.staff_first_name,
+      manageUrl: bookingLinks.getManageUrl(apt.salon_slug, req.params.token),
+    });
+    res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="rendez-vous-${apt.date}.ics"`);
+    res.send(ics);
+  } catch (error) {
+    console.error("Erreur export calendrier:", error);
+    res.status(500).send("Erreur serveur");
+  }
+});
+
+/**
+ * POST /api/public/manage/:token/cancel
+ * Annulation par le client (dans le délai fixé par le salon)
+ */
+router.post("/manage/:token/cancel", async (req, res) => {
+  try {
+    const apt = await findManagedAppointment(req.params.token);
+    if (!apt) return res.status(404).json({ error: "Rendez-vous introuvable" });
+
+    const policy = await bookingLinks.getBookingPolicy(apt.tenant_id);
+    if (!bookingLinks.canClientChange(apt, policy.noticeHours)) {
+      return res.status(400).json({
+        error: "Ce rendez-vous ne peut plus être annulé en ligne. Contactez directement l'établissement.",
+      });
+    }
+
+    const reason = String(req.body?.reason || "").trim().slice(0, 255);
+    await db.query(
+      `UPDATE appointments
+       SET status = 'cancelled', cancelled_at = NOW(), cancellation_reason = ?
+       WHERE id = ?`,
+      [reason ? `Annulé par le client : ${reason}` : "Annulé par le client", apt.id]
+    );
+
+    await notifySalonOfClientChange(
+      req,
+      apt,
+      "Rendez-vous annulé",
+      `${apt.client_first_name} a annulé son rendez-vous du ${formatLongDate(apt.date)} à ${apt.start_time} (${apt.service_name})`
+    );
+
+    res.json({ success: true, status: "cancelled" });
+  } catch (error) {
+    console.error("Erreur annulation client:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+/**
+ * POST /api/public/manage/:token/reschedule
+ * Déplacement par le client, avec le même professionnel
+ * Body: date (YYYY-MM-DD), start_time (HH:MM)
+ */
+router.post("/manage/:token/reschedule", async (req, res) => {
+  try {
+    const { date, start_time } = req.body || {};
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "") || !/^\d{2}:\d{2}$/.test(start_time || "")) {
+      return res.status(400).json({ error: "Date et heure requises" });
+    }
+
+    const apt = await findManagedAppointment(req.params.token);
+    if (!apt) return res.status(404).json({ error: "Rendez-vous introuvable" });
+
+    const policy = await bookingLinks.getBookingPolicy(apt.tenant_id);
+    if (!bookingLinks.canClientChange(apt, policy.noticeHours)) {
+      return res.status(400).json({
+        error: "Ce rendez-vous ne peut plus être déplacé en ligne. Contactez directement l'établissement.",
+      });
+    }
+
+    const assignment = await availabilityService.findStaffForSlot({
+      tenantId: apt.tenant_id,
+      serviceId: apt.service_id,
+      date,
+      startTime: start_time,
+      staffId: apt.staff_id || null,
+      excludeAppointmentId: apt.id,
+    });
+    if (!assignment.available) {
+      return res.status(400).json({ error: "Ce créneau n'est plus disponible. Veuillez en choisir un autre." });
+    }
+
+    const [h, m] = start_time.split(":").map(Number);
+    const endMinutes = h * 60 + m + Number(apt.service_duration);
+    const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}:00`;
+    // Sans confirmation automatique, le salon revalide le nouveau créneau
+    const status = policy.autoConfirm ? "confirmed" : "pending";
+
+    await db.query(
+      `UPDATE appointments
+       SET appointment_date = ?, start_time = ?, end_time = ?, staff_id = ?,
+           status = ?, reminder_sent = 0
+       WHERE id = ?`,
+      [date, `${start_time}:00`, endTime, assignment.staffId ?? apt.staff_id, status, apt.id]
+    );
+
+    await notifySalonOfClientChange(
+      req,
+      apt,
+      "Rendez-vous déplacé",
+      `${apt.client_first_name} a déplacé son rendez-vous (${apt.service_name}) du ${formatLongDate(apt.date)} ${apt.start_time} au ${formatLongDate(date)} ${start_time}`
+    );
+
+    res.json({ success: true, status, date, start_time });
+  } catch (error) {
+    console.error("Erreur déplacement client:", error);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
 

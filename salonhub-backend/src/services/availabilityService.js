@@ -315,9 +315,10 @@ const getAvailableSlots = async ({
   date,
   staffId = null,
   includePast = false,
+  excludeAppointmentId = null,
   now = new Date(),
 }) => {
-  const ctx = await buildDayContext({ tenantId, serviceId, date });
+  const ctx = await buildDayContext({ tenantId, serviceId, date, excludeAppointmentId });
   if (!ctx) return { error: "SERVICE_NOT_FOUND" };
 
   if (!ctx.salonWindow) {

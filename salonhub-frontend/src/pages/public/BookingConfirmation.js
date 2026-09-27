@@ -4,8 +4,7 @@
  */
 
 import React, { useEffect } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
-import usePublicBooking from "../../hooks/usePublicBooking";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { usePublicTheme } from "../../contexts/PublicThemeContext";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
@@ -20,7 +19,11 @@ import {
   UserCircleIcon,
   EnvelopeIcon,
   CurrencyDollarIcon,
+  ArrowDownTrayIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
+
+const API_URL = process.env.REACT_APP_API_URL;
 
 const BookingConfirmation = () => {
   const { slug } = useParams();
@@ -37,6 +40,8 @@ const BookingConfirmation = () => {
   })();
   const { service, date, slot, client, appointment, finalAmount } = confirmation;
   const totalAmount = finalAmount ?? service?.price;
+  const isConfirmed = appointment?.status === "confirmed";
+  const manageToken = appointment?.manage_token;
   const { formatPrice } = useCurrency();
   const { salon, dynamicStyles } = usePublicTheme();
 
@@ -68,6 +73,11 @@ const BookingConfirmation = () => {
 
   // Get confirmation message based on business type
   const getConfirmationTitle = () => {
+    if (isConfirmed) {
+      if (businessType === "restaurant") return "Réservation confirmée !";
+      if (businessType === "training") return "Inscription confirmée !";
+      return "Rendez-vous confirmé !";
+    }
     switch (businessType) {
       case "restaurant":
         return "Réservation enregistrée !";
@@ -139,12 +149,21 @@ const BookingConfirmation = () => {
             </div>
             <div className="ml-4">
               <h3 className="text-xl font-bold mb-1" style={dynamicStyles.primaryText}>
-                En attente de validation
+                {isConfirmed ? "C'est confirmé" : "En attente de validation"}
               </h3>
               <div className="mt-2 text-slate-700 leading-relaxed">
                 <p>
-                  Votre {term.appointment.toLowerCase()} est en statut <strong>"en attente"</strong>.
-                  {salon?.name || "L'établissement"} vous confirmera dans les plus brefs délais.
+                  {isConfirmed ? (
+                    <>
+                      {salon?.name || "L'établissement"} vous attend. Un rappel vous sera envoyé avant votre{" "}
+                      {term.appointment.toLowerCase()}.
+                    </>
+                  ) : (
+                    <>
+                      Votre {term.appointment.toLowerCase()} est en statut <strong>"en attente"</strong>.
+                      {" "}{salon?.name || "L'établissement"} vous confirmera dans les plus brefs délais.
+                    </>
+                  )}
                   {client?.preferred_contact_method && (
                     <span className="block mt-2 font-medium">
                       Nous vous contacterons par 
@@ -246,6 +265,31 @@ const BookingConfirmation = () => {
         </div>
 
         {/* Actions */}
+        {manageToken && (
+          <div className="bg-white rounded-3xl shadow-soft border border-slate-200 p-5 sm:p-6 mb-8">
+            <p className="text-slate-700 mb-4">
+              Gardez ce {term.appointment.toLowerCase()} sous la main : ajoutez-le à votre agenda, et
+              déplacez-le ou annulez-le en ligne si besoin (le lien est aussi dans votre email).
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <a
+                href={`${API_URL}/public/manage/${manageToken}/calendar.ics`}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50"
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" aria-hidden="true" />
+                Ajouter à mon agenda
+              </a>
+              <Link
+                to={`/book/${slug}/rdv/${manageToken}`}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50"
+              >
+                <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
+                Gérer mon {term.appointment.toLowerCase()}
+              </Link>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
             onClick={handleNewBooking}

@@ -6,6 +6,7 @@
 const db = require("../config/database");
 const emailService = require("./emailService");
 const pushService = require("./pushService");
+const bookingLinks = require("./bookingLinks");
 
 class ReminderService {
   /**
@@ -76,7 +77,8 @@ class ReminderService {
           s.duration as service_duration,
           t.name as salon_name,
           t.phone as salon_phone,
-          t.address as salon_address
+          t.address as salon_address,
+          t.slug as salon_slug
         FROM appointments a
         JOIN clients c ON a.client_id = c.id
         JOIN services s ON a.service_id = s.id
@@ -124,6 +126,15 @@ class ReminderService {
 
             const formattedTime = apt.start_time.substring(0, 5);
 
+            // Lien pour déplacer / annuler en ligne (la veille, c'est encore possible)
+            let manageUrl = null;
+            try {
+              const token = await bookingLinks.ensureManageToken(apt.appointment_id);
+              manageUrl = bookingLinks.getManageUrl(apt.salon_slug, token);
+            } catch (linkError) {
+              console.error("Lien de gestion indisponible:", linkError.message);
+            }
+
             // Envoyer l'email
             await emailService.sendAppointmentReminder({
               to: apt.client_email,
@@ -135,6 +146,7 @@ class ReminderService {
               salonPhone: apt.salon_phone,
               salonAddress: apt.salon_address,
               hoursBeforeText: "demain à la même heure",
+              manageUrl,
             });
 
             // Enregistrer l'envoi email

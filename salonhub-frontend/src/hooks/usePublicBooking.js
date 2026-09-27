@@ -101,7 +101,7 @@ export const usePublicBooking = (salonSlug) => {
    * Charger les créneaux disponibles pour un service et une date
    */
   const fetchAvailability = useCallback(
-    async (serviceId, date, staffId = null) => {
+    async (serviceId, date, staffId = null, excludeToken = null) => {
       if (!salonSlug || !serviceId || !date) {
         setError("Paramètres manquants pour récupérer les disponibilités");
         return;
@@ -118,6 +118,8 @@ export const usePublicBooking = (salonSlug) => {
               service_id: serviceId,
               date: date,
               ...(staffId ? { staff_id: staffId } : {}),
+              // Déplacement d'un RDV : son propre créneau reste proposé
+              ...(excludeToken ? { exclude: excludeToken } : {}),
             },
           }
         );

@@ -69,7 +69,8 @@ export const PublicThemeProvider = ({ children, initialSalon = null, initialSett
       backgroundColor: `${theme.secondaryColor}10`
     },
     fontFamily: {
-      fontFamily: theme.fontFamily
+      // Repli sans-serif tant que la police du thème n'est pas chargée
+      fontFamily: `"${theme.fontFamily}", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`
     },
     footer: {
       backgroundColor: theme.footerBgColor || "#1E293B",

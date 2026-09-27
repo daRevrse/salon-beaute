@@ -68,6 +68,7 @@ import BookingLanding from "./pages/public/BookingLanding";
 import BookingDateTime from "./pages/public/BookingDateTime";
 import BookingClientInfo from "./pages/public/BookingClientInfo";
 import BookingConfirmation from "./pages/public/BookingConfirmation";
+import ManageBooking from "./pages/public/ManageBooking";
 import SalonShop from "./pages/public/SalonShop";
 import Checkout from "./pages/public/Checkout";
 import OrderConfirmation from "./pages/public/OrderConfirmation";
@@ -209,6 +210,10 @@ function App() {
                   <Route
                     path="/book/:slug/confirmation"
                     element={<BookingConfirmation />}
+                  />
+                  <Route
+                    path="/book/:slug/rdv/:token"
+                    element={<ManageBooking />}
                   />
                   <Route
                     path="/book/:slug/shop"

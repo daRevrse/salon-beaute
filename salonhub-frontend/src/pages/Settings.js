@@ -42,6 +42,7 @@ import {
   SparklesIcon,
   CodeBracketIcon,
   SignalIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 
 import { useToast } from "../hooks/useToast";
@@ -84,7 +85,9 @@ const Settings = () => {
 
   const [slotDuration, setSlotDuration] = useState(30);
   const [requireAppointmentDeposit, setRequireAppointmentDeposit] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState(currency);
+  const [autoConfirmOnline, setAutoConfirmOnline] = useState(false);
+  const [clientChangeNotice, setClientChangeNotice] = useState(2);
+  const [selectedCurrency, setSelectedCurrency] = useState(tenant?.currency || currency);
   const [logoUrl, setLogoUrl] = useState(null);
   const [bannerUrl, setBannerUrl] = useState(null);
   const [salonInfo, setSalonInfo] = useState({
@@ -218,6 +221,14 @@ const Settings = () => {
 
       if (settings.require_appointment_deposit !== undefined) {
         setRequireAppointmentDeposit(settings.require_appointment_deposit === 'true' || settings.require_appointment_deposit === true);
+      }
+
+      setAutoConfirmOnline(
+        settings.auto_confirm_online_bookings === true || settings.auto_confirm_online_bookings === "true"
+      );
+      if (settings.client_change_notice_hours !== undefined && settings.client_change_notice_hours !== null) {
+        const notice = parseInt(settings.client_change_notice_hours, 10);
+        setClientChangeNotice(Number.isNaN(notice) ? 2 : notice);
       }
 
       if (settings.currency) {
@@ -562,6 +573,8 @@ const Settings = () => {
           business_hours: businessHours,
           slot_duration: slotDuration,
           require_appointment_deposit: requireAppointmentDeposit.toString(),
+          auto_confirm_online_bookings: autoConfirmOnline,
+          client_change_notice_hours: clientChangeNotice,
           currency: selectedCurrency,
           theme_settings: themeSettings,
         },
@@ -941,6 +954,59 @@ const Settings = () => {
                     onSlotDurationChange={setSlotDuration}
                     config={config}
                   />
+                </div>
+
+                <div>
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-800 mb-4 sm:mb-6 flex items-center border-b border-slate-200 pb-3">
+                    <CalendarDaysIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${config.textColor} mr-2 sm:mr-3`} />
+                    Réservation en ligne
+                  </h2>
+
+                  <div className="space-y-5">
+                    <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl border border-slate-200 bg-white">
+                      <input
+                        type="checkbox"
+                        checked={autoConfirmOnline}
+                        onChange={(e) => setAutoConfirmOnline(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                      />
+                      <span>
+                        <span className="block text-sm font-medium text-slate-800">
+                          Confirmer automatiquement les réservations en ligne
+                        </span>
+                        <span className="block text-xs text-slate-500 mt-1">
+                          Le client reçoit sa confirmation immédiatement, sans validation de votre part.
+                          Les créneaux proposés tiennent déjà compte de vos horaires et de ceux de l'équipe.
+                        </span>
+                      </span>
+                    </label>
+
+                    <div className="p-4 rounded-xl border border-slate-200 bg-white">
+                      <label htmlFor="client-change-notice" className="block text-sm font-medium text-slate-800">
+                        Annulation et déplacement par le client
+                      </label>
+                      <p className="text-xs text-slate-500 mt-1 mb-3">
+                        Chaque email de réservation contient un lien « Gérer mon rendez-vous ».
+                        Au-delà de ce délai, le client doit vous appeler.
+                      </p>
+                      <select
+                        id="client-change-notice"
+                        value={clientChangeNotice}
+                        onChange={(e) => setClientChangeNotice(parseInt(e.target.value, 10))}
+                        className="input-premium sm:max-w-xs"
+                      >
+                        <option value={-1}>Non autorisé en ligne</option>
+                        <option value={0}>Jusqu'à l'heure du rendez-vous</option>
+                        <option value={2}>Jusqu'à 2 h avant</option>
+                        <option value={12}>Jusqu'à 12 h avant</option>
+                        <option value={24}>Jusqu'à 24 h avant</option>
+                        <option value={48}>Jusqu'à 48 h avant</option>
+                        {![-1, 0, 2, 12, 24, 48].includes(clientChangeNotice) && (
+                          <option value={clientChangeNotice}>Jusqu'à {clientChangeNotice} h avant</option>
+                        )}
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

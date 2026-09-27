@@ -16,6 +16,7 @@ const pushService = require("../services/pushService");
 const expoPushService = require("../services/expoPushService");
 const receiptService = require("../services/receiptService");
 const availabilityService = require("../services/availabilityService");
+const bookingLinks = require("../services/bookingLinks");
 
 // Appliquer middlewares
 router.use(authMiddleware);
@@ -885,7 +886,8 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
               c.preferred_contact_method,
               s.name as service_name,
               s.duration as service_duration,
-              t.name as salon_name
+              t.name as salon_name,
+              t.slug as salon_slug
             FROM appointments a
             JOIN clients c ON a.client_id = c.id
             JOIN services s ON a.service_id = s.id
@@ -939,6 +941,7 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
                 !fullAppointment.client_phone)
             ) {
               try {
+                const manageToken = await bookingLinks.ensureManageToken(fullAppointment.id);
                 await emailService.sendAppointmentConfirmation({
                   to: fullAppointment.client_email,
                   firstName: fullAppointment.client_first_name,
@@ -946,6 +949,7 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
                   appointmentTime: fullAppointment.start_time,
                   serviceName: fullAppointment.service_name,
                   salonName: fullAppointment.salon_name,
+                  manageUrl: bookingLinks.getManageUrl(fullAppointment.salon_slug, manageToken),
                 });
                 console.log(
                   `✓ Confirmation email envoyée à ${fullAppointment.client_email}`
@@ -1258,7 +1262,8 @@ router.post("/:id/send-confirmation", checkScope("appointments:write"), async (r
         u.last_name as staff_last_name,
         t.name as salon_name,
         t.phone as salon_phone,
-        t.email as salon_email
+        t.email as salon_email,
+        t.slug as salon_slug
       FROM appointments a
       JOIN clients c ON a.client_id = c.id
       JOIN services s ON a.service_id = s.id
@@ -1294,7 +1299,16 @@ router.post("/:id/send-confirmation", checkScope("appointments:write"), async (r
         : "Un membre de notre équipe",
       duration: appointment.service_duration,
       salonPhone: appointment.salon_phone,
+      manageUrl: null,
     };
+
+    // Lien "Gérer mon rendez-vous" (déplacer / annuler / ajouter à l'agenda)
+    try {
+      const manageToken = await bookingLinks.ensureManageToken(appointment.id);
+      confirmationData.manageUrl = bookingLinks.getManageUrl(appointment.salon_slug, manageToken);
+    } catch (linkError) {
+      console.error("Lien de gestion indisponible:", linkError.message);
+    }
 
     let emailSent = false;
     let whatsappSent = false;
@@ -1329,6 +1343,11 @@ router.post("/:id/send-confirmation", checkScope("appointments:write"), async (r
               </div>
 
               <p>Nous vous attendons avec plaisir !</p>
+              ${
+                confirmationData.manageUrl
+                  ? `<p style="margin: 24px 0;"><a href="${confirmationData.manageUrl}" style="background-color: #4F46E5; color: #ffffff; padding: 12px 20px; border-radius: 8px; text-decoration: none; display: inline-block;">Gérer mon rendez-vous</a></p>`
+                  : ""
+              }
 
               <p>Pour toute question, contactez-nous au ${confirmationData.salonPhone}</p>
 
@@ -1368,7 +1387,7 @@ Votre rendez-vous est confirmé :
 👤 *Avec :* ${confirmationData.staffName}
 
 Nous vous attendons avec plaisir ! 😊
-
+${confirmationData.manageUrl ? `\nDéplacer ou annuler : ${confirmationData.manageUrl}\n` : ""}
 📞 ${confirmationData.salonPhone}
 *${confirmationData.salonName}*
       `.trim();

@@ -66,6 +66,13 @@ router.get("/", checkScope("settings:read"), async (req, res) => {
       formattedSettings.slot_duration = 30;
     }
 
+    // La devise de référence est celle du salon : sans elle, le formulaire
+    // renverrait sa valeur par défaut (EUR) à chaque enregistrement
+    const [tenant] = await db.query("SELECT currency FROM tenants WHERE id = ?", [tenantId]);
+    if (tenant?.currency) {
+      formattedSettings.currency = tenant.currency;
+    }
+
     res.json(formattedSettings);
   } catch (error) {
     console.error("Erreur lors de la récupération des paramètres:", error);
@@ -283,7 +290,37 @@ router.put("/salon", checkScope("settings:write"), async (req, res) => {
 router.put("/", checkScope("settings:write"), async (req, res) => {
   try {
     const tenantId = req.tenantId;
-    const { business_hours, slot_duration, currency, theme_settings, require_appointment_deposit } = req.body;
+    const {
+      business_hours,
+      slot_duration,
+      currency,
+      theme_settings,
+      require_appointment_deposit,
+      auto_confirm_online_bookings,
+      client_change_notice_hours,
+    } = req.body;
+
+    // Réservation en ligne : confirmation automatique et délai de modification client
+    const upsertSetting = async (key, value, type) => {
+      await db.query(
+        `INSERT INTO settings (tenant_id, setting_key, setting_value, setting_type)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value),
+           setting_type = VALUES(setting_type), updated_at = NOW()`,
+        [tenantId, key, value, type]
+      );
+    };
+    if (auto_confirm_online_bookings !== undefined) {
+      const enabled = auto_confirm_online_bookings === true || auto_confirm_online_bookings === "true";
+      await upsertSetting("auto_confirm_online_bookings", enabled ? "true" : "false", "boolean");
+    }
+    if (client_change_notice_hours !== undefined) {
+      const hours = parseInt(client_change_notice_hours, 10);
+      if (Number.isNaN(hours) || hours < -1 || hours > 168) {
+        return res.status(400).json({ success: false, error: "Délai de modification invalide" });
+      }
+      await upsertSetting("client_change_notice_hours", String(hours), "number");
+    }
 
     // Mettre à jour require_appointment_deposit
     if (require_appointment_deposit !== undefined) {

@@ -8,20 +8,16 @@
  * partagé conserve la sélection.
  */
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation, useSearchParams } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { usePublicTheme, formatDuration } from "../../contexts/PublicThemeContext";
 import { getImageUrl } from "../../utils/imageUtils";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
-import {
-  getDayHours,
-  getDayKey,
-  hasBusinessHours,
-  getMapsUrl,
-  getPhoneHref,
-} from "../../utils/publicSalon";
+import { getMapsUrl, getPhoneHref } from "../../utils/publicSalon";
+import DayStrip, { fromDateKey, useUpcomingDays } from "../../components/public/DayStrip";
+import SlotGrid from "../../components/public/SlotGrid";
 import {
   ClockIcon,
   ChevronLeftIcon,
@@ -32,23 +28,6 @@ import {
   UserCircleIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
-
-const DAYS_AHEAD = 14;
-
-const toDateKey = (date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-const fromDateKey = (key) => {
-  const [y, m, d] = key.split("-").map(Number);
-  return new Date(y, m - 1, d);
-};
-
-// Regroupe les créneaux par moment de la journée
-const SLOT_GROUPS = [
-  { label: "Matin", test: (h) => h < 12 },
-  { label: "Après-midi", test: (h) => h >= 12 && h < 18 },
-  { label: "Soir", test: (h) => h >= 18 },
-];
 
 const BookingDateTime = () => {
   const { slug } = useParams();
@@ -85,18 +64,8 @@ const BookingDateTime = () => {
   const autoPickRef = useRef(!(location.state?.date || searchParams.get("date")));
   const selectedStaff = staffOptions.find((m) => m.id === selectedStaffId) || null;
 
-  const today = toDateKey(new Date());
-  const salonHasHours = hasBusinessHours(salon?.business_hours);
-
   // 14 prochains jours, jours fermés signalés
-  const days = useMemo(() => {
-    const start = new Date();
-    return Array.from({ length: DAYS_AHEAD }, (_, i) => {
-      const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
-      const closed = salonHasHours && !getDayHours(salon?.business_hours, getDayKey(date));
-      return { key: toDateKey(date), date, closed };
-    });
-  }, [salon, salonHasHours]);
+  const days = useUpcomingDays(salon?.business_hours);
 
   // Prestation : état de navigation, sinon ?service= (rafraîchissement / lien partagé)
   useEffect(() => {
@@ -195,13 +164,6 @@ const BookingDateTime = () => {
     navigate(`/book/${slug}`);
   };
 
-  const slotGroups = SLOT_GROUPS.map((group) => ({
-    label: group.label,
-    slots: availableSlots.filter((slot) => group.test(Number(slot.time.split(":")[0]))),
-  })).filter((group) => group.slots.length > 0);
-
-  const selectedDay = days.find((d) => d.key === selectedDate);
-  const isOtherDate = selectedDate && !selectedDay;
   const mapsUrl = getMapsUrl(salon);
   const phoneHref = getPhoneHref(salon?.phone);
 
@@ -341,48 +303,7 @@ const BookingDateTime = () => {
               <CalendarDaysIcon className="w-6 h-6 mr-2" style={dynamicStyles.primaryText} />
               Quel jour ?
             </h3>
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1" role="radiogroup" aria-label="Choix du jour">
-              {days.map((day) => {
-                const isSelected = day.key === selectedDate;
-                const weekday = day.date.toLocaleDateString("fr-FR", { weekday: "short" }).replace(".", "");
-                const month = day.date.toLocaleDateString("fr-FR", { month: "short" }).replace(".", "");
-                return (
-                  <button
-                    key={day.key}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    aria-label={`${day.date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}${day.closed ? " (fermé)" : ""}`}
-                    disabled={day.closed}
-                    onClick={() => chooseDate(day.key)}
-                    className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition-all ${
-                      day.closed
-                        ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
-                        : isSelected
-                        ? "shadow-md"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                    }`}
-                    style={isSelected ? dynamicStyles.activeOption : {}}
-                  >
-                    <span className="block text-xs capitalize">
-                      {day.key === today ? "Auj." : weekday}
-                    </span>
-                    <span className="block text-lg font-bold leading-tight">{day.date.getDate()}</span>
-                    <span className="block text-[11px] capitalize">{day.closed ? "Fermé" : month}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <label className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-              Autre date :
-              <input
-                type="date"
-                value={isOtherDate ? selectedDate : ""}
-                min={today}
-                onChange={(e) => e.target.value && chooseDate(e.target.value)}
-                className="px-3 py-1.5 border border-slate-200 rounded-xl text-sm text-slate-700 bg-white"
-              />
-            </label>
+            <DayStrip days={days} selectedDate={selectedDate} onSelect={chooseDate} />
           </div>
 
           {/* Available Slots */}
@@ -410,26 +331,7 @@ const BookingDateTime = () => {
                 {availableSlots.length} créneau{availableSlots.length > 1 ? "x" : ""} disponible{availableSlots.length > 1 ? "s" : ""}
                 {selectedStaff ? ` avec ${selectedStaff.first_name}` : ""}
               </p>
-              <div className="space-y-5">
-                {slotGroups.map((group) => (
-                  <div key={group.label}>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">{group.label}</p>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3">
-                      {group.slots.map((slot) => (
-                        <button
-                          key={slot.time}
-                          type="button"
-                          onClick={() => handleSlotSelect(slot)}
-                          className="px-3 py-3 border rounded-xl text-center font-medium text-slate-900 shadow-soft hover:shadow-md focus:outline-none focus:ring-2 transition-all"
-                          style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryBorderLight }}
-                        >
-                          {slot.time}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <SlotGrid slots={availableSlots} onSelect={handleSlotSelect} />
             </div>
           )}
 

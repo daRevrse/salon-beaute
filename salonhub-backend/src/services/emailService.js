@@ -278,6 +278,7 @@ class EmailService {
     salonPhone,
     salonAddress,
     hoursBeforeText = "bientôt",
+    manageUrl,
   }) {
     const subject = `⏰ Rappel: Votre rendez-vous chez ${salonName}`;
 
@@ -346,6 +347,12 @@ class EmailService {
                   salonPhone ? ` au ${salonPhone}` : ""
                 }.
               </p>
+              ${manageUrl ? `
+              <p style="text-align: center; margin: 25px 0 0;">
+                <a href="${manageUrl}" style="display: inline-block; padding: 12px 24px; background: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600;">
+                  Gérer mon rendez-vous
+                </a>
+              </p>` : ""}
 
               <p style="margin: 25px 0 0; color: #555555; font-size: 14px;">
                 À très bientôt ! 💫
@@ -498,6 +505,7 @@ class EmailService {
     serviceName,
     salonName,
     price,
+    manageUrl,
   }) {
     const subject = `✅ Confirmation: Votre rendez-vous chez ${salonName}`;
 
@@ -556,6 +564,15 @@ class EmailService {
                     : ""
                 }
               </div>
+              ${manageUrl ? `
+              <p style="text-align: center; margin: 25px 0 0;">
+                <a href="${manageUrl}" style="display: inline-block; padding: 12px 24px; background: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600;">
+                  Gérer mon rendez-vous
+                </a>
+              </p>
+              <p style="margin: 10px 0 0; color: #888888; font-size: 13px; text-align: center;">
+                Ajoutez-le à votre agenda, déplacez-le ou annulez-le en ligne.
+              </p>` : ""}
 
               <p style="margin: 25px 0 0; color: #555555; font-size: 14px; line-height: 1.6;">
                 Un rappel vous sera envoyé avant votre rendez-vous.
@@ -597,6 +614,7 @@ class EmailService {
     appointmentTime,
     serviceName,
     salonName,
+    manageUrl,
   }) {
     const subject = `⏳ Demande reçue : Votre rendez-vous chez ${salonName}`;
 
@@ -648,6 +666,15 @@ class EmailService {
                   <strong>🏢 Salon :</strong> ${salonName}
                 </p>
               </div>
+              ${manageUrl ? `
+              <p style="text-align: center; margin: 25px 0 0;">
+                <a href="${manageUrl}" style="display: inline-block; padding: 12px 24px; background: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 600;">
+                  Gérer mon rendez-vous
+                </a>
+              </p>
+              <p style="margin: 10px 0 0; color: #888888; font-size: 13px; text-align: center;">
+                Ajoutez-le à votre agenda, déplacez-le ou annulez-le en ligne.
+              </p>` : ""}
 
               <p style="margin: 25px 0 0; color: #555555; font-size: 14px; line-height: 1.6;">
                 Vous recevrez un nouvel email dès que le rendez-vous sera confirmé ✅.
