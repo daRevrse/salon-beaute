@@ -1,65 +1,128 @@
 /**
  * Public Booking DateTime Page - Purple Dynasty Theme
  * Multi-Sector Adaptive with Business Type Terminology
+ *
+ * Étape 2 : choix du professionnel, du jour (bandeau des 14 prochains jours,
+ * jours fermés grisés) et du créneau. La prestation, le jour et le
+ * professionnel sont repris de l'URL : un rafraîchissement ou un lien
+ * partagé conserve la sélection.
  */
 
-import React, { useState, useEffect } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate, useParams, useLocation, useSearchParams } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { usePublicTheme, formatDuration } from "../../contexts/PublicThemeContext";
 import { getImageUrl } from "../../utils/imageUtils";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
 import {
+  getDayHours,
+  getDayKey,
+  hasBusinessHours,
+  getMapsUrl,
+  getPhoneHref,
+} from "../../utils/publicSalon";
+import {
   ClockIcon,
   ChevronLeftIcon,
   CalendarDaysIcon,
   CurrencyDollarIcon,
-  InformationCircleIcon,
   PhoneIcon,
   MapPinIcon,
   UserCircleIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 
+const DAYS_AHEAD = 14;
+
+const toDateKey = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+const fromDateKey = (key) => {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+// Regroupe les créneaux par moment de la journée
+const SLOT_GROUPS = [
+  { label: "Matin", test: (h) => h < 12 },
+  { label: "Après-midi", test: (h) => h >= 12 && h < 18 },
+  { label: "Soir", test: (h) => h >= 18 },
+];
+
 const BookingDateTime = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const service = location.state?.service;
+  const [searchParams, setSearchParams] = useSearchParams();
   const { formatPrice } = useCurrency();
-  const { salon, settings, dynamicStyles, theme: themeSettings } = usePublicTheme();
+  const { salon, dynamicStyles } = usePublicTheme();
 
   const {
     availableSlots,
     loading,
     error,
+    fetchServices,
     fetchAvailability,
     fetchStaff,
   } = usePublicBooking(slug);
 
-  // Business type configuration
   const businessType = salon?.business_type || "beauty";
   const config = getBusinessTypeConfig(businessType);
   const term = config.terminology;
 
-  // Thème personnalisé - Utilisation de dynamicStyles du contexte
-  const customStyles = dynamicStyles;
-
-  const [selectedDate, setSelectedDate] = useState(location.state?.date || "");
-  const [selectedSlot, setSelectedSlot] = useState(null);
+  const serviceParam = searchParams.get("service");
+  const [service, setService] = useState(location.state?.service || null);
+  const [selectedDate, setSelectedDate] = useState(
+    location.state?.date || searchParams.get("date") || ""
+  );
   // Choix du professionnel (null = sans préférence)
   const [staffOptions, setStaffOptions] = useState([]);
-  const [selectedStaffId, setSelectedStaffId] = useState(location.state?.staff?.id || null);
+  const initialStaff = location.state?.staff?.id || Number(searchParams.get("staff")) || null;
+  const [selectedStaffId, setSelectedStaffId] = useState(initialStaff);
   const [availabilityMessage, setAvailabilityMessage] = useState(null);
   const selectedStaff = staffOptions.find((m) => m.id === selectedStaffId) || null;
 
+  const today = toDateKey(new Date());
+  const salonHasHours = hasBusinessHours(salon?.business_hours);
+
+  // 14 prochains jours, jours fermés signalés
+  const days = useMemo(() => {
+    const start = new Date();
+    return Array.from({ length: DAYS_AHEAD }, (_, i) => {
+      const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      const closed = salonHasHours && !getDayHours(salon?.business_hours, getDayKey(date));
+      return { key: toDateKey(date), date, closed };
+    });
+  }, [salon, salonHasHours]);
+
+  // Prestation : état de navigation, sinon ?service= (rafraîchissement / lien partagé)
   useEffect(() => {
-    if (!service) {
-      navigate(`/book/${slug}`);
+    if (service) return;
+    if (!serviceParam) {
+      navigate(`/book/${slug}`, { replace: true });
       return;
     }
-  }, [service, slug, navigate]);
+    let active = true;
+    fetchServices()
+      .then((list) => {
+        if (!active) return;
+        const found = (list || []).find((s) => String(s.id) === serviceParam);
+        if (found) setService(found);
+        else navigate(`/book/${slug}`, { replace: true });
+      })
+      .catch(() => active && navigate(`/book/${slug}`, { replace: true }));
+    return () => {
+      active = false;
+    };
+  }, [service, serviceParam, slug, navigate, fetchServices]);
+
+  // Jour par défaut : le premier jour ouvert
+  useEffect(() => {
+    if (selectedDate || days.length === 0) return;
+    const firstOpen = days.find((d) => !d.closed);
+    if (firstOpen) setSelectedDate(firstOpen.key);
+  }, [days, selectedDate]);
 
   useEffect(() => {
     if (!service) return;
@@ -86,9 +149,20 @@ const BookingDateTime = () => {
     }
   }, [selectedDate, selectedStaffId, service, fetchAvailability]);
 
+  // Garder la sélection dans l'URL
+  useEffect(() => {
+    if (!service) return;
+    const next = { service: String(service.id) };
+    if (selectedDate) next.date = selectedDate;
+    if (selectedStaffId) next.staff = String(selectedStaffId);
+    setSearchParams(next, { replace: true, state: location.state });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [service, selectedDate, selectedStaffId]);
+
   const handleSlotSelect = (slot) => {
-    setSelectedSlot(slot);
-    navigate(`/book/${slug}/info`, {
+    const params = new URLSearchParams({ service: service.id, date: selectedDate, time: slot.time });
+    if (selectedStaff) params.set("staff", selectedStaff.id);
+    navigate(`/book/${slug}/info?${params.toString()}`, {
       state: {
         service,
         date: selectedDate,
@@ -102,68 +176,28 @@ const BookingDateTime = () => {
     navigate(`/book/${slug}`);
   };
 
-  // Date minimum = aujourd'hui (date locale, pas UTC)
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const slotGroups = SLOT_GROUPS.map((group) => ({
+    label: group.label,
+    slots: availableSlots.filter((slot) => group.test(Number(slot.time.split(":")[0]))),
+  })).filter((group) => group.slots.length > 0);
 
-  // Helper: Parse business hours
-  const parseBusinessHours = () => {
-    if (!salon?.business_hours) return null;
+  const selectedDay = days.find((d) => d.key === selectedDate);
+  const isOtherDate = selectedDate && !selectedDay;
+  const mapsUrl = getMapsUrl(salon);
+  const phoneHref = getPhoneHref(salon?.phone);
 
-    try {
-      const hours = typeof salon.business_hours === 'string'
-        ? JSON.parse(salon.business_hours)
-        : salon.business_hours;
-
-      const daysMap = {
-        monday: 'Lundi',
-        tuesday: 'Mardi',
-        wednesday: 'Mercredi',
-        thursday: 'Jeudi',
-        friday: 'Vendredi',
-        saturday: 'Samedi',
-        sunday: 'Dimanche'
-      };
-
-      const schedule = [];
-
-      Object.entries(daysMap).forEach(([key, label]) => {
-        const dayHours = hours[key];
-        if (dayHours && dayHours.open && dayHours.close && !dayHours.closed) {
-          schedule.push({
-            day: label,
-            open: dayHours.open,
-            close: dayHours.close,
-            isOpen: true
-          });
-        } else {
-          schedule.push({
-            day: label,
-            isOpen: false
-          });
-        }
-      });
-
-      return schedule;
-    } catch (err) {
-      console.error('Error parsing business hours:', err);
-      return null;
-    }
-  };
-
-  const businessSchedule = parseBusinessHours();
-  const openDays = businessSchedule?.filter(d => d.isOpen) || [];
+  const emptyMessage = selectedStaff
+    ? `${selectedStaff.first_name} n'a plus de créneau ce jour. Essayez une autre date ou « Sans préférence ».`
+    : availabilityMessage === "Fermé ce jour"
+    ? "Fermé ce jour. Choisissez un autre jour d'ouverture."
+    : "Tous les créneaux de ce jour sont réservés. Essayez une autre date.";
 
   return (
-    <div className="min-h-screen relative flex flex-col" style={customStyles.fontFamily}>
+    <div className="min-h-screen relative flex flex-col" style={dynamicStyles.fontFamily}>
       {/* Background Image with Overlay */}
       {service?.image_url && (
         <div className="fixed inset-0 z-0">
-          <img
-            src={getImageUrl(service.image_url)}
-            alt={service.name}
-            className="w-full h-full object-cover"
-          />
+          <img src={getImageUrl(service.image_url)} alt="" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-white/90 backdrop-blur-sm"></div>
         </div>
       )}
@@ -172,54 +206,49 @@ const BookingDateTime = () => {
       <div className="relative z-10">
         {/* Header */}
         <header className="bg-white/80 backdrop-blur-md shadow-soft border-b border-slate-200 sticky top-0 z-50">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
             <div className="flex items-center justify-between">
               <button
                 onClick={handleBack}
                 className="flex items-center transition-colors font-medium"
                 style={dynamicStyles.primaryText}
               >
-                <ChevronLeftIcon className="w-5 h-5 mr-2" />
+                <ChevronLeftIcon className="w-5 h-5 mr-1 sm:mr-2" />
                 Retour
               </button>
-              <div className="text-center flex-1">
-                <h1 className="text-2xl font-display font-bold text-slate-900">
+              <div className="text-center flex-1 min-w-0 px-2">
+                <h1 className="text-lg sm:text-2xl font-display font-bold text-slate-900 truncate">
                   {salon?.name || term.establishment}
                 </h1>
               </div>
-              <div className="w-20"></div>
+              <div className="w-16 sm:w-20"></div>
             </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
           {/* Step indicator */}
-          <div className="text-center mb-10">
-            <div 
+          <div className="text-center mb-8">
+            <div
               className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-semibold mb-2"
               style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryText }}
             >
               Étape 2 sur 3
             </div>
-            <h2 className="text-3xl font-display font-bold text-slate-900">
+            <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-900">
               Choisissez la date et l'heure
             </h2>
           </div>
 
-          {/* Selected Service - Enhanced Card Style */}
+          {/* Selected Service */}
           {service && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 mb-8 shadow-soft relative overflow-hidden">
-               <div 
-                className="absolute left-0 top-0 bottom-0 w-1.5"
-                style={dynamicStyles.primaryButton}
-              />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-slate-900 text-xl">
-                    {service.name}
-                  </p>
-                  <p className="text-sm text-slate-600 mt-2 flex items-center space-x-3">
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 mb-6 shadow-soft relative overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-1.5" style={dynamicStyles.primaryButton} />
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-900 text-lg sm:text-xl">{service.name}</p>
+                  <p className="text-sm text-slate-600 mt-2 flex items-center gap-3">
                     <span className="flex items-center">
                       <ClockIcon className="w-4 h-4 mr-1.5" style={dynamicStyles.primaryText} />
                       {formatDuration(service.duration)}
@@ -243,7 +272,7 @@ const BookingDateTime = () => {
 
           {/* Choix du professionnel */}
           {staffOptions.length > 1 && (
-            <div className="bg-white rounded-2xl shadow-soft-xl p-6 mb-8 border border-slate-200">
+            <div className="bg-white rounded-2xl shadow-soft-xl p-5 sm:p-6 mb-6 border border-slate-200">
               <h3 className="flex items-center text-lg font-semibold text-slate-700 mb-4">
                 <UserCircleIcon className="w-6 h-6 mr-2" style={dynamicStyles.primaryText} />
                 Avec qui ?
@@ -268,11 +297,7 @@ const BookingDateTime = () => {
                           <SparklesIcon className="h-4 w-4 text-slate-500" />
                         </span>
                       ) : member.avatar_url ? (
-                        <img
-                          src={getImageUrl(member.avatar_url)}
-                          alt=""
-                          className="h-8 w-8 rounded-full object-cover"
-                        />
+                        <img src={getImageUrl(member.avatar_url)} alt="" className="h-8 w-8 rounded-full object-cover" />
                       ) : (
                         <span
                           className="h-8 w-8 rounded-full flex items-center justify-center font-semibold"
@@ -291,144 +316,99 @@ const BookingDateTime = () => {
             </div>
           )}
 
-          {/* Business Hours */}
-          {businessSchedule && openDays.length > 0 && (
-            <div 
-              className="border rounded-2xl p-5 mb-8 shadow-soft"
-              style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryBorderLight }}
-            >
-              <div className="flex items-start">
-                <InformationCircleIcon 
-                  className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5" 
-                  style={dynamicStyles.primaryText}
-                />
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-3">
-                    Horaires d'ouverture
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {businessSchedule.map((day, index) => (
-                      <div
-                        key={index}
-                        className={`flex items-center justify-between py-2 px-3 rounded-xl ${
-                          day.isOpen
-                            ? 'bg-white/80 text-slate-900'
-                            : 'bg-slate-100/50 text-slate-400'
-                        }`}
-                      >
-                        <span className="font-medium text-sm">{day.day}</span>
-                        {day.isOpen ? (
-                          <span 
-                            className="text-sm font-semibold"
-                            style={dynamicStyles.primaryText}
-                          >
-                            {day.open} - {day.close}
-                          </span>
-                        ) : (
-                          <span className="text-sm italic">Fermé</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {openDays.length < 7 && (
-                    <p className="text-xs text-slate-600 mt-3 italic">
-                      Ouvert {openDays.length} jour{openDays.length > 1 ? 's' : ''} par semaine.
-                      Veuillez choisir une date correspondant aux jours d'ouverture.
-                    </p>
-                  )}
-                </div>
-              </div>
+          {/* Choix du jour */}
+          <div className="bg-white rounded-2xl shadow-soft-xl p-5 sm:p-6 mb-6 border border-slate-200">
+            <h3 className="flex items-center text-lg font-semibold text-slate-700 mb-4">
+              <CalendarDaysIcon className="w-6 h-6 mr-2" style={dynamicStyles.primaryText} />
+              Quel jour ?
+            </h3>
+            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1" role="radiogroup" aria-label="Choix du jour">
+              {days.map((day) => {
+                const isSelected = day.key === selectedDate;
+                const weekday = day.date.toLocaleDateString("fr-FR", { weekday: "short" }).replace(".", "");
+                const month = day.date.toLocaleDateString("fr-FR", { month: "short" }).replace(".", "");
+                return (
+                  <button
+                    key={day.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    aria-label={`${day.date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}${day.closed ? " (fermé)" : ""}`}
+                    disabled={day.closed}
+                    onClick={() => setSelectedDate(day.key)}
+                    className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition-all ${
+                      day.closed
+                        ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
+                        : isSelected
+                        ? "shadow-md"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                    }`}
+                    style={isSelected ? dynamicStyles.activeOption : {}}
+                  >
+                    <span className="block text-xs capitalize">
+                      {day.key === today ? "Auj." : weekday}
+                    </span>
+                    <span className="block text-lg font-bold leading-tight">{day.date.getDate()}</span>
+                    <span className="block text-[11px] capitalize">{day.closed ? "Fermé" : month}</span>
+                  </button>
+                );
+              })}
             </div>
-          )}
-
-          {/* Date Selection */}
-          <div className="bg-white rounded-2xl shadow-soft-xl p-6 mb-8 border border-slate-200">
-            <label className="flex items-center text-lg font-semibold text-slate-700 mb-4">
-              <CalendarDaysIcon 
-                className="w-6 h-6 mr-2" 
-                style={dynamicStyles.primaryText}
+            <label className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+              Autre date :
+              <input
+                type="date"
+                value={isOtherDate ? selectedDate : ""}
+                min={today}
+                onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                className="px-3 py-1.5 border border-slate-200 rounded-xl text-sm text-slate-700 bg-white"
               />
-              Sélectionnez une date
             </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              min={today}
-              className="w-full px-5 py-4 border border-slate-200 rounded-2xl text-lg outline-none transition-all bg-slate-50/50 focus:bg-white"
-              onFocus={(e) => {
-                e.target.style.boxShadow = dynamicStyles.focusRing.boxShadow;
-                e.target.style.borderColor = dynamicStyles.focusRing.borderColor;
-              }}
-              onBlur={(e) => {
-                e.target.style.boxShadow = "none";
-                e.target.style.borderColor = "#e2e8f0";
-              }}
-            />
           </div>
 
           {/* Available Slots */}
           {loading && selectedDate && (
             <div className="text-center py-12">
-              <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${config.borderColor} mx-auto`}></div>
-              <p className="mt-4 text-slate-600">
-                Recherche des créneaux disponibles...
-              </p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style={dynamicStyles.primaryBorder}></div>
+              <p className="mt-4 text-slate-600">Recherche des créneaux disponibles...</p>
             </div>
           )}
 
           {!loading && selectedDate && availableSlots.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-2xl shadow-soft border border-slate-200">
+            <div className="text-center py-10 px-4 bg-white rounded-2xl shadow-soft border border-slate-200">
               <ClockIcon className="mx-auto h-12 w-12 text-amber-400 mb-4" />
-              <h3 className="text-xl font-medium text-slate-900 mb-2">
-                Aucun créneau disponible
-              </h3>
-              <p className="text-slate-600 mb-4">
-                {selectedStaff
-                  ? `${selectedStaff.first_name} n'a plus de créneau ce jour. Essayez une autre date ou « Sans préférence ».`
-                  : availabilityMessage === "Fermé ce jour"
-                  ? "Fermé ce jour. Choisissez un autre jour d'ouverture."
-                  : "Tous les créneaux de ce jour sont réservés. Essayez une autre date."}
-              </p>
-              {openDays.length > 0 && (
-                <div className={`inline-block ${config.lightBg} border ${config.lightBorderColor} rounded-xl px-4 py-3 mt-2`}>
-                  <p className="text-sm font-medium text-slate-700 mb-1">
-                    Jours d'ouverture :
-                  </p>
-                  <p className={`text-sm ${config.darkTextColor} font-semibold`}>
-                    {openDays.map(d => d.day).join(', ')}
-                  </p>
-                </div>
-              )}
+              <h3 className="text-xl font-medium text-slate-900 mb-2">Aucun créneau disponible</h3>
+              <p className="text-slate-600">{emptyMessage}</p>
             </div>
           )}
 
           {!loading && selectedDate && availableSlots.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-soft-xl p-6 border border-slate-200">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">
-                Créneaux disponibles ({availableSlots.length})
+            <div className="bg-white rounded-2xl shadow-soft-xl p-5 sm:p-6 border border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                {fromDateKey(selectedDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {availableSlots.map((slot, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSlotSelect(slot)}
-                    className="px-4 py-3 border rounded-xl text-center transition-colors duration-150 font-medium text-slate-900 shadow-soft focus:outline-none focus:ring-2"
-                    style={{ 
-                      ...dynamicStyles.primaryBg, 
-                      ...dynamicStyles.primaryBorderLight,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = themeSettings.primaryColor;
-                      e.currentTarget.style.backgroundColor = `${themeSettings.primaryColor}20`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = `${themeSettings.primaryColor}40`;
-                      e.currentTarget.style.backgroundColor = `${themeSettings.primaryColor}10`;
-                    }}
-                  >
-                    {slot.time}
-                  </button>
+              <p className="text-sm text-slate-500 mb-4">
+                {availableSlots.length} créneau{availableSlots.length > 1 ? "x" : ""} disponible{availableSlots.length > 1 ? "s" : ""}
+                {selectedStaff ? ` avec ${selectedStaff.first_name}` : ""}
+              </p>
+              <div className="space-y-5">
+                {slotGroups.map((group) => (
+                  <div key={group.label}>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">{group.label}</p>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3">
+                      {group.slots.map((slot) => (
+                        <button
+                          key={slot.time}
+                          type="button"
+                          onClick={() => handleSlotSelect(slot)}
+                          className="px-3 py-3 border rounded-xl text-center font-medium text-slate-900 shadow-soft hover:shadow-md focus:outline-none focus:ring-2 transition-all"
+                          style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryBorderLight }}
+                        >
+                          {slot.time}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -442,23 +422,24 @@ const BookingDateTime = () => {
         </main>
 
         {/* Footer */}
-        <footer className="mt-auto" style={customStyles.footer}>
+        <footer className="mt-auto" style={dynamicStyles.footer}>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm">
-            {salon?.phone && (
-              <div className="flex justify-center items-center gap-2 mb-1">
+            {phoneHref && (
+              <a href={phoneHref} className="flex justify-center items-center gap-2 mb-1 hover:underline">
                 <PhoneIcon className="w-4 h-4" />
                 <span>{salon.phone}</span>
-              </div>
+              </a>
             )}
-            {salon?.address && (
-              <div className="flex justify-center items-center gap-2">
+            {mapsUrl && (
+              <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="flex justify-center items-center gap-2 hover:underline">
                 <MapPinIcon className="w-4 h-4" />
                 <span>
-                  {salon.address} {salon.city && `, ${salon.city}`}
+                  {salon.address}
+                  {salon.city && `, ${salon.city}`}
                 </span>
-              </div>
+              </a>
             )}
-            <p className="mt-4 text-xs" style={customStyles.footerMuted}>
+            <p className="mt-4 text-xs" style={dynamicStyles.footerMuted}>
               © {new Date().getFullYear()} {salon?.name || "SalonHub"}. Tous droits réservés.
             </p>
           </div>

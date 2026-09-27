@@ -9,6 +9,7 @@ import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { usePublicTheme } from "../../contexts/PublicThemeContext";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
+import { confirmationStorageKey } from "../../utils/publicSalon";
 import {
   PhoneIcon as PhoneIconOutline,
   MapPinIcon,
@@ -25,7 +26,17 @@ const BookingConfirmation = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { service, date, slot, client, appointment } = location.state || {};
+  // État de navigation, sinon dernière confirmation de cet onglet (rafraîchissement)
+  const confirmation = (() => {
+    if (location.state?.service) return location.state;
+    try {
+      return JSON.parse(sessionStorage.getItem(confirmationStorageKey(slug)) || "null") || {};
+    } catch (e) {
+      return {};
+    }
+  })();
+  const { service, date, slot, client, appointment, finalAmount } = confirmation;
+  const totalAmount = finalAmount ?? service?.price;
   const { formatPrice } = useCurrency();
   const { salon, dynamicStyles } = usePublicTheme();
 
@@ -133,7 +144,7 @@ const BookingConfirmation = () => {
               <div className="mt-2 text-slate-700 leading-relaxed">
                 <p>
                   Votre {term.appointment.toLowerCase()} est en statut <strong>"en attente"</strong>.
-                  {term.establishment} vous confirmera dans les plus brefs délais.
+                  {salon?.name || "L'établissement"} vous confirmera dans les plus brefs délais.
                   {client?.preferred_contact_method && (
                     <span className="block mt-2 font-medium">
                       Nous vous contacterons par 
@@ -185,7 +196,7 @@ const BookingConfirmation = () => {
                 </span>
                 <span className="font-bold text-2xl flex items-center" style={dynamicStyles.primaryText}>
                   <CurrencyDollarIcon className="w-6 h-6 mr-1" />
-                  {formatPrice(service.price)}
+                  {formatPrice(totalAmount)}
                 </span>
               </div>
             )}

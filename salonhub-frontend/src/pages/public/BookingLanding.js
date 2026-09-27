@@ -21,6 +21,14 @@ import {
   ShoppingBagIcon as ShoppingBag,
 } from "@heroicons/react/24/outline";
 import GalleryLightbox from "../../components/common/GalleryLightbox";
+import {
+  getDayHours,
+  getDayKey,
+  getWeekSchedule,
+  hasBusinessHours,
+  getMapsUrl,
+  getPhoneHref,
+} from "../../utils/publicSalon";
 
 // Fonction utilitaire pour formater les minutes en HH:MM ou texte lisible
 const formatDuration = (minutes) => {
@@ -44,6 +52,7 @@ const BookingLanding = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState([]);
+  const [activeCategory, setActiveCategory] = useState(null);
 
   // Open gallery lightbox for a service
   const openGallery = useCallback((service, e) => {
@@ -123,15 +132,119 @@ const BookingLanding = () => {
     );
   }
 
+  const todayHours = getDayHours(salon?.business_hours, getDayKey(new Date()));
+  const schedule = getWeekSchedule(salon?.business_hours);
+  const mapsUrl = getMapsUrl(salon);
+  const phoneHref = getPhoneHref(salon?.phone);
+  const hasShop = ["PRO", "CUSTOM", "professional", "enterprise", "custom", "pro"].includes(
+    salon?.subscription_plan
+  );
+
+  // Catégories (dans l'ordre d'apparition) pour filtrer et regrouper les prestations
+  const categories = [...new Set(services.map((s) => s.category).filter(Boolean))];
+  const visibleServices = activeCategory
+    ? services.filter((s) => s.category === activeCategory)
+    : services;
+  const groups =
+    !activeCategory && categories.length > 1
+      ? [
+          ...categories.map((category) => ({
+            category,
+            items: services.filter((s) => s.category === category),
+          })),
+          { category: "Autres", items: services.filter((s) => !s.category) },
+        ].filter((group) => group.items.length > 0)
+      : [{ category: null, items: visibleServices }];
+
+  const goToService = (service) =>
+    navigate(`/book/${slug}/datetime?service=${service.id}`, { state: { service } });
+
+  const scrollToServices = () =>
+    document.getElementById("prestations")?.scrollIntoView({ behavior: "smooth" });
+
+  const hasGallery = (service) => {
+    if (!service.gallery) return false;
+    try {
+      const gallery = typeof service.gallery === "string" ? JSON.parse(service.gallery) : service.gallery;
+      return Array.isArray(gallery) && gallery.length > 0;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const renderServiceCard = (service) => (
+    <div
+      key={service.id}
+      className="group relative bg-white rounded-2xl shadow-soft hover:shadow-soft-xl transition-all duration-300 overflow-hidden border border-slate-200"
+    >
+      <button
+        type="button"
+        onClick={() => goToService(service)}
+        className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-2xl"
+        aria-label={`${term.book} : ${service.name}, ${formatPrice(service.price)}, ${formatDuration(service.duration)}`}
+      >
+        {/* Image (ou visuel neutre aux couleurs du salon) */}
+        <div className="h-36 sm:h-40 bg-slate-100 overflow-hidden relative">
+          {service.image_url ? (
+            <img
+              src={getImageUrl(service.image_url)}
+              alt=""
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center" style={dynamicStyles.gradientBg}>
+              <SparklesIcon className="h-10 w-10 text-white/80" />
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 sm:p-5">
+          <h3 className="text-lg font-semibold text-slate-900 mb-1">{service.name}</h3>
+          {service.description && (
+            <p className="text-slate-600 text-sm line-clamp-2 mb-3">{service.description}</p>
+          )}
+          <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-2">
+            <span className="text-lg font-bold" style={dynamicStyles.primaryText}>
+              {formatPrice(service.price)}
+            </span>
+            <span className="flex items-center gap-1 text-slate-500 text-sm">
+              <ClockIcon className="w-4 h-4" />
+              {formatDuration(service.duration)}
+            </span>
+          </div>
+        </div>
+
+        <div className="px-4 sm:px-5 py-3 flex items-center justify-between" style={dynamicStyles.primaryBg}>
+          <span className="font-medium text-sm" style={dynamicStyles.primaryText}>
+            {term.book}
+          </span>
+          <ChevronRightIcon className="w-4 h-4" style={dynamicStyles.primaryText} />
+        </div>
+      </button>
+
+      {hasGallery(service) && (
+        <button
+          type="button"
+          onClick={(e) => openGallery(service, e)}
+          className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
+          style={dynamicStyles.primaryText}
+          aria-label={`Voir les photos : ${service.name}`}
+        >
+          <PhotoIcon className="w-5 h-5" />
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-50" style={dynamicStyles.fontFamily}>
       {/* Hero Section - Slideshow + Intro */}
-      <div className="relative w-full h-[60vh] md:h-[70vh] overflow-hidden rounded-b-3xl shadow-soft-xl">
+      <div className="relative w-full min-h-[360px] h-[48vh] md:h-[60vh] overflow-hidden rounded-b-3xl shadow-soft-xl">
         {/* Background Images */}
         {salon?.banner_url ? (
           <img
             src={getImageUrl(salon.banner_url)}
-            alt={`Bannière ${term.establishment}`}
+            alt=""
             className="absolute inset-0 w-full h-full object-cover"
           />
         ) : salon?.images?.length > 0 ? (
@@ -139,7 +252,7 @@ const BookingLanding = () => {
             <img
               key={index}
               src={img}
-              alt={`Image ${index + 1}`}
+              alt=""
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
                 index === currentSlide ? "opacity-100" : "opacity-0"
               }`}
@@ -157,15 +270,15 @@ const BookingLanding = () => {
           {salon?.logo_url ? (
             <img
               src={getImageUrl(salon.logo_url)}
-              alt="Logo"
-              className="h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 rounded-2xl border-4 border-white/30 shadow-soft-xl object-cover mb-4 bg-white p-2"
+              alt={`Logo ${salon?.name || ""}`}
+              className="h-16 w-16 sm:h-20 sm:w-20 md:h-28 md:w-28 rounded-2xl border-4 border-white/30 shadow-soft-xl object-cover mb-3 bg-white p-2"
             />
           ) : (
             <div
-              className="h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 rounded-2xl flex items-center justify-center border-4 border-white/30 shadow-soft-xl mb-4"
+              className="h-16 w-16 sm:h-20 sm:w-20 md:h-28 md:w-28 rounded-2xl flex items-center justify-center border-4 border-white/30 shadow-soft-xl mb-3"
               style={dynamicStyles.gradientBg}
             >
-              <SparklesIcon className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
+              <SparklesIcon className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
             </div>
           )}
 
@@ -173,44 +286,66 @@ const BookingLanding = () => {
             {salon?.name || `Votre ${term.establishment.toLowerCase()}`}
           </h1>
 
-          <p className="mt-4 text-base sm:text-lg md:text-xl text-white/90 max-w-2xl drop-shadow-md px-4">
+          <p className="mt-2 sm:mt-3 text-base sm:text-lg md:text-xl text-white/90 max-w-2xl drop-shadow-md px-4">
             {salon?.slogan || config.bookingSubtitle}
           </p>
 
-          {salon?.phone && (
-            <div className="flex items-center justify-center gap-2 mt-6 text-white/90 text-sm sm:text-base">
-              <PhoneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>{salon.phone}</span>
-            </div>
+          {hasBusinessHours(salon?.business_hours) && (
+            <p className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-sm">
+              <span className={`h-2 w-2 rounded-full ${todayHours ? "bg-emerald-400" : "bg-slate-300"}`} />
+              {todayHours ? `Ouvert aujourd'hui · ${todayHours.open} – ${todayHours.close}` : "Fermé aujourd'hui"}
+            </p>
           )}
 
-          {salon?.address && (
-            <div className="flex items-center justify-center gap-2 text-white/90 mt-1 text-sm sm:text-base px-4 text-center">
-              <MapPinIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              <span>
-                {salon.address} {salon.city && `, ${salon.city}`}
-              </span>
-            </div>
-          )}
+          {/* Action principale visible dès le premier écran */}
+          <button
+            type="button"
+            onClick={scrollToServices}
+            className="mt-5 px-8 py-3 rounded-full text-white font-semibold shadow-soft-xl hover:opacity-90 transition-all"
+            style={dynamicStyles.primaryButton}
+          >
+            {term.bookOnline}
+          </button>
 
-          {/* New Shop Button */}
-          {(salon?.subscription_plan === 'PRO' || salon?.subscription_plan === 'CUSTOM' || salon?.subscription_plan === 'professional' || salon?.subscription_plan === 'enterprise' || salon?.subscription_plan === 'custom' || salon?.subscription_plan === 'pro') && (
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-white/90 text-sm sm:text-base">
+            {phoneHref && (
+              <a href={phoneHref} className="inline-flex items-center gap-2 hover:text-white underline-offset-4 hover:underline">
+                <PhoneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                {salon.phone}
+              </a>
+            )}
+            {mapsUrl && (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 hover:text-white underline-offset-4 hover:underline text-center"
+              >
+                <MapPinIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                {salon.address}
+                {salon.city && `, ${salon.city}`}
+              </a>
+            )}
+          </div>
+
+          {hasShop && (
             <button
-                onClick={() => navigate(`/book/${slug}/shop`)}
-                className="mt-8 px-8 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white font-bold hover:bg-white hover:text-gray-900 transition-all flex items-center gap-2"
+              type="button"
+              onClick={() => navigate(`/book/${slug}/shop`)}
+              className="mt-4 px-6 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-sm font-semibold hover:bg-white hover:text-gray-900 transition-all flex items-center gap-2"
             >
-                <ShoppingBag className="w-5 h-5" />
-                Accéder à la boutique
+              <ShoppingBag className="w-5 h-5" />
+              Accéder à la boutique
             </button>
           )}
         </div>
       </div>
 
       {/* Services Section */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-900 mb-3">
-            Choisissez {businessType === "restaurant" ? "votre plat" : businessType === "training" ? "votre formation" : businessType === "medical" ? "votre prestation" : "votre prestation"}
+      <main id="prestations" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 scroll-mt-4">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-900 mb-2">
+            Choisissez {businessType === "restaurant" ? "votre plat" : businessType === "training" ? "votre formation" : "votre prestation"}
           </h2>
           <p className="text-slate-600">
             {businessType === "restaurant"
@@ -223,6 +358,29 @@ const BookingLanding = () => {
           </p>
         </div>
 
+        {categories.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-8 sm:justify-center" role="tablist" aria-label="Catégories">
+            {[null, ...categories].map((category) => {
+              const active = activeCategory === category;
+              return (
+                <button
+                  key={category || "all"}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveCategory(category)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border transition-all ${
+                    active ? "shadow-md" : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                  }`}
+                  style={active ? dynamicStyles.activeOption : {}}
+                >
+                  {category || "Tout"}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {services.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-slate-600">
@@ -230,106 +388,67 @@ const BookingLanding = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {services.map((service) => (
-              <div
-                key={service.id}
-                onClick={() =>
-                  navigate(`/book/${slug}/datetime`, { state: { service } })
-                }
-                className="group bg-white rounded-2xl shadow-soft hover:shadow-soft-xl transition-all duration-300 cursor-pointer overflow-hidden border border-slate-200"
-              >
-                {/* Service Image */}
-                <div className="h-40 bg-slate-100 overflow-hidden relative">
-                  <img
-                    src={
-                      getImageUrl(service.image_url) ||
-                      `https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop`
-                    }
-                    alt={service.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-slate-900/20 transition"></div>
-
-                  {/* Gallery button */}
-                  {service.gallery && (
-                    typeof service.gallery === 'string'
-                      ? JSON.parse(service.gallery).length > 0
-                      : service.gallery.length > 0
-                  ) && (
-                    <button
-                      onClick={(e) => openGallery(service, e)}
-                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all opacity-0 group-hover:opacity-100"
-                      style={dynamicStyles.primaryText}
-                      title="Voir la galerie"
-                    >
-                      <PhotoIcon className="w-5 h-5" />
-                    </button>
-                  )}
+          <div className="space-y-10">
+            {groups.map((group) => (
+              <section key={group.category || "all"} aria-label={group.category || undefined}>
+                {group.category && (
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">{group.category}</h3>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+                  {group.items.map(renderServiceCard)}
                 </div>
-
-                {/* Content */}
-                <div className="p-4 sm:p-6">
-                  <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-1">
-                    {service.name}
-                  </h3>
-
-                  {service.description && (
-                    <p className="text-slate-600 text-sm line-clamp-2 mb-4">
-                      {service.description}
-                    </p>
-                  )}
-
-                  <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-3">
-                    <span className="text-lg sm:text-xl font-bold" style={dynamicStyles.primaryText}>
-                      {formatPrice(service.price)}
-                    </span>
-
-                    <div className="flex items-center gap-1 text-slate-500">
-                      <ClockIcon className="w-5 h-5" />
-                      <span className="text-sm">{formatDuration(service.duration)}</span>
-                    </div>
-                  </div>
-
-                  {service.category && (
-                    <span
-                      className="inline-block mt-3 px-3 py-1 text-xs font-medium rounded-full"
-                      style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryText }}
-                    >
-                      {service.category}
-                    </span>
-                  )}
-                </div>
-
-                <div className="px-4 sm:px-6 py-3 flex items-center justify-between" style={dynamicStyles.primaryBg}>
-                  <span className="font-medium text-sm" style={dynamicStyles.primaryText}>
-                    {term.book}
-                  </span>
-                  <ChevronRightIcon className="w-4 h-4" style={dynamicStyles.primaryText} />
-                </div>
-              </div>
+              </section>
             ))}
           </div>
+        )}
+
+        {/* Horaires de la semaine */}
+        {hasBusinessHours(salon?.business_hours) && (
+          <section className="mt-12 max-w-md mx-auto bg-white rounded-2xl border border-slate-200 shadow-soft p-5">
+            <h3 className="flex items-center gap-2 text-base font-semibold text-slate-800 mb-3">
+              <ClockIcon className="w-5 h-5" style={dynamicStyles.primaryText} />
+              Horaires d'ouverture
+            </h3>
+            <dl className="divide-y divide-slate-100">
+              {schedule.map((day) => (
+                <div
+                  key={day.key}
+                  className={`flex justify-between py-1.5 text-sm ${
+                    day.key === getDayKey(new Date()) ? "font-semibold text-slate-900" : "text-slate-600"
+                  }`}
+                >
+                  <dt>{day.label}</dt>
+                  <dd>{day.hours ? `${day.hours.open} – ${day.hours.close}` : "Fermé"}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
         )}
       </main>
 
       {/* Footer */}
       <footer className="mt-12" style={dynamicStyles.footer}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-sm">
-          {salon?.phone && (
-            <div className="flex justify-center items-center gap-2 mb-1">
+          {phoneHref && (
+            <a href={phoneHref} className="flex justify-center items-center gap-2 mb-1 hover:underline">
               <PhoneIcon className="w-4 h-4" />
               <span>{salon.phone}</span>
-            </div>
+            </a>
           )}
 
-          {salon?.address && (
-            <div className="flex justify-center items-center gap-2">
+          {mapsUrl && (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex justify-center items-center gap-2 hover:underline"
+            >
               <MapPinIcon className="w-4 h-4" />
               <span>
-                {salon.address} {salon.city && `, ${salon.city}`}
+                {salon.address}
+                {salon.city && `, ${salon.city}`}
               </span>
-            </div>
+            </a>
           )}
 
           <p className="mt-4 text-xs" style={dynamicStyles.footerMuted}>

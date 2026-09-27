@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams, useLocation, useSearchParams } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { usePublicTheme } from "../../contexts/PublicThemeContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { formatDuration } from "../../contexts/PublicThemeContext";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
+import { confirmationStorageKey } from "../../utils/publicSalon";
 import PromoCodeInput from "../../components/common/PromoCodeInput";
 import api from "../../services/api";
 import pwaService from "../../services/pwaService";
@@ -28,15 +29,23 @@ import {
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 
+// Paiement en ligne (Mobile Money) : désactivé pour l'instant, le règlement se fait sur place
+const ONLINE_PAYMENT_ENABLED = false;
+
 const BookingClientInfo = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { service, date, slot, staff } = location.state || {};
+  const [searchParams] = useSearchParams();
+  // Réservation en cours : état de navigation, sinon reconstruite depuis l'URL (rafraîchissement)
+  const [booking, setBooking] = useState(() =>
+    location.state?.service && location.state?.date && location.state?.slot ? location.state : null
+  );
+  const { service, date, slot, staff } = booking || {};
   const { formatPrice } = useCurrency();
   const { salon, settings, dynamicStyles, theme: themeSettings } = usePublicTheme();
 
-  const { loading, error, createAppointment, clearError } =
+  const { loading, error, createAppointment, clearError, fetchServices, fetchStaff } =
     usePublicBooking(slug);
 
   // Business type configuration
@@ -53,7 +62,8 @@ const BookingClientInfo = () => {
     phone: "",
     email: "",
     notes: "",
-    preferred_contact_method: "email",
+    // Vide = choix par défaut selon les coordonnées saisies (voir effectiveContactMethod)
+    preferred_contact_method: "",
   });
 
   const [formErrors, setFormErrors] = useState({});
@@ -81,11 +91,41 @@ const BookingClientInfo = () => {
   const showPaymentSection = isDepositEnabled;
 
   useEffect(() => {
-    if (!service || !date || !slot) {
-      navigate(`/book/${slug}`);
+    if (booking) return;
+    const serviceId = searchParams.get("service");
+    const dateParam = searchParams.get("date");
+    const timeParam = searchParams.get("time");
+    if (!serviceId || !dateParam || !timeParam) {
+      navigate(`/book/${slug}`, { replace: true });
       return;
     }
-  }, [service, date, slot, slug, navigate]);
+    let active = true;
+    (async () => {
+      try {
+        const services = await fetchServices();
+        const found = (services || []).find((s) => String(s.id) === serviceId);
+        if (!found) throw new Error("service introuvable");
+        const staffId = Number(searchParams.get("staff")) || null;
+        const staffList = staffId ? await fetchStaff(found.id) : [];
+        if (!active) return;
+        setBooking({
+          service: found,
+          date: dateParam,
+          slot: { time: timeParam },
+          staff: staffList.find((m) => m.id === staffId) || null,
+        });
+      } catch (e) {
+        if (active) navigate(`/book/${slug}`, { replace: true });
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [booking, searchParams, slug, navigate, fetchServices, fetchStaff]);
+
+  // Sans choix explicite : email si renseigné, sinon WhatsApp (au numéro saisi)
+  const effectiveContactMethod =
+    formData.preferred_contact_method || (formData.email.trim() ? "email" : "whatsapp");
 
   useEffect(() => {
     if (service) {
@@ -133,6 +173,8 @@ const BookingClientInfo = () => {
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errors.email = "Email invalide";
+    } else if (effectiveContactMethod === "email" && !formData.email.trim()) {
+      errors.email = "Indiquez votre email pour recevoir la confirmation par email";
     }
 
     setFormErrors(errors);
@@ -159,7 +201,7 @@ const BookingClientInfo = () => {
         appointment_date: date,
         start_time: slot.time + ":00",
         notes: formData.notes.trim() || null,
-        preferred_contact_method: formData.preferred_contact_method,
+        preferred_contact_method: effectiveContactMethod,
         promo_code: promoCode?.code || null,
         final_amount: finalAmount,
         staff_id: staff?.id || null,
@@ -192,15 +234,22 @@ const BookingClientInfo = () => {
         startPaymentPolling(result.appointment.id, apptDetails);
 
       } else {
-        navigate(`/book/${slug}/confirmation`, {
-          state: {
-            service,
-            date,
-            slot,
-            client: formData,
-            appointment: result.appointment,
-          },
-        });
+        const confirmation = {
+          service,
+          date,
+          slot,
+          staff,
+          client: { ...formData, preferred_contact_method: effectiveContactMethod },
+          appointment: result.appointment,
+          finalAmount,
+          promoCode: promoCode?.code || null,
+        };
+        try {
+          sessionStorage.setItem(confirmationStorageKey(slug), JSON.stringify(confirmation));
+        } catch (e) {
+          /* stockage indisponible : la confirmation reste affichée via l'état de navigation */
+        }
+        navigate(`/book/${slug}/confirmation`, { state: confirmation });
       }
     } catch (err) {
       console.error("Error creating appointment:", err);
@@ -398,7 +447,7 @@ const BookingClientInfo = () => {
                         {formatPrice(service.price)}
                       </span>
                     )}
-                    {depositAmount && (
+                    {depositAmount && ONLINE_PAYMENT_ENABLED && (
                       <div className="mt-2 text-xs text-slate-500 space-y-0.5 text-right">
                         <div>Acompte : <span className="font-semibold text-amber-600">{formatPrice(depositAmount)}</span></div>
                         <div>Reste sur place : <span className="font-medium">{formatPrice(remainingAmount)}</span></div>
@@ -495,7 +544,7 @@ const BookingClientInfo = () => {
                       onChange={handleChange}
                       onFocus={(e) => handleInputFocus(e, "phone")}
                       onBlur={(e) => handleInputBlur(e, "phone")}
-                      placeholder="+33 6 ..."
+                      placeholder="Votre numéro de téléphone"
                       className={`w-full px-5 py-4 border rounded-2xl transition-all outline-none bg-slate-50/50 focus:bg-white ${
                         formErrors.phone ? "border-red-500 ring-2 ring-red-100" : "border-slate-200"
                       }`}
@@ -551,13 +600,13 @@ const BookingClientInfo = () => {
                         type="button"
                         onClick={() => setFormData({ ...formData, preferred_contact_method: method.id })}
                         className={`flex flex-col items-center justify-center p-4 border-2 rounded-2xl transition-all duration-200 ${
-                          formData.preferred_contact_method === method.id
+                          effectiveContactMethod === method.id
                             ? "shadow-md"
                             : "border-slate-100 bg-slate-50/50 hover:bg-white hover:border-slate-200"
                         }`}
-                        style={formData.preferred_contact_method === method.id ? dynamicStyles.activeOption : {}}
+                        style={effectiveContactMethod === method.id ? dynamicStyles.activeOption : {}}
                       >
-                        <method.icon className={`w-8 h-8 mb-2 ${formData.preferred_contact_method === method.id ? "" : "text-slate-400"}`} />
+                        <method.icon className={`w-8 h-8 mb-2 ${effectiveContactMethod === method.id ? "" : "text-slate-400"}`} />
                         <span className="text-xs font-bold uppercase tracking-wide">{method.label}</span>
                       </button>
                     ))}
@@ -607,13 +656,33 @@ const BookingClientInfo = () => {
                         <CurrencyDollarIcon className="w-6 h-6" style={dynamicStyles.primaryText} />
                       </div>
                       <div>
-                        <h4 className="text-lg font-bold">Paiement d'acompte</h4>
-                        <p className="text-sm text-slate-500">Sécurisez votre {term.appointment.toLowerCase()} avec un acompte</p>
+                        <h4 className="text-lg font-bold">{ONLINE_PAYMENT_ENABLED ? "Paiement d'acompte" : "Paiement"}</h4>
+                        <p className="text-sm text-slate-500">
+                          {ONLINE_PAYMENT_ENABLED
+                            ? `Sécurisez votre ${term.appointment.toLowerCase()} avec un acompte`
+                            : "Le règlement se fait sur place, lors de la prestation"}
+                        </p>
                       </div>
                     </div>
 
+                    {!ONLINE_PAYMENT_ENABLED && (
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2 text-sm text-slate-600">
+                        <div className="flex justify-between items-center">
+                          <span>Montant à régler sur place</span>
+                          <span className="font-semibold text-slate-800">{formatPrice(finalAmount)}</span>
+                        </div>
+                        {depositAmount && (
+                          <p>
+                            {salon?.name || "L'établissement"} peut vous demander un acompte de{" "}
+                            <strong className="text-slate-800">{formatPrice(depositAmount)}</strong> pour confirmer
+                            votre {term.appointment.toLowerCase()} : vous serez contacté(e) à ce sujet.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {/* Deposit Breakdown Card */}
-                    {depositAmount && (
+                    {depositAmount && ONLINE_PAYMENT_ENABLED && (
                       <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-slate-600">Montant total du service</span>
@@ -630,7 +699,8 @@ const BookingClientInfo = () => {
                       </div>
                     )}
 
-                    {/* Payment Method Selection */}
+                    {/* Payment Method Selection (uniquement si un paiement en ligne existe) */}
+                    {ONLINE_PAYMENT_ENABLED && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Mobile Money payment option temporarily disabled */}
 
@@ -657,6 +727,7 @@ const BookingClientInfo = () => {
                         ) : null}
                       </button>
                     </div>
+                    )}
 
                     {/* Mobile Money Phone Input */}
                     {formData.payment_method === 'paygate' && (
