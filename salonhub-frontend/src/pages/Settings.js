@@ -18,6 +18,7 @@ import WebhookSettings from "../components/settings/WebhookSettings";
 import { getImageUrl } from "../utils/imageUtils";
 import BusinessHoursEditor, { normalizeBusinessHours } from "../components/common/BusinessHoursEditor";
 import StaffAvailabilityModal from "../components/staff/StaffAvailabilityModal";
+import InvitationLinkPanel from "../components/staff/InvitationLinkPanel";
 import api from "../services/api";
 import {
   ClockIcon,
@@ -97,6 +98,8 @@ const Settings = () => {
   const [staff, setStaff] = useState([]);
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [availabilityMember, setAvailabilityMember] = useState(null);
+  // Lien d'invitation à afficher après création / renvoi : { token, firstName }
+  const [invitationToShow, setInvitationToShow] = useState(null);
   const [editingStaff, setEditingStaff] = useState(null);
   const [staffFormData, setStaffFormData] = useState({
     first_name: "",
@@ -464,11 +467,17 @@ const Settings = () => {
 
         setMessage(`${term.staffMember} modifié avec succès !`);
       } else {
-        await axios.post(`${API_URL}/auth/staff`, staffFormData, {
+        // Sans mot de passe : l'employé reçoit un lien pour choisir le sien
+        const { password, ...createData } = staffFormData;
+        const response = await axios.post(`${API_URL}/auth/staff`, createData, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        setMessage(`${term.staffMember} ajouté avec succès !`);
+        const invitationToken = response.data?.data?.invitation_token;
+        if (invitationToken) {
+          setInvitationToShow({ token: invitationToken, firstName: staffFormData.first_name });
+        }
+        setMessage(`${term.staffMember} ajouté : invitation envoyée par email`);
       }
 
       fetchStaff();
@@ -497,6 +506,20 @@ const Settings = () => {
       setTimeout(() => setMessage(null), 3000);
     } catch (err) {
       setError(err.response?.data?.error || "Erreur lors de la suppression");
+    }
+  };
+
+  const handleResendInvitation = async (member) => {
+    setError(null);
+    try {
+      const response = await axios.post(
+        `${API_URL}/auth/staff/${member.id}/invitation`,
+        {},
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+      );
+      setInvitationToShow({ token: response.data.data.invitation_token, firstName: member.first_name });
+    } catch (err) {
+      setError(err.response?.data?.error || "Impossible de renvoyer l'invitation");
     }
   };
 
@@ -1006,6 +1029,20 @@ const Settings = () => {
                                 <p className="text-xs sm:text-sm text-slate-600 truncate">
                                   {member.email}
                                 </p>
+                                {Number(member.invitation_pending) === 1 && (
+                                  <p className="flex flex-wrap items-center gap-2 mt-0.5">
+                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                                      Invitation en attente
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleResendInvitation(member)}
+                                      className="text-xs font-medium text-violet-700 hover:underline"
+                                    >
+                                      Renvoyer le lien
+                                    </button>
+                                  </p>
+                                )}
                                 {(member.is_bookable === 0 || member.is_bookable === false) && (
                                   <p className="text-xs text-amber-600">
                                     Ne prend pas de {term.appointments.toLowerCase()}
@@ -1389,6 +1426,26 @@ const Settings = () => {
       </div>
 
       {/* Staff Modal */}
+      {invitationToShow && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="invitation-title" className="bg-white rounded-2xl shadow-soft-xl max-w-lg w-full p-6 animate-scale-in">
+            <h3 id="invitation-title" className="font-display text-lg font-semibold text-slate-800 mb-4">
+              Invitation de {invitationToShow.firstName}
+            </h3>
+            <InvitationLinkPanel
+              token={invitationToShow.token}
+              firstName={invitationToShow.firstName}
+              salonName={salonInfo?.name}
+            />
+            <div className="flex justify-end mt-5">
+              <button type="button" onClick={() => setInvitationToShow(null)} className="btn-premium">
+                Terminé
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {availabilityMember && (
         <StaffAvailabilityModal
           member={availabilityMember}
@@ -1530,22 +1587,10 @@ const Settings = () => {
               )}
 
               {!editingStaff && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Mot de passe *
-                  </label>
-                  <input
-                    type="password"
-                    required={!editingStaff}
-                    value={staffFormData.password}
-                    onChange={(e) => setStaffFormData({ ...staffFormData, password: e.target.value })}
-                    className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 ${config.focusRing} focus:border-transparent`}
-                    minLength={6}
-                  />
-                  <p className="mt-1 text-xs text-slate-500">
-                    Minimum 6 caractères
-                  </p>
-                </div>
+                <p className="text-sm text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                  {staffFormData.first_name || "L'employé"} recevra un email avec un lien pour choisir son
+                  mot de passe. Vous pourrez aussi copier ce lien après l'ajout.
+                </p>
               )}
 
               <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">

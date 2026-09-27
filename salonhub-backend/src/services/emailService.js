@@ -678,6 +678,46 @@ class EmailService {
 
     return await this.sendEmail({ to, subject, html });
   }
+
+  /**
+   * Invitation d'un employé : lien pour choisir son mot de passe
+   */
+  async sendStaffInvitation({ to, firstName, salonName, inviterName, invitationUrl }) {
+    const subject = `${inviterName || salonName} vous invite à rejoindre ${salonName} sur SalonHub`;
+    const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f5;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;">
+        <tr><td style="background:linear-gradient(135deg,#8b5cf6 0%,#6366f1 100%);padding:30px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:22px;">Bienvenue dans l'équipe ${salonName}</h1>
+        </td></tr>
+        <tr><td style="padding:36px;">
+          <p style="margin:0 0 16px;color:#333;font-size:16px;">Bonjour <strong>${firstName}</strong>,</p>
+          <p style="margin:0 0 24px;color:#555;font-size:15px;line-height:1.6;">
+            ${inviterName ? `${inviterName} vous a` : "Vous avez été"} ajouté(e) à l'équipe de <strong>${salonName}</strong>.
+            Choisissez votre mot de passe pour accéder à votre planning.
+          </p>
+          <p style="text-align:center;margin:0 0 24px;">
+            <a href="${invitationUrl}" style="display:inline-block;padding:14px 28px;background:#7c3aed;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;">
+              Activer mon compte
+            </a>
+          </p>
+          <p style="margin:0;color:#888;font-size:13px;line-height:1.6;">
+            Ce lien est valable 7 jours. Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
+            <span style="color:#7c3aed;word-break:break-all;">${invitationUrl}</span>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+    return this.sendEmail({ to, subject, html });
+  }
 }
 
 // Export une instance unique (singleton)

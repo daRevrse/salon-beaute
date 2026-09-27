@@ -6,6 +6,7 @@
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 const { query, transaction } = require("../config/database");
 const { generateToken, authMiddleware } = require("../middleware/auth");
 const { tenantMiddleware } = require("../middleware/tenant");
@@ -334,6 +335,15 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    // Compte employé pas encore activé (invitation en attente)
+    if (!user.password_hash && !user.google_id) {
+      return res.status(400).json({
+        success: false,
+        error: "Compte pas encore activé : utilisez le lien d'invitation reçu par email ou demandez-en un nouveau au responsable du salon",
+        code: "invitation_pending",
+      });
+    }
+
     // Vérifier si c'est un compte Google-only (sans mot de passe)
     if (!user.password_hash) {
       return res.status(400).json({
@@ -620,6 +630,56 @@ const normalizeWorkingHours = (hours) => {
 
 const canManageStaff = (req) => ["owner", "admin"].includes(req.user.role);
 
+// ==========================================
+// HELPERS - Invitations des employés
+// ==========================================
+const INVITATION_TTL_DAYS = 7;
+const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
+
+/**
+ * Crée (ou remplace) l'invitation d'un employé et l'envoie par email.
+ * Retourne le jeton en clair : il n'est jamais stocké, seule son empreinte l'est.
+ */
+const createStaffInvitation = async ({ userId, tenantId, createdBy }) => {
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000);
+
+  // Un seul lien valide à la fois par employé
+  await query(
+    "DELETE FROM staff_invitations WHERE user_id = ? AND tenant_id = ? AND accepted_at IS NULL",
+    [userId, tenantId]
+  );
+  await query(
+    `INSERT INTO staff_invitations (tenant_id, user_id, token_hash, expires_at, created_by)
+     VALUES (?, ?, ?, ?, ?)`,
+    [tenantId, userId, hashToken(token), expiresAt, createdBy || null]
+  );
+
+  const [info] = await query(
+    `SELECT u.email, u.first_name, t.name AS salon_name,
+            CONCAT(inv.first_name, ' ', inv.last_name) AS inviter_name
+     FROM users u
+     JOIN tenants t ON t.id = ?
+     LEFT JOIN users inv ON inv.id = ?
+     WHERE u.id = ?`,
+    [tenantId, createdBy || 0, userId]
+  );
+  const invitationUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/invitation/${token}`;
+
+  // L'envoi ne bloque pas : le lien reste copiable depuis l'application
+  emailService
+    .sendStaffInvitation({
+      to: info.email,
+      firstName: info.first_name,
+      salonName: info.salon_name,
+      inviterName: info.inviter_name,
+      invitationUrl,
+    })
+    .catch((err) => console.error("Erreur envoi invitation employé:", err.message));
+
+  return { token, expiresAt };
+};
+
 const findTenantUser = async (id, tenantId) => {
   const [user] = await query(
     "SELECT id, role FROM users WHERE id = ? AND tenant_id = ?",
@@ -649,7 +709,8 @@ router.get("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
           id, email, first_name, last_name, phone, role,
           is_active, last_login_at, created_at, avatar_url,
           can_confirm_appointments, can_manage_shop,
-          is_bookable, working_hours
+          is_bookable, working_hours,
+          (password_hash IS NULL AND google_id IS NULL) AS invitation_pending
         FROM users
         WHERE tenant_id = ?
         ORDER BY role, last_name`,
@@ -712,11 +773,17 @@ router.post("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
 
     const { email, password, first_name, last_name, phone, role, can_confirm_appointments, can_manage_shop } = req.body;
 
-    // Validation
-    if (!email || !password || !first_name || !last_name) {
+    // Validation (sans mot de passe : l'employé le choisira via son lien d'invitation)
+    if (!email || !first_name || !last_name) {
       return res.status(400).json({
         success: false,
-        error: "Email, password, prénom et nom requis",
+        error: "Email, prénom et nom requis",
+      });
+    }
+    if (password && String(password).length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: "Le mot de passe doit contenir au moins 8 caractères",
       });
     }
 
@@ -742,8 +809,8 @@ router.post("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
       });
     }
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
+    // Hash password (null = compte à activer par invitation)
+    const passwordHash = password ? await bcrypt.hash(password, 10) : null;
 
     // Créer
     const result = await query(
@@ -770,11 +837,26 @@ router.post("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
       [result.insertId, req.tenantId, role || "staff"]
     );
 
+    let invitation = null;
+    if (!password) {
+      invitation = await createStaffInvitation({
+        userId: result.insertId,
+        tenantId: req.tenantId,
+        createdBy: req.user.id,
+      });
+    }
+
     res.status(201).json({
       success: true,
-      message: "Employé ajouté avec succès",
+      message: invitation
+        ? "Employé ajouté : lien d'invitation envoyé par email"
+        : "Employé ajouté avec succès",
       data: {
         id: result.insertId,
+        ...(invitation && {
+          invitation_token: invitation.token,
+          invitation_expires_at: invitation.expiresAt,
+        }),
       },
     });
   } catch (error) {
@@ -887,6 +969,124 @@ router.put("/staff/:id", authMiddleware, tenantMiddleware, async (req, res) => {
       success: false,
       error: "Erreur serveur",
     });
+  }
+});
+
+// ==========================================
+// POST - (Re)générer le lien d'invitation d'un employé (owner/admin)
+// ==========================================
+router.post("/staff/:id/invitation", authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    if (!canManageStaff(req)) {
+      return res.status(403).json({ success: false, error: "Accès refusé" });
+    }
+    const [member] = await query(
+      "SELECT id, role, password_hash FROM users WHERE id = ? AND tenant_id = ?",
+      [req.params.id, req.tenantId]
+    );
+    if (!member || member.role === "owner") {
+      return res.status(404).json({ success: false, error: "Employé introuvable" });
+    }
+    if (member.password_hash) {
+      return res.status(400).json({ success: false, error: "Ce compte est déjà activé" });
+    }
+    const invitation = await createStaffInvitation({
+      userId: member.id,
+      tenantId: req.tenantId,
+      createdBy: req.user.id,
+    });
+    res.json({
+      success: true,
+      message: "Nouveau lien d'invitation envoyé",
+      data: { invitation_token: invitation.token, invitation_expires_at: invitation.expiresAt },
+    });
+  } catch (error) {
+    console.error("Erreur renvoi invitation:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
+// ==========================================
+// GET - Consulter une invitation (public)
+// ==========================================
+const findValidInvitation = async (token) => {
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) return { error: "Invitation introuvable", status: 404 };
+  const [invitation] = await query(
+    `SELECT si.id, si.user_id, si.tenant_id, si.expires_at, si.accepted_at,
+            u.email, u.first_name, u.role, u.password_hash,
+            t.name AS salon_name, t.logo_url, t.slug
+     FROM staff_invitations si
+     JOIN users u ON u.id = si.user_id
+     JOIN tenants t ON t.id = si.tenant_id
+     WHERE si.token_hash = ?`,
+    [hashToken(token)]
+  );
+  if (!invitation) return { error: "Invitation introuvable", status: 404 };
+  if (invitation.accepted_at || invitation.password_hash) {
+    return { error: "Cette invitation a déjà été utilisée : connectez-vous avec votre mot de passe", status: 410 };
+  }
+  if (new Date(invitation.expires_at) < new Date()) {
+    return { error: "Ce lien a expiré : demandez un nouveau lien au responsable du salon", status: 410 };
+  }
+  return { invitation };
+};
+
+router.get("/invitations/:token", async (req, res) => {
+  try {
+    const { invitation, error, status } = await findValidInvitation(req.params.token);
+    if (error) return res.status(status).json({ success: false, error });
+    res.json({
+      success: true,
+      data: {
+        first_name: invitation.first_name,
+        email: invitation.email,
+        role: invitation.role,
+        salon_name: invitation.salon_name,
+        salon_logo: invitation.logo_url,
+        expires_at: invitation.expires_at,
+      },
+    });
+  } catch (error) {
+    console.error("Erreur consultation invitation employé:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
+// ==========================================
+// POST - Accepter une invitation : choix du mot de passe (public)
+// ==========================================
+router.post("/invitations/:token/accept", async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || String(password).length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: "Le mot de passe doit contenir au moins 8 caractères",
+      });
+    }
+    const { invitation, error, status } = await findValidInvitation(req.params.token);
+    if (error) return res.status(status).json({ success: false, error });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await transaction(async (connection) => {
+      await connection.query(
+        "UPDATE users SET password_hash = ?, is_active = 1 WHERE id = ? AND password_hash IS NULL",
+        [passwordHash, invitation.user_id]
+      );
+      await connection.query(
+        "UPDATE staff_invitations SET accepted_at = NOW() WHERE id = ?",
+        [invitation.id]
+      );
+    });
+
+    res.json({
+      success: true,
+      message: "Compte activé",
+      data: { email: invitation.email },
+    });
+  } catch (error) {
+    console.error("Erreur acceptation invitation employé:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
   }
 });
 

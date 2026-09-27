@@ -557,24 +557,42 @@ router.post("/appointments", async (req, res) => {
 
     let clientId;
 
-    if (client.length > 0) {
-      // Client existant
-      clientId = client[0].id;
+    // Nom saisi différent de la fiche existante : signalé au salon sur le RDV
+    let bookedAsNote = null;
 
-      // Mettre à jour les infos du client
-      await db.query(
-        `UPDATE clients
-         SET first_name = ?, last_name = ?, email = ?, preferred_contact_method = ?
-         WHERE id = ? AND tenant_id = ?`,
-        [
-          first_name,
-          last_name,
-          email,
-          preferred_contact_method || "email",
-          clientId,
-          tenantId,
-        ]
+    if (client.length > 0) {
+      // Client existant (même téléphone) : la fiche du salon n'est jamais écrasée
+      // par une réservation publique, on complète seulement les champs vides.
+      clientId = client[0].id;
+      const [existing] = await db.query(
+        "SELECT first_name, last_name, email, preferred_contact_method FROM clients WHERE id = ?",
+        [clientId]
       );
+
+      const updates = [];
+      const params = [];
+      if (!existing.email && email) {
+        updates.push("email = ?");
+        params.push(email);
+      }
+      if (!existing.preferred_contact_method && preferred_contact_method) {
+        updates.push("preferred_contact_method = ?");
+        params.push(preferred_contact_method);
+      }
+      if (updates.length > 0) {
+        await db.query(
+          `UPDATE clients SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?`,
+          [...params, clientId, tenantId]
+        );
+      }
+
+      const normalize = (value) => String(value || "").trim().toLowerCase();
+      if (
+        normalize(existing.first_name) !== normalize(first_name) ||
+        normalize(existing.last_name) !== normalize(last_name)
+      ) {
+        bookedAsNote = `Réservé en ligne au nom de ${first_name} ${last_name}${email && email !== existing.email ? ` (${email})` : ""}`;
+      }
     } else {
       // Créer un nouveau client
       const result = await db.query(
@@ -628,7 +646,7 @@ router.post("/appointments", async (req, res) => {
         appointment_date,
         start_time,
         end_time,
-        notes || null,
+        [bookedAsNote, notes].filter(Boolean).join("\n") || null,
       ]
     );
 

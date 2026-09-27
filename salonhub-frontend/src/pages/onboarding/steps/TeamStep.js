@@ -1,36 +1,26 @@
 /**
  * TeamStep - Étape 4 (facultative) : ajouter les membres de l'équipe
  *
- * Crée les comptes employés (POST /auth/staff) avec un mot de passe
- * provisoire généré, à transmettre à chaque employé. Les disponibilités
- * de chacun se règlent ensuite dans Paramètres > Personnel.
+ * Crée les comptes employés (POST /auth/staff) sans mot de passe : chaque
+ * employé reçoit un lien d'invitation (email, copie, WhatsApp) pour choisir
+ * le sien. Les disponibilités se règlent ensuite dans Paramètres > Personnel.
  */
 
 import { useState, useEffect } from "react";
 import api from "../../../services/api";
-import {
-  UserPlusIcon,
-  ClipboardDocumentIcon,
-  CheckIcon,
-} from "@heroicons/react/24/outline";
+import { useAuth } from "../../../contexts/AuthContext";
+import { UserPlusIcon, CheckIcon } from "@heroicons/react/24/outline";
+import InvitationLinkPanel from "../../../components/staff/InvitationLinkPanel";
 import StepFooter from "./StepFooter";
 
 const EMPTY_FORM = { first_name: "", last_name: "", email: "", phone: "" };
-// Sans caractères ambigus (0/O, 1/l/I)
-const PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-
-const generatePassword = (length = 10) => {
-  const values = new Uint32Array(length);
-  window.crypto.getRandomValues(values);
-  return Array.from(values, (v) => PASSWORD_CHARS[v % PASSWORD_CHARS.length]).join("");
-};
 
 const TeamStep = ({ term, onNext, onSkip, onBack }) => {
+  const { tenant } = useAuth();
   const [members, setMembers] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState(null);
-  const [copiedId, setCopiedId] = useState(null);
 
   // Membres déjà créés (hors propriétaire)
   useEffect(() => {
@@ -50,7 +40,6 @@ const TeamStep = ({ term, onNext, onSkip, onBack }) => {
       setError("Le prénom, le nom et l'email sont obligatoires");
       return;
     }
-    const password = generatePassword();
     setAdding(true);
     try {
       const res = await api.post("/auth/staff", {
@@ -59,28 +48,16 @@ const TeamStep = ({ term, onNext, onSkip, onBack }) => {
         email: form.email.trim(),
         phone: form.phone.trim() || null,
         role: "staff",
-        password,
       });
       setMembers((current) => [
         ...current,
-        { id: res.data?.data?.id, ...form, temporaryPassword: password },
+        { id: res.data?.data?.id, ...form, invitationToken: res.data?.data?.invitation_token },
       ]);
       setForm(EMPTY_FORM);
     } catch (err) {
       setError(err.response?.data?.error || "Erreur lors de l'ajout");
     } finally {
       setAdding(false);
-    }
-  };
-
-  const handleCopy = async (member) => {
-    const text = `Connexion SalonHub\nEmail : ${member.email}\nMot de passe provisoire : ${member.temporaryPassword}\n${window.location.origin}/login`;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedId(member.id);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch (e) {
-      /* presse-papiers indisponible : le mot de passe reste affiché */
     }
   };
 
@@ -108,23 +85,17 @@ const TeamStep = ({ term, onNext, onSkip, onBack }) => {
                 </div>
                 <CheckIcon className="h-5 w-5 text-emerald-500 flex-shrink-0" />
               </div>
-              {member.temporaryPassword && (
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
-                  <p className="text-xs text-amber-800">
-                    Mot de passe provisoire :{" "}
-                    <code className="font-semibold tracking-wide">{member.temporaryPassword}</code>
-                    {" "}— à transmettre à {member.first_name}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(member)}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-amber-800 hover:text-amber-900"
-                  >
-                    <ClipboardDocumentIcon className="h-4 w-4" />
-                    {copiedId === member.id ? "Copié !" : "Copier les accès"}
-                  </button>
+              {member.invitationToken ? (
+                <div className="mt-3">
+                  <InvitationLinkPanel
+                    token={member.invitationToken}
+                    firstName={member.first_name}
+                    salonName={tenant?.name}
+                  />
                 </div>
-              )}
+              ) : Number(member.invitation_pending) === 1 ? (
+                <p className="mt-1 text-xs text-amber-700">Invitation envoyée, en attente d'activation</p>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -165,8 +136,8 @@ const TeamStep = ({ term, onNext, onSkip, onBack }) => {
           {adding ? "Ajout..." : `Ajouter ce ${term.staffMember.toLowerCase()}`}
         </button>
         <p className="text-xs text-slate-500">
-          Un mot de passe provisoire est généré pour chaque compte. Horaires, congés et
-          prestations de chacun se règlent ensuite dans Paramètres › {term.staff}.
+          Chaque {term.staffMember.toLowerCase()} reçoit un lien pour choisir son mot de passe.
+          Horaires, congés et prestations de chacun se règlent ensuite dans Paramètres › {term.staff}.
         </p>
       </div>
 

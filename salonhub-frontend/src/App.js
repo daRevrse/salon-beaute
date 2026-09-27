@@ -19,6 +19,7 @@ import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import AcceptInvitation from "./pages/AcceptInvitation";
 
 // Onboarding
 import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
@@ -119,6 +120,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/invitation/:token" element={<AcceptInvitation />} />
                 <Route path="/:tenant/login" element={<Login />} />
                 <Route path="/:tenant/register" element={<Register />} />
                 <Route
