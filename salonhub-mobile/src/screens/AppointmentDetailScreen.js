@@ -12,8 +12,12 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import ActionButton from '../components/ActionButton';
+import { useAuth } from '../contexts/AuthContext';
 
 const AppointmentDetailScreen = ({ navigation, route }) => {
+  const { user } = useAuth();
+  // Suppression définitive réservée au propriétaire et aux responsables
+  const canDelete = ['owner', 'admin'].includes(user?.role);
   const { appointmentId } = route.params;
   const [appointment, setAppointment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -345,13 +349,15 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
             disabled={processing}
           />
         )}
-        <ActionButton
-          label="Supprimer"
-          icon="trash-outline"
-          variant="outline"
-          onPress={handleDelete}
-          disabled={processing}
-        />
+        {canDelete && (
+          <ActionButton
+            label="Supprimer"
+            icon="trash-outline"
+            variant="outline"
+            onPress={handleDelete}
+            disabled={processing}
+          />
+        )}
       </View>
     </View>
   );

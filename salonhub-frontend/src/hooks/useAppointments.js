@@ -3,37 +3,64 @@
  * Gestion complète des rendez-vous (CRUD)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../services/api';
 
-export const useAppointments = () => {
+export const APPOINTMENTS_PAGE_SIZE = 50;
+
+// Retire les filtres vides pour ne pas envoyer "status=" ou "date=" à l'API
+const cleanParams = (params) =>
+  Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== '' && value !== undefined && value !== null)
+  );
+
+export const useAppointments = (initialFilters = {}) => {
   const [appointments, setAppointments] = useState([]);
+  const [pagination, setPagination] = useState({ total: 0, limit: APPOINTMENTS_PAGE_SIZE, offset: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // Derniers filtres utilisés : réappliqués après création / modification / suppression
+  const lastParamsRef = useRef({ limit: APPOINTMENTS_PAGE_SIZE, offset: 0, ...initialFilters });
+  // Seule la réponse de la dernière requête est appliquée (évite les réponses dans le désordre)
+  const requestIdRef = useRef(0);
 
-  // Charger tous les rendez-vous
-  const fetchAppointments = useCallback(async (filters = {}) => {
+  // Charger les rendez-vous (paginés). Sans argument, recharge avec les derniers filtres.
+  const fetchAppointments = useCallback(async (filters) => {
+    const params =
+      filters === undefined
+        ? lastParamsRef.current
+        : { limit: APPOINTMENTS_PAGE_SIZE, offset: 0, ...filters };
+    lastParamsRef.current = params;
+    const requestId = ++requestIdRef.current;
+
     try {
       setLoading(true);
       setError(null);
       
-      const response = await api.get('/appointments', { params: filters });
+      const response = await api.get('/appointments', { params: cleanParams(params) });
+      const data = Array.isArray(response.data?.data) ? response.data.data : [];
+      if (requestId !== requestIdRef.current) return { success: true, data, stale: true };
+
+      setAppointments(data);
+      setPagination(
+        response.data?.pagination || { total: data.length, limit: params.limit, offset: params.offset }
+      );
       
-      if (response.data && Array.isArray(response.data.data)) {
-        setAppointments(response.data.data);
-      } else {
-        setAppointments([]);
-      }
-      
-      return { success: true, data: response.data.data };
+      return { success: true, data };
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Erreur lors du chargement';
-      setError(errorMsg);
+      if (requestId === requestIdRef.current) setError(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [setAppointments, setLoading, setError]);
+
+  // Changer de page en conservant les filtres courants
+  const goToOffset = useCallback(
+    (offset) => fetchAppointments({ ...lastParamsRef.current, offset: Math.max(0, offset) }),
+    [fetchAppointments]
+  );
 
   useEffect(() => {
     fetchAppointments();
@@ -155,6 +182,8 @@ export const useAppointments = () => {
 
   return {
     appointments,
+    pagination,
+    goToOffset,
     loading,
     error,
     fetchAppointments,

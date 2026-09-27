@@ -18,6 +18,8 @@ import {
   InformationCircleIcon,
   PhoneIcon,
   MapPinIcon,
+  UserCircleIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 
 const BookingDateTime = () => {
@@ -33,6 +35,7 @@ const BookingDateTime = () => {
     loading,
     error,
     fetchAvailability,
+    fetchStaff,
   } = usePublicBooking(slug);
 
   // Business type configuration
@@ -43,8 +46,13 @@ const BookingDateTime = () => {
   // Thème personnalisé - Utilisation de dynamicStyles du contexte
   const customStyles = dynamicStyles;
 
-  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState(location.state?.date || "");
   const [selectedSlot, setSelectedSlot] = useState(null);
+  // Choix du professionnel (null = sans préférence)
+  const [staffOptions, setStaffOptions] = useState([]);
+  const [selectedStaffId, setSelectedStaffId] = useState(location.state?.staff?.id || null);
+  const [availabilityMessage, setAvailabilityMessage] = useState(null);
+  const selectedStaff = staffOptions.find((m) => m.id === selectedStaffId) || null;
 
   useEffect(() => {
     if (!service) {
@@ -54,10 +62,29 @@ const BookingDateTime = () => {
   }, [service, slug, navigate]);
 
   useEffect(() => {
+    if (!service) return;
+    let active = true;
+    fetchStaff(service.id).then((staff) => {
+      if (!active) return;
+      setStaffOptions(staff);
+      // Préférence devenue invalide (pro qui ne réalise plus la prestation)
+      setSelectedStaffId((current) =>
+        current && !staff.some((m) => m.id === current) ? null : current
+      );
+    });
+    return () => {
+      active = false;
+    };
+  }, [service, fetchStaff]);
+
+  useEffect(() => {
     if (selectedDate && service) {
-      fetchAvailability(service.id, selectedDate);
+      setAvailabilityMessage(null);
+      fetchAvailability(service.id, selectedDate, selectedStaffId)
+        .then((result) => setAvailabilityMessage(result?.message || null))
+        .catch(() => {});
     }
-  }, [selectedDate, service, fetchAvailability]);
+  }, [selectedDate, selectedStaffId, service, fetchAvailability]);
 
   const handleSlotSelect = (slot) => {
     setSelectedSlot(slot);
@@ -66,6 +93,7 @@ const BookingDateTime = () => {
         service,
         date: selectedDate,
         slot,
+        staff: selectedStaff,
       },
     });
   };
@@ -74,8 +102,9 @@ const BookingDateTime = () => {
     navigate(`/book/${slug}`);
   };
 
-  // Date minimum = today
-  const today = new Date().toISOString().split("T")[0];
+  // Date minimum = aujourd'hui (date locale, pas UTC)
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   // Helper: Parse business hours
   const parseBusinessHours = () => {
@@ -212,6 +241,56 @@ const BookingDateTime = () => {
             </div>
           )}
 
+          {/* Choix du professionnel */}
+          {staffOptions.length > 1 && (
+            <div className="bg-white rounded-2xl shadow-soft-xl p-6 mb-8 border border-slate-200">
+              <h3 className="flex items-center text-lg font-semibold text-slate-700 mb-4">
+                <UserCircleIcon className="w-6 h-6 mr-2" style={dynamicStyles.primaryText} />
+                Avec qui ?
+              </h3>
+              <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Choix du professionnel">
+                {[{ id: null, first_name: "Sans préférence", last_initial: "" }, ...staffOptions].map((member) => {
+                  const isSelected = selectedStaffId === member.id;
+                  return (
+                    <button
+                      key={member.id ?? "any"}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => setSelectedStaffId(member.id)}
+                      className={`flex items-center gap-2 pl-2 pr-4 py-2 rounded-full border-2 text-sm font-medium transition-all ${
+                        isSelected ? "shadow-md" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                      }`}
+                      style={isSelected ? dynamicStyles.activeOption : {}}
+                    >
+                      {member.id === null ? (
+                        <span className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
+                          <SparklesIcon className="h-4 w-4 text-slate-500" />
+                        </span>
+                      ) : member.avatar_url ? (
+                        <img
+                          src={getImageUrl(member.avatar_url)}
+                          alt=""
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span
+                          className="h-8 w-8 rounded-full flex items-center justify-center font-semibold"
+                          style={{ ...dynamicStyles.primaryBg, ...dynamicStyles.primaryText }}
+                        >
+                          {member.first_name?.charAt(0)}
+                        </span>
+                      )}
+                      <span>
+                        {member.first_name} {member.last_initial}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Business Hours */}
           {businessSchedule && openDays.length > 0 && (
             <div 
@@ -305,7 +384,11 @@ const BookingDateTime = () => {
                 Aucun créneau disponible
               </h3>
               <p className="text-slate-600 mb-4">
-                {term.establishment} est fermé ce jour ou tous les créneaux sont réservés.
+                {selectedStaff
+                  ? `${selectedStaff.first_name} n'a plus de créneau ce jour. Essayez une autre date ou « Sans préférence ».`
+                  : availabilityMessage === "Fermé ce jour"
+                  ? "Fermé ce jour. Choisissez un autre jour d'ouverture."
+                  : "Tous les créneaux de ce jour sont réservés. Essayez une autre date."}
               </p>
               {openDays.length > 0 && (
                 <div className={`inline-block ${config.lightBg} border ${config.lightBorderColor} rounded-xl px-4 py-3 mt-2`}>

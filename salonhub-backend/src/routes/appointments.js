@@ -15,6 +15,7 @@ const emailService = require("../services/emailService");
 const pushService = require("../services/pushService");
 const expoPushService = require("../services/expoPushService");
 const receiptService = require("../services/receiptService");
+const availabilityService = require("../services/availabilityService");
 
 // Appliquer middlewares
 router.use(authMiddleware);
@@ -65,6 +66,39 @@ const checkTimeConflict = async (
 };
 
 // ==========================================
+// HELPER: Périmètre de visibilité d'un employé
+// ==========================================
+// Un employé (rôle "staff") ne voit que ses propres RDV, ainsi que les RDV
+// non assignés s'il a le droit de confirmer (pour pouvoir les prendre en charge).
+// Propriétaire, responsable (admin) et clés API voient tout le salon (null).
+const getStaffScope = async (req) => {
+  if (req.user?.role !== "staff") return null;
+  const [perms] = await query(
+    "SELECT can_confirm_appointments FROM users WHERE id = ?",
+    [req.user.id]
+  );
+  return {
+    userId: req.user.id,
+    includeUnassigned: !!perms?.can_confirm_appointments,
+  };
+};
+
+const scopeCondition = (scope, alias = "a") => {
+  if (!scope) return { sql: "", params: [] };
+  return {
+    sql: ` AND (${alias}.staff_id = ? OR (? = 1 AND ${alias}.staff_id IS NULL))`,
+    params: [scope.userId, scope.includeUnassigned ? 1 : 0],
+  };
+};
+
+const canAccessAppointment = (scope, appointment) =>
+  !scope ||
+  appointment.staff_id === scope.userId ||
+  (scope.includeUnassigned && !appointment.staff_id);
+
+const isManager = (req) => ["owner", "admin"].includes(req.user?.role);
+
+// ==========================================
 // GET - Liste des RDV
 // ==========================================
 router.get("/", checkScope("appointments:read"), async (req, res) => {
@@ -76,12 +110,64 @@ router.get("/", checkScope("appointments:read"), async (req, res) => {
       status,
       client_id,
       staff_id,
+      search,
       limit = 100,
       offset = 0,
     } = req.query;
 
-    let sql = `
-      SELECT 
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
+    const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
+
+    let where = " WHERE a.tenant_id = ?";
+    const params = [req.tenantId];
+
+    // Filtres
+    if (date) {
+      where += " AND a.appointment_date = ?";
+      params.push(date);
+    }
+
+    if (start_date && end_date) {
+      where += " AND a.appointment_date BETWEEN ? AND ?";
+      params.push(start_date, end_date);
+    }
+
+    if (status) {
+      where += " AND a.status = ?";
+      params.push(status);
+    }
+
+    if (client_id) {
+      where += " AND a.client_id = ?";
+      params.push(client_id);
+    }
+
+    if (staff_id) {
+      where += " AND a.staff_id = ?";
+      params.push(staff_id);
+    }
+
+    if (search) {
+      where +=
+        " AND (CONCAT(c.first_name, ' ', c.last_name) LIKE ? OR c.phone LIKE ? OR s.name LIKE ?)";
+      const term = `%${search}%`;
+      params.push(term, term, term);
+    }
+
+    // Un employé ne voit que ses RDV
+    const scope = scopeCondition(await getStaffScope(req));
+    where += scope.sql;
+    params.push(...scope.params);
+
+    const from = `
+      FROM appointments a
+      LEFT JOIN clients c ON a.client_id = c.id
+      LEFT JOIN services s ON a.service_id = s.id
+      LEFT JOIN users u ON a.staff_id = u.id
+    `;
+
+    const appointments = await query(
+      `SELECT
         a.*,
         c.first_name as client_first_name,
         c.last_name as client_last_name,
@@ -92,49 +178,24 @@ router.get("/", checkScope("appointments:read"), async (req, res) => {
         s.price as service_price,
         u.first_name as staff_first_name,
         u.last_name as staff_last_name
-      FROM appointments a
-      LEFT JOIN clients c ON a.client_id = c.id
-      LEFT JOIN services s ON a.service_id = s.id
-      LEFT JOIN users u ON a.staff_id = u.id
-      WHERE a.tenant_id = ?
-    `;
-    const params = [req.tenantId];
+      ${from} ${where}
+      ORDER BY a.appointment_date DESC, a.start_time DESC LIMIT ? OFFSET ?`,
+      [...params, safeLimit, safeOffset]
+    );
 
-    // Filtres
-    if (date) {
-      sql += " AND a.appointment_date = ?";
-      params.push(date);
-    }
-
-    if (start_date && end_date) {
-      sql += " AND a.appointment_date BETWEEN ? AND ?";
-      params.push(start_date, end_date);
-    }
-
-    if (status) {
-      sql += " AND a.status = ?";
-      params.push(status);
-    }
-
-    if (client_id) {
-      sql += " AND a.client_id = ?";
-      params.push(client_id);
-    }
-
-    if (staff_id) {
-      sql += " AND a.staff_id = ?";
-      params.push(staff_id);
-    }
-
-    sql +=
-      " ORDER BY a.appointment_date DESC, a.start_time DESC LIMIT ? OFFSET ?";
-    params.push(parseInt(limit), parseInt(offset));
-
-    const appointments = await query(sql, params);
+    const [{ total }] = await query(
+      `SELECT COUNT(*) as total ${from} ${where}`,
+      params
+    );
 
     res.json({
       success: true,
       data: appointments,
+      pagination: {
+        total: Number(total),
+        limit: safeLimit,
+        offset: safeOffset,
+      },
     });
   } catch (error) {
     console.error("Erreur récupération RDV:", error);
@@ -150,6 +211,7 @@ router.get("/", checkScope("appointments:read"), async (req, res) => {
 // ==========================================
 router.get("/today", checkScope("appointments:read"), async (req, res) => {
   try {
+    const scope = scopeCondition(await getStaffScope(req));
     const appointments = await query(
       `SELECT
         a.*,
@@ -168,8 +230,9 @@ router.get("/today", checkScope("appointments:read"), async (req, res) => {
       WHERE a.tenant_id = ?
       AND a.appointment_date = CURDATE()
       AND a.status IN ('pending', 'confirmed', 'completed')
+      ${scope.sql}
       ORDER BY a.start_time`,
-      [req.tenantId]
+      [req.tenantId, ...scope.params]
     );
 
     res.json({
@@ -179,6 +242,92 @@ router.get("/today", checkScope("appointments:read"), async (req, res) => {
     });
   } catch (error) {
     console.error("Erreur RDV du jour:", error);
+    res.status(500).json({
+      success: false,
+      error: "Erreur serveur",
+    });
+  }
+});
+
+// ==========================================
+// GET - Statistiques du tableau de bord
+// ==========================================
+// Calculées en SQL (plus de limite de 100 RDV côté client).
+// Le chiffre d'affaires n'est renvoyé qu'au propriétaire et aux responsables ;
+// pour un employé, les compteurs portent sur ses propres RDV.
+router.get("/stats/dashboard", checkScope("appointments:read"), async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+    const scope = scopeCondition(await getStaffScope(req));
+    const showRevenue = isManager(req);
+
+    const [counts] = await query(
+      `SELECT
+        SUM(a.appointment_date = CURDATE() AND a.status IN ('pending', 'confirmed', 'completed')) AS today_count,
+        SUM(a.status = 'pending') AS pending_count,
+        SUM(a.appointment_date BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())
+            AND a.status = 'completed') AS completed_month,
+        SUM(a.appointment_date BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())
+            AND a.status = 'cancelled') AS cancelled_month,
+        COALESCE(SUM(CASE WHEN a.status = 'completed'
+            AND a.appointment_date BETWEEN DATE_FORMAT(CURDATE(), '%Y-%m-01') AND LAST_DAY(CURDATE())
+            THEN s.price ELSE 0 END), 0) AS month_revenue,
+        COALESCE(SUM(CASE WHEN a.status = 'completed' AND a.appointment_date = CURDATE()
+            THEN s.price ELSE 0 END), 0) AS today_revenue
+      FROM appointments a
+      LEFT JOIN services s ON a.service_id = s.id
+      WHERE a.tenant_id = ? ${scope.sql}`,
+      [tenantId, ...scope.params]
+    );
+
+    const [clientCount] = await query(
+      "SELECT COUNT(*) AS total FROM clients WHERE tenant_id = ?",
+      [tenantId]
+    );
+    const [serviceCount] = await query(
+      "SELECT COUNT(*) AS total FROM services WHERE tenant_id = ? AND is_active = 1",
+      [tenantId]
+    );
+
+    const popularServices = await query(
+      `SELECT s.id, s.name, s.price, s.category, COUNT(a.id) AS booking_count
+      FROM services s
+      LEFT JOIN appointments a ON a.service_id = s.id AND a.tenant_id = s.tenant_id ${scope.sql}
+      WHERE s.tenant_id = ?
+      GROUP BY s.id, s.name, s.price, s.category
+      ORDER BY booking_count DESC, s.name
+      LIMIT 5`,
+      [...scope.params, tenantId]
+    );
+
+    const recentClients = await query(
+      `SELECT id, first_name, last_name, email, phone
+      FROM clients WHERE tenant_id = ?
+      ORDER BY created_at DESC, id DESC LIMIT 5`,
+      [tenantId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        todayAppointments: Number(counts.today_count) || 0,
+        pendingAppointments: Number(counts.pending_count) || 0,
+        completedThisMonth: Number(counts.completed_month) || 0,
+        cancelledThisMonth: Number(counts.cancelled_month) || 0,
+        todayRevenue: showRevenue ? Number(counts.today_revenue) : null,
+        monthRevenue: showRevenue ? Number(counts.month_revenue) : null,
+        totalClients: Number(clientCount.total) || 0,
+        totalServices: Number(serviceCount.total) || 0,
+        popularServices: popularServices.map((service) => ({
+          ...service,
+          bookingCount: Number(service.booking_count) || 0,
+        })),
+        recentClients,
+        scope: scope.sql ? "staff" : "salon",
+      },
+    });
+  } catch (error) {
+    console.error("Erreur statistiques dashboard:", error);
     res.status(500).json({
       success: false,
       error: "Erreur serveur",
@@ -213,7 +362,7 @@ router.get("/:id", checkScope("appointments:read"), async (req, res) => {
       [id, req.tenantId]
     );
 
-    if (!appointment) {
+    if (!appointment || !canAccessAppointment(await getStaffScope(req), appointment)) {
       return res.status(404).json({
         success: false,
         error: "Rendez-vous introuvable",
@@ -298,9 +447,29 @@ router.post("/", checkScope("appointments:write"), async (req, res) => {
       });
     }
 
-    // --- NOUVELLE LOGIQUE D'ASSIGNATION AUTOMATIQUE ---
+    // --- ASSIGNATION ---
     let finalStaffId = staff_id;
-    
+
+    // Un employé qui crée un RDV sans préciser d'employé le prend pour lui
+    if (!finalStaffId && req.user.role === "staff") {
+      finalStaffId = req.user.id;
+    }
+
+    // Sinon : employé libre sur le créneau (horaires, congés, prestations, RDV)
+    if (!finalStaffId) {
+      const assignment = await availabilityService.findStaffForSlot({
+        tenantId: req.tenantId,
+        serviceId: service_id,
+        date: appointment_date,
+        startTime: start_time,
+        includePast: true,
+      });
+      if (assignment.available && assignment.staffId) {
+        finalStaffId = assignment.staffId;
+      }
+    }
+
+    // Repli (hors horaires, salon sans employé réservable) : employé unique
     if (!finalStaffId) {
       const activeStaff = await query(
         "SELECT id FROM users WHERE tenant_id = ? AND is_active = TRUE",
@@ -340,7 +509,7 @@ router.post("/", checkScope("appointments:write"), async (req, res) => {
     if (hasConflict) {
       return res.status(409).json({
         success: false,
-        error: "Conflit horaire",
+        error: "Un rendez-vous existe déjà sur ce créneau pour cet employé",
         message: "Un rendez-vous existe déjà sur ce créneau",
       });
     }
@@ -480,7 +649,7 @@ router.put("/:id", checkScope("appointments:write"), async (req, res) => {
       [id, req.tenantId]
     );
 
-    if (!existing) {
+    if (!existing || !canAccessAppointment(await getStaffScope(req), existing)) {
       return res.status(404).json({
         success: false,
         error: "Rendez-vous introuvable",
@@ -512,7 +681,7 @@ router.put("/:id", checkScope("appointments:write"), async (req, res) => {
       if (hasConflict) {
         return res.status(409).json({
           success: false,
-          error: "Conflit horaire",
+          error: "Un autre rendez-vous existe déjà sur ce créneau pour cet employé",
           message: "Un autre rendez-vous existe déjà sur ce créneau",
         });
       }
@@ -608,7 +777,7 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
       [id, req.tenantId]
     );
 
-    if (!appointment) {
+    if (!appointment || !canAccessAppointment(await getStaffScope(req), appointment)) {
       return res.status(404).json({
         success: false,
         error: "Rendez-vous introuvable",
@@ -632,6 +801,15 @@ router.patch("/:id/status", checkScope("appointments:write"), async (req, res) =
       }
 
       // 2. Gérer l'assignation staff
+      // Un employé qui confirme un RDV non assigné le prend en charge
+      if (!appointment.staff_id && req.user.role === "staff") {
+        await query("UPDATE appointments SET staff_id = ? WHERE id = ?", [
+          req.user.id,
+          id,
+        ]);
+        appointment.staff_id = req.user.id;
+      }
+
       if (!appointment.staff_id) {
         const activeStaff = await query(
           "SELECT id FROM users WHERE tenant_id = ? AND is_active = TRUE",
@@ -908,6 +1086,15 @@ router.delete("/:id", checkScope("appointments:write"), async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Suppression définitive réservée au propriétaire et aux responsables
+    if (!isManager(req)) {
+      return res.status(403).json({
+        success: false,
+        error: "Permission refusée",
+        message: "Seuls le propriétaire et les responsables peuvent supprimer un rendez-vous. Vous pouvez l'annuler.",
+      });
+    }
+
     const result = await query(
       "DELETE FROM appointments WHERE id = ? AND tenant_id = ?",
       [id, req.tenantId]
@@ -991,8 +1178,14 @@ router.get("/availability/slots", checkScope("appointments:read"), async (req, r
 
     const bookedSlots = await query(sql, params);
 
-    // TODO: Implémenter génération créneaux basée sur business_hours
-    // Pour l'instant, retourner les slots occupés
+    // Créneaux libres calculés par employé (horaires, congés, prestations, RDV)
+    const availability = await availabilityService.getAvailableSlots({
+      tenantId: req.tenantId,
+      serviceId: service_id,
+      date,
+      staffId: staff_id || null,
+      includePast: true,
+    });
 
     res.json({
       success: true,
@@ -1000,6 +1193,8 @@ router.get("/availability/slots", checkScope("appointments:read"), async (req, r
         date,
         service_duration: service.duration,
         booked_slots: bookedSlots,
+        slots: availability.slots || [],
+        message: availability.message || null,
       },
     });
   } catch (error) {
@@ -1052,7 +1247,7 @@ router.post("/:id/send-confirmation", checkScope("appointments:write"), async (r
       [id, req.tenantId]
     );
 
-    if (!appointment) {
+    if (!appointment || !canAccessAppointment(await getStaffScope(req), appointment)) {
       return res.status(404).json({
         success: false,
         error: "Rendez-vous introuvable",
@@ -1206,6 +1401,21 @@ Nous vous attendons avec plaisir ! 😊
 router.get("/:id/receipt", checkScope("appointments:read"), async (req, res) => {
   try {
     const { id } = req.params;
+
+    const scope = await getStaffScope(req);
+    if (scope) {
+      const [appointment] = await query(
+        "SELECT staff_id FROM appointments WHERE id = ? AND tenant_id = ?",
+        [id, req.tenantId]
+      );
+      if (!appointment || !canAccessAppointment(scope, appointment)) {
+        return res.status(404).json({
+          success: false,
+          error: "Aucun reçu trouvé pour ce rendez-vous",
+        });
+      }
+    }
+
     const receipt = await receiptService.getReceiptByAppointmentId(id, req.tenantId);
 
     if (!receipt) {

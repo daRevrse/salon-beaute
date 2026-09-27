@@ -18,6 +18,7 @@ import ActionButton from '../components/ActionButton';
 import StatusBadge from '../components/StatusBadge';
 import EmptyState from '../components/EmptyState';
 import { useSocket } from '../contexts/SocketContext';
+import { useAuth } from '../contexts/AuthContext';
 
 // Configuration du calendrier en français
 LocaleConfig.locales['fr'] = {
@@ -33,6 +34,9 @@ LocaleConfig.locales['fr'] = {
 LocaleConfig.defaultLocale = 'fr';
 
 const AppointmentsScreen = ({ navigation }) => {
+  const { user } = useAuth();
+  // Suppression définitive réservée au propriétaire et aux responsables
+  const canDelete = ['owner', 'admin'].includes(user?.role);
   const socket = useSocket();
   const [appointments, setAppointments] = useState([]);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
@@ -338,14 +342,16 @@ const AppointmentsScreen = ({ navigation }) => {
                 disabled={isProcessing}
               />
             )}
-            <ActionButton
-              label="Supprimer"
-              icon="trash-outline"
-              variant="outline"
-              size="sm"
-              onPress={() => handleActionPress(item.id, 'delete')}
-              disabled={isProcessing}
-            />
+            {canDelete && (
+              <ActionButton
+                label="Supprimer"
+                icon="trash-outline"
+                variant="outline"
+                size="sm"
+                onPress={() => handleActionPress(item.id, 'delete')}
+                disabled={isProcessing}
+              />
+            )}
           </View>
         </View>
       </TouchableOpacity>

@@ -84,9 +84,9 @@ const StaffScreen = ({ navigation }) => {
     switch (role) {
       case 'owner':
         return 'Propriétaire';
-      case 'manager':
+      case 'admin':
         return 'Responsable';
-      case 'employee':
+      case 'staff':
         return 'Employé';
       default:
         return role;
@@ -97,9 +97,9 @@ const StaffScreen = ({ navigation }) => {
     switch (role) {
       case 'owner':
         return '#6366F1';
-      case 'manager':
+      case 'admin':
         return '#6366F1';
-      case 'employee':
+      case 'staff':
         return '#3B82F6';
       default:
         return '#6B7280';

@@ -11,6 +11,7 @@ const emailService = require("../services/emailService");
 const pushService = require("../services/pushService");
 const expoPushService = require("../services/expoPushService");
 const { checkPublicSubscription } = require("../middleware/tenant");
+const availabilityService = require("../services/availabilityService");
 
 // ===== ABONNEMENTS =====
 
@@ -380,195 +381,79 @@ router.get("/salon/:slug/settings", checkPublicSubscription('slug'), async (req,
 });
 
 /**
+ * GET /api/public/salon/:slug/staff
+ * Professionnels proposés au client pour une prestation (étape "Avec qui ?")
+ * Query params: service_id
+ * Retourne une liste vide si le salon n'a pas d'employé réservable.
+ */
+router.get("/salon/:slug/staff", checkPublicSubscription('slug'), async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { service_id } = req.query;
+
+    if (!service_id) {
+      return res.status(400).json({ error: "service_id est requis" });
+    }
+
+    const [tenant] = await db.query("SELECT id FROM tenants WHERE slug = ?", [slug]);
+    if (!tenant) {
+      return res.status(404).json({ error: "Salon non trouvé" });
+    }
+
+    const staff = await availabilityService.getStaffForService(tenant.id, service_id);
+
+    // Données publiques minimales : prénom + initiale du nom
+    res.json({
+      staff: staff.map((member) => ({
+        id: member.id,
+        first_name: member.first_name,
+        last_initial: member.last_name ? `${member.last_name.charAt(0)}.` : "",
+        avatar_url: member.avatar_url || null,
+      })),
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des professionnels:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+/**
  * GET /api/public/salon/:slug/availability
  * Obtenir les créneaux disponibles pour un service et une date
- * Query params: service_id, date (YYYY-MM-DD)
+ * Query params: service_id, date (YYYY-MM-DD), staff_id (optionnel)
+ * Les créneaux sont calculés par employé (horaires, congés, prestations, RDV)
+ * et les créneaux déjà passés du jour ne sont pas proposés.
  * Vérifie que l'abonnement est actif
  */
 router.get("/salon/:slug/availability", checkPublicSubscription('slug'), async (req, res) => {
   try {
     const { slug } = req.params;
-    const { service_id, date } = req.query;
+    const { service_id, date, staff_id } = req.query;
 
     if (!service_id || !date) {
       return res.status(400).json({ error: "service_id et date sont requis" });
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: "Format de date invalide (YYYY-MM-DD)" });
+    }
 
-    // Récupérer le tenant
-    const tenant = await db.query(
-      "SELECT id FROM tenants WHERE slug = ? ",
-      [slug]
-    );
-
-    if (tenant.length === 0) {
+    const [tenant] = await db.query("SELECT id FROM tenants WHERE slug = ?", [slug]);
+    if (!tenant) {
       return res.status(404).json({ error: "Salon non trouvé" });
     }
 
-    const tenantId = tenant[0].id;
+    const result = await availabilityService.getAvailableSlots({
+      tenantId: tenant.id,
+      serviceId: service_id,
+      date,
+      staffId: staff_id || null,
+    });
 
-    // Récupérer le service pour connaître sa durée
-    const service = await db.query(
-      "SELECT id, duration FROM services WHERE id = ? AND tenant_id = ? AND is_active = 1",
-      [service_id, tenantId]
-    );
-
-    if (service.length === 0) {
+    if (result.error === "SERVICE_NOT_FOUND") {
       return res.status(404).json({ error: "Service non trouvé" });
     }
 
-    const serviceDuration = service[0].duration;
-
-    // Récupérer les paramètres du salon
-    const settings = await db.query(
-      `SELECT setting_key, setting_value, setting_type
-       FROM settings
-       WHERE tenant_id = ? AND setting_key IN ('business_hours', 'slot_duration')`,
-      [tenantId]
-    );
-
-    // Helper pour parser les horaires quel que soit le format
-    const parseDaySchedule = (daySchedule) => {
-      if (!daySchedule || daySchedule === "closed") return { closed: true };
-      if (typeof daySchedule === "string" && daySchedule.includes("-")) {
-        const [open, close] = daySchedule.split("-");
-        return { open, close, closed: false };
-      }
-      return daySchedule; // Suppose déjà au format { open, close, closed }
-    };
-
-    let businessHours = null;
-    let slotDuration = 30;
-
-    settings.forEach((setting) => {
-      if (setting.setting_key === "business_hours") {
-        try {
-          // Gérer le cas où c'est déjà un objet ou une chaîne JSON
-          businessHours =
-            typeof setting.setting_value === "string" && (setting.setting_value.startsWith("{") || setting.setting_value.startsWith("["))
-              ? JSON.parse(setting.setting_value)
-              : setting.setting_value;
-        } catch (e) {
-          console.error("Erreur parsing business_hours:", e);
-          businessHours = setting.setting_value;
-        }
-      } else if (setting.setting_key === "slot_duration") {
-        slotDuration = parseInt(setting.setting_value);
-      }
-    });
-
-    // Business hours par défaut
-    if (!businessHours) {
-      businessHours = {
-        monday: { open: "09:00", close: "18:00", closed: false },
-        tuesday: { open: "09:00", close: "18:00", closed: false },
-        wednesday: { open: "09:00", close: "18:00", closed: false },
-        thursday: { open: "09:00", close: "18:00", closed: false },
-        friday: { open: "09:00", close: "18:00", closed: false },
-        saturday: { open: "09:00", close: "17:00", closed: false },
-        sunday: { open: "00:00", close: "00:00", closed: true },
-      };
-    }
-
-    // Déterminer le jour de la semaine
-    const dateObj = new Date(date + "T00:00:00");
-    const dayNames = [
-      "sunday",
-      "monday",
-      "tuesday",
-      "wednesday",
-      "thursday",
-      "friday",
-      "saturday",
-    ];
-    const dayName = dayNames[dateObj.getDay()];
-
-    console.log(`[Availability] Debug - Tenant: ${tenantId}, Slug: ${slug}, Date: ${date}, Day: ${dayName}`);
-    console.log("[Availability] Debug - raw businessHours:", JSON.stringify(businessHours));
-
-    const rawDaySchedule = businessHours ? businessHours[dayName] : null;
-    const daySchedule = parseDaySchedule(rawDaySchedule);
-
-    console.log("[Availability] Debug - parsed daySchedule:", JSON.stringify(daySchedule));
-
-    // Vérifier si le salon est fermé ce jour
-    if (!daySchedule || daySchedule.closed) {
-      return res.json({ slots: [], message: "Fermé ce jour" });
-    }
-
-    // Vérifier que les horaires sont bien définis
-    if (!daySchedule.open || !daySchedule.close) {
-      return res.json({ slots: [], message: "Horaires non configurés" });
-    }
-
-    // Générer tous les créneaux possibles
-    const slots = [];
-    const [openHour, openMinute] = daySchedule.open.split(":").map(Number);
-    const [closeHour, closeMinute] = daySchedule.close.split(":").map(Number);
-
-    let currentMinutes = openHour * 60 + openMinute;
-    const endMinutes = closeHour * 60 + closeMinute - serviceDuration;
-
-    while (currentMinutes <= endMinutes) {
-      const hour = Math.floor(currentMinutes / 60);
-      const minute = currentMinutes % 60;
-      const timeStr = `${String(hour).padStart(2, "0")}:${String(
-        minute
-      ).padStart(2, "0")}`;
-      const datetimeStr = `${date} ${timeStr}:00`;
-
-      slots.push({
-        time: timeStr,
-        datetime: datetimeStr,
-        available: true,
-      });
-
-      currentMinutes += slotDuration;
-    }
-
-    // Vérifier les créneaux déjà réservés
-    const appointments = await db.query(
-      `SELECT appointment_date, start_time, end_time
-       FROM appointments
-       WHERE tenant_id = ?
-         AND appointment_date = ?
-         AND status NOT IN ('cancelled', 'no_show')`,
-      [tenantId, date]
-    );
-
-    // Marquer les créneaux non disponibles
-    appointments.forEach((apt) => {
-      const aptStart = apt.start_time.substring(0, 5); // Format HH:MM
-      const aptEnd = apt.end_time.substring(0, 5);
-
-      const [aptStartHour, aptStartMinute] = aptStart.split(":").map(Number);
-      const [aptEndHour, aptEndMinute] = aptEnd.split(":").map(Number);
-
-      const aptStartMinutes = aptStartHour * 60 + aptStartMinute;
-      const aptEndMinutes = aptEndHour * 60 + aptEndMinute;
-
-      slots.forEach((slot) => {
-        const [slotHour, slotMinute] = slot.time.split(":").map(Number);
-        const slotStartMinutes = slotHour * 60 + slotMinute;
-        const slotEndMinutes = slotStartMinutes + serviceDuration;
-
-        // Vérifier le chevauchement
-        if (
-          (slotStartMinutes >= aptStartMinutes &&
-            slotStartMinutes < aptEndMinutes) ||
-          (slotEndMinutes > aptStartMinutes &&
-            slotEndMinutes <= aptEndMinutes) ||
-          (slotStartMinutes <= aptStartMinutes &&
-            slotEndMinutes >= aptEndMinutes)
-        ) {
-          slot.available = false;
-        }
-      });
-    });
-
-    // Filtrer pour ne retourner que les créneaux disponibles
-    const availableSlots = slots.filter((slot) => slot.available);
-
-    res.json({ slots: availableSlots });
+    res.json(result);
   } catch (error) {
     console.error("Erreur lors du calcul des disponibilités:", error);
     res.status(500).json({ error: "Erreur serveur" });
@@ -594,6 +479,7 @@ router.post("/appointments", async (req, res) => {
       preferred_contact_method,
       promo_code,
       final_amount,
+      staff_id,
     } = req.body;
 
     // Validation des champs obligatoires
@@ -644,34 +530,24 @@ router.post("/appointments", async (req, res) => {
       endMinute
     ).padStart(2, "0")}:00`;
 
-    // Vérifier les conflits horaires
-    const conflicts = await db.query(
-      `SELECT id FROM appointments
-       WHERE tenant_id = ?
-         AND appointment_date = ?
-         AND status NOT IN ('cancelled', 'no_show')
-         AND (
-           (start_time <= ? AND end_time > ?) OR
-           (start_time < ? AND end_time >= ?) OR
-           (start_time >= ? AND end_time <= ?)
-         )`,
-      [
-        tenantId,
-        appointment_date,
-        start_time,
-        start_time,
-        end_time,
-        end_time,
-        start_time,
-        end_time,
-      ]
-    );
+    // Vérifier la disponibilité et choisir l'employé (préférence du client ou le moins chargé)
+    const assignment = await availabilityService.findStaffForSlot({
+      tenantId,
+      serviceId: service_id,
+      date: appointment_date,
+      startTime: start_time,
+      staffId: staff_id || null,
+    });
 
-    if (conflicts.length > 0) {
+    if (!assignment.available) {
       return res.status(400).json({
-        error: "Ce créneau vient d'être réservé. Veuillez en choisir un autre.",
+        error:
+          assignment.reason === "PAST"
+            ? "Ce créneau est déjà passé. Veuillez en choisir un autre."
+            : "Ce créneau vient d'être réservé. Veuillez en choisir un autre.",
       });
     }
+    const assignedStaffId = assignment.staffId;
 
     // Vérifier si le client existe déjà (par téléphone)
     let client = await db.query(
@@ -741,13 +617,14 @@ router.post("/appointments", async (req, res) => {
     // Créer le rendez-vous avec statut "pending" (en attente de validation)
     const appointment = await db.query(
       `INSERT INTO appointments
-       (tenant_id, client_id, service_id, appointment_date, start_time, end_time,
+       (tenant_id, client_id, service_id, staff_id, appointment_date, start_time, end_time,
         status, notes, booked_by, booking_source, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, 'client', 'website', NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'client', 'website', NOW())`,
       [
         tenantId,
         clientId,
         service_id,
+        assignedStaffId,
         appointment_date,
         start_time,
         end_time,
@@ -790,11 +667,14 @@ router.post("/appointments", async (req, res) => {
          s.name as service_name,
          s.duration as service_duration,
          s.price as service_price,
-         t.name as salon_name
+         t.name as salon_name,
+         a.staff_id,
+         u.first_name as staff_first_name
        FROM appointments a
        JOIN clients c ON a.client_id = c.id
        JOIN services s ON a.service_id = s.id
        JOIN tenants t ON a.tenant_id = t.id
+       LEFT JOIN users u ON a.staff_id = u.id
        WHERE a.id = ?`,
       [appointment.insertId]
     );

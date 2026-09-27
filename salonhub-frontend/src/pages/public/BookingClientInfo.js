@@ -32,7 +32,7 @@ const BookingClientInfo = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { service, date, slot } = location.state || {};
+  const { service, date, slot, staff } = location.state || {};
   const { formatPrice } = useCurrency();
   const { salon, settings, dynamicStyles, theme: themeSettings } = usePublicTheme();
 
@@ -162,6 +162,7 @@ const BookingClientInfo = () => {
         preferred_contact_method: formData.preferred_contact_method,
         promo_code: promoCode?.code || null,
         final_amount: finalAmount,
+        staff_id: staff?.id || null,
       };
 
       const result = await createAppointment(appointmentData);
@@ -236,7 +237,7 @@ const BookingClientInfo = () => {
   };
 
   const handleBack = () => {
-    navigate(`/book/${slug}/datetime`, { state: { service } });
+    navigate(`/book/${slug}/datetime`, { state: { service, staff, date } });
   };
 
   const handleValidatePromoCode = async (code) => {
@@ -370,6 +371,12 @@ const BookingClientInfo = () => {
                         <ClockIcon className="w-5 h-5 mr-2" style={dynamicStyles.primaryText} />
                         {slot.time} • {formatDuration(service.duration)}
                       </span>
+                      {staff && (
+                        <span className="flex items-center">
+                          <UserCircleIcon className="w-5 h-5 mr-2" style={dynamicStyles.primaryText} />
+                          Avec {staff.first_name} {staff.last_initial}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

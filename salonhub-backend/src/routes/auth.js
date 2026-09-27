@@ -575,6 +575,60 @@ router.put("/password", authMiddleware, async (req, res) => {
 });
 
 // ==========================================
+// HELPERS - Disponibilités des employés
+// ==========================================
+const DAY_KEYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const parseWorkingHours = (value) => {
+  if (!value) return null;
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    return null;
+  }
+};
+
+// Valide et normalise des horaires { monday: { open, close, closed }, ... }
+const normalizeWorkingHours = (hours) => {
+  if (hours === null) return null;
+  if (typeof hours !== "object" || Array.isArray(hours)) return undefined;
+  const result = {};
+  for (const day of DAY_KEYS) {
+    const value = hours[day];
+    if (!value || value.closed) {
+      result[day] = { open: "09:00", close: "18:00", closed: true };
+      continue;
+    }
+    if (!TIME_RE.test(value.open) || !TIME_RE.test(value.close) || value.open >= value.close) {
+      return undefined;
+    }
+    result[day] = { open: value.open, close: value.close, closed: false };
+  }
+  return result;
+};
+
+const canManageStaff = (req) => ["owner", "admin"].includes(req.user.role);
+
+const findTenantUser = async (id, tenantId) => {
+  const [user] = await query(
+    "SELECT id, role FROM users WHERE id = ? AND tenant_id = ?",
+    [id, tenantId]
+  );
+  return user;
+};
+
+// ==========================================
 // GET - Liste staff du salon (owner/admin only)
 // ==========================================
 router.get("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
@@ -587,20 +641,52 @@ router.get("/staff", authMiddleware, tenantMiddleware, async (req, res) => {
       });
     }
 
-    const staff = await query(
-      `SELECT 
-        id, email, first_name, last_name, phone, role,
-        is_active, last_login_at, created_at, avatar_url,
-        can_confirm_appointments, can_manage_shop
-      FROM users
-      WHERE tenant_id = ?
-      ORDER BY role, last_name`,
-      [req.tenantId]
-    );
+    let staff;
+    let links = [];
+    try {
+      staff = await query(
+        `SELECT 
+          id, email, first_name, last_name, phone, role,
+          is_active, last_login_at, created_at, avatar_url,
+          can_confirm_appointments, can_manage_shop,
+          is_bookable, working_hours
+        FROM users
+        WHERE tenant_id = ?
+        ORDER BY role, last_name`,
+        [req.tenantId]
+      );
+
+      // Prestations réalisées par employé (aucune = toutes)
+      links = await query(
+        "SELECT user_id, service_id FROM staff_services WHERE tenant_id = ?",
+        [req.tenantId]
+      );
+    } catch (error) {
+      // Migration 022 non appliquée : liste sans les champs de disponibilité
+      if (!["ER_BAD_FIELD_ERROR", "ER_NO_SUCH_TABLE"].includes(error.code)) throw error;
+      staff = await query(
+        `SELECT 
+          id, email, first_name, last_name, phone, role,
+          is_active, last_login_at, created_at, avatar_url,
+          can_confirm_appointments, can_manage_shop
+        FROM users
+        WHERE tenant_id = ?
+        ORDER BY role, last_name`,
+        [req.tenantId]
+      );
+    }
+    const servicesByUser = {};
+    links.forEach(({ user_id, service_id }) => {
+      (servicesByUser[user_id] = servicesByUser[user_id] || []).push(service_id);
+    });
 
     res.json({
       success: true,
-      data: staff,
+      data: staff.map((member) => ({
+        ...member,
+        working_hours: parseWorkingHours(member.working_hours),
+        service_ids: servicesByUser[member.id] || null,
+      })),
     });
   } catch (error) {
     console.error("Erreur récupération staff:", error);
@@ -801,6 +887,194 @@ router.put("/staff/:id", authMiddleware, tenantMiddleware, async (req, res) => {
       success: false,
       error: "Erreur serveur",
     });
+  }
+});
+
+// ==========================================
+// PUT - Disponibilités d'un employé (owner/admin)
+// Horaires, prise de RDV et prestations réalisées.
+// Applicable aussi au propriétaire (qui peut prendre des RDV).
+// ==========================================
+router.put("/staff/:id/availability", authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    if (!canManageStaff(req)) {
+      return res.status(403).json({ success: false, error: "Accès refusé" });
+    }
+
+    const { id } = req.params;
+    const { is_bookable, working_hours, service_ids } = req.body;
+
+    const member = await findTenantUser(id, req.tenantId);
+    if (!member) {
+      return res.status(404).json({ success: false, error: "Employé introuvable" });
+    }
+
+    const updates = [];
+    const params = [];
+
+    if (is_bookable !== undefined) {
+      updates.push("is_bookable = ?");
+      params.push(is_bookable ? 1 : 0);
+    }
+
+    if (working_hours !== undefined) {
+      const normalized = normalizeWorkingHours(working_hours);
+      if (normalized === undefined) {
+        return res.status(400).json({
+          success: false,
+          error: "Horaires invalides : l'heure de fin doit être après l'heure de début",
+        });
+      }
+      updates.push("working_hours = ?");
+      params.push(normalized ? JSON.stringify(normalized) : null);
+    }
+
+    let serviceIds;
+    if (service_ids !== undefined) {
+      if (service_ids !== null && !Array.isArray(service_ids)) {
+        return res.status(400).json({ success: false, error: "service_ids doit être une liste" });
+      }
+      serviceIds = service_ids === null ? null : [...new Set(service_ids.map(Number))];
+      if (serviceIds && serviceIds.length > 0) {
+        const valid = await query(
+          "SELECT id FROM services WHERE tenant_id = ? AND id IN (?)",
+          [req.tenantId, serviceIds]
+        );
+        if (valid.length !== serviceIds.length) {
+          return res.status(400).json({ success: false, error: "Prestation inconnue" });
+        }
+      }
+    }
+
+    await transaction(async (connection) => {
+      if (updates.length > 0) {
+        await connection.query(
+          `UPDATE users SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?`,
+          [...params, id, req.tenantId]
+        );
+      }
+      if (serviceIds !== undefined) {
+        await connection.query(
+          "DELETE FROM staff_services WHERE user_id = ? AND tenant_id = ?",
+          [id, req.tenantId]
+        );
+        // null ou liste vide = toutes les prestations
+        if (serviceIds && serviceIds.length > 0) {
+          await connection.query(
+            "INSERT INTO staff_services (user_id, service_id, tenant_id) VALUES ?",
+            [serviceIds.map((serviceId) => [id, serviceId, req.tenantId])]
+          );
+        }
+      }
+    });
+
+    res.json({ success: true, message: "Disponibilités mises à jour" });
+  } catch (error) {
+    console.error("Erreur disponibilités staff:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
+// ==========================================
+// GET - Congés d'un employé (owner/admin)
+// ==========================================
+router.get("/staff/:id/time-off", authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    if (!canManageStaff(req)) {
+      return res.status(403).json({ success: false, error: "Accès refusé" });
+    }
+
+    const member = await findTenantUser(req.params.id, req.tenantId);
+    if (!member) {
+      return res.status(404).json({ success: false, error: "Employé introuvable" });
+    }
+
+    const rows = await query(
+      `SELECT id, DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
+              DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date, reason
+       FROM staff_time_off
+       WHERE user_id = ? AND tenant_id = ? AND end_date >= CURDATE()
+       ORDER BY start_date`,
+      [req.params.id, req.tenantId]
+    );
+
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error("Erreur récupération congés:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
+// ==========================================
+// POST - Ajouter un congé (owner/admin)
+// ==========================================
+router.post("/staff/:id/time-off", authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    if (!canManageStaff(req)) {
+      return res.status(403).json({ success: false, error: "Accès refusé" });
+    }
+
+    const { start_date, end_date, reason } = req.body;
+    const end = end_date || start_date;
+    if (!DATE_RE.test(start_date || "") || !DATE_RE.test(end || "") || end < start_date) {
+      return res.status(400).json({
+        success: false,
+        error: "Dates invalides : la fin doit être le même jour ou après le début",
+      });
+    }
+
+    const member = await findTenantUser(req.params.id, req.tenantId);
+    if (!member) {
+      return res.status(404).json({ success: false, error: "Employé introuvable" });
+    }
+
+    // RDV déjà pris pendant la période : signalés au gérant (non bloquant)
+    const [conflicts] = await query(
+      `SELECT COUNT(*) AS count FROM appointments
+       WHERE tenant_id = ? AND staff_id = ? AND appointment_date BETWEEN ? AND ?
+         AND status IN ('pending', 'confirmed')`,
+      [req.tenantId, req.params.id, start_date, end]
+    );
+
+    const result = await query(
+      `INSERT INTO staff_time_off (tenant_id, user_id, start_date, end_date, reason)
+       VALUES (?, ?, ?, ?, ?)`,
+      [req.tenantId, req.params.id, start_date, end, reason ? String(reason).slice(0, 255) : null]
+    );
+
+    res.status(201).json({
+      success: true,
+      data: { id: result.insertId, start_date, end_date: end, reason: reason || null },
+      conflicting_appointments: Number(conflicts.count) || 0,
+    });
+  } catch (error) {
+    console.error("Erreur ajout congé:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
+  }
+});
+
+// ==========================================
+// DELETE - Supprimer un congé (owner/admin)
+// ==========================================
+router.delete("/staff/:id/time-off/:timeOffId", authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    if (!canManageStaff(req)) {
+      return res.status(403).json({ success: false, error: "Accès refusé" });
+    }
+
+    const result = await query(
+      "DELETE FROM staff_time_off WHERE id = ? AND user_id = ? AND tenant_id = ?",
+      [req.params.timeOffId, req.params.id, req.tenantId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, error: "Congé introuvable" });
+    }
+
+    res.json({ success: true, message: "Congé supprimé" });
+  } catch (error) {
+    console.error("Erreur suppression congé:", error);
+    res.status(500).json({ success: false, error: "Erreur serveur" });
   }
 });
 

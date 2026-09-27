@@ -134,71 +134,29 @@ const Dashboard = () => {
 
   // Load data for beauty/default business type
   const loadBeautyData = async () => {
-    const todayRes = await api.get("/appointments/today");
-    const today = todayRes.data.data || [];
-    setTodayAppointments(today);
+    // Statistiques calculées côté serveur (toutes les données, pas seulement les 100 derniers RDV).
+    // Pour un employé : ses propres RDV, sans chiffre d'affaires.
+    const [todayRes, statsRes] = await Promise.all([
+      api.get("/appointments/today"),
+      api.get("/appointments/stats/dashboard"),
+    ]);
+    const summary = statsRes.data.data || {};
 
-    const clientsRes = await api.get("/clients", { params: { limit: 5 } });
-    setRecentClients(clientsRes.data.data.slice(0, 5));
-
-    const servicesRes = await api.get("/services");
-    const allServices = servicesRes.data.data;
-
-    const appointmentsRes = await api.get("/appointments", {
-      params: { status: "pending" },
-    });
-
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const allAppointmentsRes = await api.get("/appointments");
-    const allAppointments = allAppointmentsRes.data.data || [];
-
-    const monthAppointments = allAppointments.filter((apt) => {
-      const aptDate = new Date(apt.appointment_date);
-      return aptDate >= firstDayOfMonth;
-    });
-
-    const completedThisMonth = monthAppointments.filter(a => a.status === "completed").length;
-    const cancelledThisMonth = monthAppointments.filter(a => a.status === "cancelled").length;
-
-    const monthRevenue = monthAppointments
-      .filter(a => a.status === "completed")
-      .reduce((sum, a) => sum + (parseFloat(a.service_price) || 0), 0);
-
-    const todayRevenue = today
-      .filter(a => a.status === "completed")
-      .reduce((sum, a) => sum + (parseFloat(a.service_price) || 0), 0);
-
-    const serviceCount = {};
-    allAppointments.forEach((apt) => {
-      if (apt.service_id) {
-        serviceCount[apt.service_id] = (serviceCount[apt.service_id] || 0) + 1;
-      }
-    });
-
-    const popular = allServices
-      .map((service) => ({
-        ...service,
-        bookingCount: serviceCount[service.id] || 0,
-      }))
-      .sort((a, b) => b.bookingCount - a.bookingCount)
-      .slice(0, 5);
-
-    setPopularServices(popular);
-
+    setTodayAppointments(todayRes.data.data || []);
+    setRecentClients(summary.recentClients || []);
+    setPopularServices(summary.popularServices || []);
     setStats({
-      todayAppointments: today.length,
-      totalClients: clientsRes.data.pagination?.total || 0,
-      totalServices: allServices.length,
-      pendingAppointments: appointmentsRes.data.data.length,
-      todayRevenue,
-      monthRevenue,
-      completedThisMonth,
-      cancelledThisMonth,
+      todayAppointments: summary.todayAppointments || 0,
+      totalClients: summary.totalClients || 0,
+      totalServices: summary.totalServices || 0,
+      pendingAppointments: summary.pendingAppointments || 0,
+      todayRevenue: summary.todayRevenue,
+      monthRevenue: summary.monthRevenue,
+      completedThisMonth: summary.completedThisMonth || 0,
+      cancelledThisMonth: summary.cancelledThisMonth || 0,
     });
   };
 
-  // Load data for restaurant business type
   const loadRestaurantData = async () => {
     try {
       // Fetch orders, menu items, and reservations
@@ -390,6 +348,9 @@ const Dashboard = () => {
       </span>
     );
   };
+
+  // Le chiffre d'affaires n'est pas transmis aux employés (null)
+  const showRevenue = stats.monthRevenue !== null && stats.monthRevenue !== undefined;
 
   if (loading) {
     return (
@@ -600,25 +561,36 @@ const Dashboard = () => {
                 <div className={`p-3 rounded-2xl ${config.lightBg}`}>
                   <ChartBarIcon className={`h-7 w-7 ${config.textColor}`} />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Revenu ce mois</p>
-                  <p className="text-3xl font-bold font-display text-slate-800">
-                    {formatPrice(stats.monthRevenue)}
-                  </p>
-                </div>
+                {showRevenue ? (
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Revenu ce mois</p>
+                    <p className="text-3xl font-bold font-display text-slate-800">
+                      {formatPrice(stats.monthRevenue)}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Mon activité ce mois</p>
+                    <p className="text-3xl font-bold font-display text-slate-800">
+                      {stats.completedThisMonth} terminé{stats.completedThisMonth > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Métriques secondaires */}
-              <div className="grid grid-cols-3 gap-4 border-t border-slate-100 pt-5">
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <CurrencyDollarIcon className="h-4 w-4 text-emerald-500" />
-                    <span className="text-xs font-medium text-slate-500">Aujourd'hui</span>
+              <div className={`grid ${showRevenue ? "grid-cols-3" : "grid-cols-2"} gap-4 border-t border-slate-100 pt-5`}>
+                {showRevenue && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <CurrencyDollarIcon className="h-4 w-4 text-emerald-500" />
+                      <span className="text-xs font-medium text-slate-500">Aujourd'hui</span>
+                    </div>
+                    <p className="text-lg font-bold font-display text-slate-800">
+                      {formatPrice(stats.todayRevenue)}
+                    </p>
                   </div>
-                  <p className="text-lg font-bold font-display text-slate-800">
-                    {formatPrice(stats.todayRevenue)}
-                  </p>
-                </div>
+                )}
 
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">

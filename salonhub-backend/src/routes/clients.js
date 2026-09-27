@@ -28,13 +28,16 @@ router.get("/", checkScope("clients:read"), async (req, res) => {
     // Recherche optionnelle
     if (search) {
       sql +=
-        " AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?)";
+        " AND (first_name LIKE ? OR last_name LIKE ? OR CONCAT(first_name, ' ', last_name) LIKE ? OR email LIKE ? OR phone LIKE ?)";
       const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
     }
 
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+    const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
+
     sql += " ORDER BY last_name, first_name LIMIT ? OFFSET ?";
-    params.push(parseInt(limit), parseInt(offset));
+    params.push(safeLimit, safeOffset);
 
     const clients = await query(sql, params);
 
@@ -44,9 +47,9 @@ router.get("/", checkScope("clients:read"), async (req, res) => {
 
     if (search) {
       countSql +=
-        " AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?)";
+        " AND (first_name LIKE ? OR last_name LIKE ? OR CONCAT(first_name, ' ', last_name) LIKE ? OR email LIKE ? OR phone LIKE ?)";
       const searchTerm = `%${search}%`;
-      countParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      countParams.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
     }
 
     const [countResult] = await query(countSql, countParams);
@@ -55,10 +58,10 @@ router.get("/", checkScope("clients:read"), async (req, res) => {
       success: true,
       data: clients,
       pagination: {
-        total: countResult.total,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        hasMore: parseInt(offset) + clients.length < countResult.total,
+        total: Number(countResult.total),
+        limit: safeLimit,
+        offset: safeOffset,
+        hasMore: safeOffset + clients.length < Number(countResult.total),
       },
     });
   } catch (error) {
@@ -304,6 +307,14 @@ router.put("/:id", checkScope("clients:write"), async (req, res) => {
 router.delete("/:id", checkScope("clients:write"), async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Suppression réservée au propriétaire et aux responsables
+    if (!["owner", "admin"].includes(req.user?.role)) {
+      return res.status(403).json({
+        success: false,
+        error: "Seuls le propriétaire et les responsables peuvent supprimer un client",
+      });
+    }
 
     // Vérifier si le client a des RDV futurs
     const [futureAppointments] = await query(

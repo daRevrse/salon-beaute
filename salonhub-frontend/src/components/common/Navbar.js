@@ -260,7 +260,7 @@ const Navbar = () => {
           </div>
 
           {/* ACTIONS UTILISATEUR */}
-          <div className="hidden sm:flex sm:items-center space-x-3">
+          <div className="hidden sm:flex sm:items-center sm:ml-auto space-x-3">
             {/* Notifications */}
             <NotificationBell />
 
@@ -291,7 +291,11 @@ const Navbar = () => {
                     {user?.first_name} {user?.last_name}
                   </p>
                   <p className="text-xs text-slate-500 capitalize">
-                    {user?.role === "owner" ? "Propriétaire" : "Staff"}
+                    {user?.role === "owner"
+                      ? "Propriétaire"
+                      : user?.role === "admin"
+                      ? "Responsable"
+                      : "Employé"}
                   </p>
                 </div>
 
@@ -392,11 +396,15 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* MOBILE MENU BUTTON */}
-          <div className="flex items-center gap-3 sm:hidden">
-            <NotificationBell />
+          {/* MOBILE / TABLETTE MENU BUTTON (visible tant que la nav desktop est masquée) */}
+          <div className="flex items-center gap-3 sm:ml-3 lg:hidden">
+            <div className="sm:hidden">
+              <NotificationBell />
+            </div>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+              aria-expanded={mobileMenuOpen}
               className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
             >
               {mobileMenuOpen ? (

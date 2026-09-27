@@ -3,15 +3,17 @@
  * Multi-Sector Adaptive Appointment Management
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import DashboardLayout from "../components/common/DashboardLayout";
 import AppointmentDetails from "../components/appointments/AppointmentDetails";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppointments } from "../hooks/useAppointments";
+import { useAppointments, APPOINTMENTS_PAGE_SIZE } from "../hooks/useAppointments";
 import AppointmentCalendar from "../components/appointments/AppointmentCalendar";
-import { useClients } from "../hooks/useClients";
+import ClientPicker from "../components/clients/ClientPicker";
+import Pagination from "../components/common/Pagination";
+import { usePermissions } from "../contexts/PermissionContext";
 import { useServices } from "../hooks/useServices";
 import api from "../services/api";
 import { getBusinessTypeConfig } from "../utils/businessTypeConfig";
@@ -26,6 +28,14 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
+const STATUS_LABELS = {
+  pending: "En attente",
+  confirmed: "Confirmé",
+  cancelled: "Annulé",
+  completed: "Terminé",
+  no_show: "Absent",
+};
+
 const Appointments = () => {
   const [searchParams] = useSearchParams();
   const { tenant } = useAuth();
@@ -37,21 +47,28 @@ const Appointments = () => {
 
   const {
     appointments,
+    pagination,
+    goToOffset,
     loading,
     createAppointment,
     updateStatus,
     deleteAppointment,
     fetchAppointments,
-  } = useAppointments();
-  const { clients } = useClients();
+  } = useAppointments({
+    // Filtres de l'URL appliqués dès le premier chargement
+    date: searchParams.get("date") || "",
+    status: searchParams.get("status") || "",
+  });
   const { services } = useServices();
+  const { can, isStaff } = usePermissions();
+  const [selectedClient, setSelectedClient] = useState(null);
   const { toast, success, error, hideToast } = useToast();
 
   const [view, setView] = useState("list");
   const [showModal, setShowModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [filterDate, setFilterDate] = useState(searchParams.get("date") || "");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterStatus, setFilterStatus] = useState(searchParams.get("status") || "");
   const [staff, setStaff] = useState([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState(null);
@@ -69,6 +86,8 @@ const Appointments = () => {
   });
 
   useEffect(() => {
+    // La liste des employés n'est accessible qu'au propriétaire et aux responsables
+    if (isStaff) return;
     const loadStaff = async () => {
       try {
         const response = await api.get("/auth/staff");
@@ -78,18 +97,25 @@ const Appointments = () => {
       }
     };
     loadStaff();
-  }, []);
+  }, [isStaff]);
 
-  // Si on arrive avec ?date= depuis une notification, filtrer sur cette date
+  // Filtres passés dans l'URL : ?date= (notification) et ?status= (dashboard "Valider").
+  // Le premier chargement les applique déjà (useAppointments) ; ici on suit les changements d'URL.
+  const isFirstUrlSync = useRef(true);
   useEffect(() => {
-    const dateParam = searchParams.get("date");
-    if (dateParam) {
-      setFilterDate(dateParam);
-      fetchAppointments({ date: dateParam });
+    if (isFirstUrlSync.current) {
+      isFirstUrlSync.current = false;
+      return;
     }
-  }, [searchParams]);
+    const dateParam = searchParams.get("date") || "";
+    const statusParam = searchParams.get("status") || "";
+    setFilterDate(dateParam);
+    setFilterStatus(statusParam);
+    fetchAppointments({ date: dateParam, status: statusParam });
+  }, [searchParams, fetchAppointments]);
 
   const handleOpenModal = () => {
+    setSelectedClient(null);
     setFormData({
       client_id: "",
       service_id: "",
@@ -133,7 +159,11 @@ const Appointments = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    let appointmentData = { ...formData };
+    if (!selectedClient) {
+      error(`Sélectionnez ou créez un ${term.client.toLowerCase()}`);
+      return;
+    }
+    let appointmentData = { ...formData, client_id: selectedClient.id };
 
     if (!appointmentData.end_time && appointmentData.service_id && appointmentData.start_time) {
       const selectedService = services.find((s) => s.id === parseInt(appointmentData.service_id));
@@ -168,7 +198,7 @@ const Appointments = () => {
   const handleStatusChange = async (id, newStatus, reason = null) => {
     const result = await updateStatus(id, newStatus, reason);
     if (result.success) {
-      success(`Statut mis à jour : ${newStatus}`);
+      success(`Statut mis à jour : ${STATUS_LABELS[newStatus] || newStatus}`);
       if (showCancelModal) setShowCancelModal(false);
     } else {
       error(result.error || "Impossible de mettre à jour le statut");
@@ -199,19 +229,32 @@ const Appointments = () => {
     }
   };
 
+  const pageLimit = view === "calendar" ? 500 : APPOINTMENTS_PAGE_SIZE;
+
   const handleFilterDate = (e) => {
     setFilterDate(e.target.value);
-    fetchAppointments({ date: e.target.value, status: filterStatus });
+    fetchAppointments({ date: e.target.value, status: filterStatus, limit: pageLimit });
   };
 
   const handleFilterStatus = (status) => {
     setFilterStatus(status);
-    fetchAppointments({ date: filterDate, status: status || undefined });
+    fetchAppointments({ date: filterDate, status, limit: pageLimit });
+  };
+
+  // La vue calendrier charge davantage de RDV d'un coup ; la liste est paginée
+  const handleViewChange = (nextView) => {
+    if (nextView === view) return;
+    setView(nextView);
+    fetchAppointments({
+      date: filterDate,
+      status: filterStatus,
+      limit: nextView === "calendar" ? 500 : APPOINTMENTS_PAGE_SIZE,
+    });
   };
 
   const handleOpenDetails = (appointment) => setSelectedAppointment(appointment);
   const handleCloseDetails = () => setSelectedAppointment(null);
-  const handleUpdateAfterDetails = () => fetchAppointments({ date: filterDate, status: filterStatus || undefined });
+  const handleUpdateAfterDetails = () => fetchAppointments();
 
   const getStatusBadge = (status) => {
     const styles = {
@@ -237,7 +280,7 @@ const Appointments = () => {
 
   const getStatusActions = (appointment) => {
     const actions = [];
-    if (appointment.status === "pending") {
+    if (appointment.status === "pending" && can.canConfirmAppointments) {
       actions.push(
         <button
           key="confirm"
@@ -300,11 +343,13 @@ const Appointments = () => {
                 <CalendarDaysIcon className="h-6 w-6 text-white" />
               </div>
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-800">
-                {term.appointments}
+                {isStaff ? "Mon planning" : term.appointments}
               </h1>
             </div>
             <p className="text-slate-500">
-              Gérez votre planning et vos {term.appointments.toLowerCase()}
+              {isStaff
+                ? `Vos ${term.appointments.toLowerCase()} assignés`
+                : `Gérez votre planning et vos ${term.appointments.toLowerCase()}`}
             </p>
           </div>
           <button
@@ -349,7 +394,7 @@ const Appointments = () => {
         <div className="mb-6 flex justify-end">
           <div className="flex rounded-xl border border-slate-200 shadow-soft overflow-hidden">
             <button
-              onClick={() => setView("list")}
+              onClick={() => handleViewChange("list")}
               className={`flex items-center px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
                 view === "list"
                   ? `bg-gradient-to-r ${config.gradient} text-white`
@@ -360,7 +405,7 @@ const Appointments = () => {
               Liste
             </button>
             <button
-              onClick={() => setView("calendar")}
+              onClick={() => handleViewChange("calendar")}
               className={`flex items-center px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
                 view === "calendar"
                   ? `bg-gradient-to-r ${config.gradient} text-white`
@@ -440,12 +485,14 @@ const Appointments = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                           <div className="flex justify-end space-x-3" onClick={(e) => e.stopPropagation()}>
                             {getStatusActions(apt)}
-                            <button
-                              onClick={() => initiateDelete(apt.id)}
-                              className="text-red-600 hover:text-red-800 font-medium transition-colors"
-                            >
-                              Supprimer
-                            </button>
+                            {can.deleteAllAppointments && (
+                              <button
+                                onClick={() => initiateDelete(apt.id)}
+                                className="text-red-600 hover:text-red-800 font-medium transition-colors"
+                              >
+                                Supprimer
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -454,6 +501,13 @@ const Appointments = () => {
                 </table>
               </div>
             )}
+            <Pagination
+              total={pagination.total}
+              limit={pagination.limit}
+              offset={pagination.offset}
+              onChange={goToOffset}
+              itemLabel={term.appointments.toLowerCase()}
+            />
           </div>
         )}
 
@@ -480,12 +534,7 @@ const Appointments = () => {
               <form onSubmit={handleSubmit} className="p-6 space-y-5">
                 <div>
                   <label className="label-premium">{term.client} *</label>
-                  <select name="client_id" required value={formData.client_id} onChange={handleChange} className="input-premium">
-                    <option value="">Sélectionner un {term.client.toLowerCase()}</option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id}>{client.first_name} {client.last_name}</option>
-                    ))}
-                  </select>
+                  <ClientPicker value={selectedClient} onChange={setSelectedClient} term={term} />
                 </div>
 
                 <div>
@@ -500,15 +549,21 @@ const Appointments = () => {
                   </select>
                 </div>
 
+                {isStaff ? (
+                  <p className="text-sm text-slate-500">
+                    Ce {term.appointment.toLowerCase()} vous sera assigné.
+                  </p>
+                ) : (
                 <div>
                   <label className="label-premium">{term.staffMember}</label>
                   <select name="staff_id" value={formData.staff_id} onChange={handleChange} className="input-premium">
-                    <option value="">Non assigné</option>
-                    {staff.map((member) => (
+                    <option value="">Premier disponible</option>
+                    {staff.filter((member) => member.is_active).map((member) => (
                       <option key={member.id} value={member.id}>{member.first_name} {member.last_name}</option>
                     ))}
                   </select>
                 </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>

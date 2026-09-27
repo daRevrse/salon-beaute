@@ -61,87 +61,28 @@ const DashboardScreen = ({ navigation }) => {
 
   const loadDashboardData = async () => {
     try {
-      // Charger tous les RDV
-      const appointmentsRes = await api.get('/appointments');
-      const allAppointments = appointmentsRes.data?.data || [];
+      // Statistiques calculées côté serveur (CA non transmis aux employés)
+      const [todayRes, statsRes] = await Promise.all([
+        api.get('/appointments/today'),
+        api.get('/appointments/stats/dashboard'),
+      ]);
+      const summary = statsRes.data?.data || {};
 
-      // Charger tous les clients
-      const clientsRes = await api.get('/clients');
-      const allClients = clientsRes.data?.data || [];
-
-      // Charger tous les services
-      const servicesRes = await api.get('/services');
-      const allServices = servicesRes.data?.data || [];
-
-      // Calculer la date d'aujourd'hui
-      const now = new Date();
-      const currentDate = now.toISOString().split('T')[0];
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-
-      // RDV du jour
-      const todayApts = allAppointments.filter(apt => apt.appointment_date === currentDate);
-      setTodayAppointments(todayApts);
-
-      // Clients récents (5 derniers)
-      const sortedClients = [...allClients].sort((a, b) =>
-        new Date(b.created_at) - new Date(a.created_at)
+      setTodayAppointments(todayRes.data?.data || []);
+      setRecentClients(summary.recentClients || []);
+      setPopularServices(
+        (summary.popularServices || []).filter((service) => service.bookingCount > 0)
       );
-      setRecentClients(sortedClients.slice(0, 5));
-
-      // Calculer les stats
-      const todayCompleted = todayApts.filter(apt => apt.status === 'completed');
-      const todayRevenue = todayCompleted.reduce((sum, apt) => {
-        const price = apt.total_price || apt.price || 0;
-        return sum + parseFloat(price);
-      }, 0);
-
-      const monthlyCompleted = allAppointments.filter(apt => {
-        const aptDate = new Date(apt.appointment_date);
-        return aptDate.getMonth() === currentMonth &&
-               aptDate.getFullYear() === currentYear &&
-               apt.status === 'completed';
-      });
-
-      const monthlyRevenue = monthlyCompleted.reduce((sum, apt) => {
-        const price = apt.total_price || apt.price || 0;
-        return sum + parseFloat(price);
-      }, 0);
-
-      const monthlyCancelled = allAppointments.filter(apt => {
-        const aptDate = new Date(apt.appointment_date);
-        return aptDate.getMonth() === currentMonth &&
-               aptDate.getFullYear() === currentYear &&
-               apt.status === 'cancelled';
-      }).length;
-
-      // Services populaires
-      const serviceCount = {};
-      allAppointments.forEach(apt => {
-        if (apt.service_id) {
-          serviceCount[apt.service_id] = (serviceCount[apt.service_id] || 0) + 1;
-        }
-      });
-
-      const topServices = Object.entries(serviceCount)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([serviceId, count]) => {
-          const service = allServices.find(s => s.id === parseInt(serviceId));
-          return service ? { ...service, bookingCount: count } : null;
-        })
-        .filter(Boolean);
-      setPopularServices(topServices);
 
       setStats({
-        todayAppointments: todayApts.length,
-        totalClients: allClients.length,
-        activeServices: allServices.filter(s => s.is_active).length,
-        pendingAppointments: todayApts.filter(apt => apt.status === 'pending').length,
-        monthlyRevenue,
-        todayRevenue,
-        completedThisMonth: monthlyCompleted.length,
-        cancelledThisMonth: monthlyCancelled,
+        todayAppointments: summary.todayAppointments || 0,
+        totalClients: summary.totalClients || 0,
+        activeServices: summary.totalServices || 0,
+        pendingAppointments: summary.pendingAppointments || 0,
+        monthlyRevenue: summary.monthRevenue,
+        todayRevenue: summary.todayRevenue,
+        completedThisMonth: summary.completedThisMonth || 0,
+        cancelledThisMonth: summary.cancelledThisMonth || 0,
       });
     } catch (error) {
       console.error('Erreur chargement dashboard:', error);
@@ -339,7 +280,8 @@ const DashboardScreen = ({ navigation }) => {
         />
       </View>
 
-      {/* Revenue Cards */}
+      {/* Revenue Cards (non affichées aux employés : CA = null) */}
+      {stats?.monthlyRevenue !== null && (
       <View style={styles.revenueContainer}>
         <View style={styles.revenueCard}>
           <View style={styles.revenueHeader}>
@@ -359,6 +301,7 @@ const DashboardScreen = ({ navigation }) => {
           <Text style={styles.revenueSubtext}>{stats?.completedThisMonth || 0} RDV complétés</Text>
         </View>
       </View>
+      )}
 
       {/* Stats Cards */}
       <View style={styles.statsRow}>

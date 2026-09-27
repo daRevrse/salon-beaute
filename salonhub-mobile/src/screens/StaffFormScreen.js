@@ -24,15 +24,16 @@ const StaffFormScreen = ({ navigation, route }) => {
     last_name: '',
     email: '',
     phone: '',
-    role: 'employee',
+    role: 'staff',
     password: '',
     confirm_password: '',
   });
 
+  // Rôles acceptés par l'API (/auth/staff) : 'staff' ou 'admin'.
+  // Le rôle 'owner' est réservé au créateur du salon et ne peut pas être attribué.
   const roles = [
-    { value: 'owner', label: 'Propriétaire', color: '#6366F1' },
-    { value: 'manager', label: 'Responsable', color: '#6366F1' },
-    { value: 'employee', label: 'Employé', color: '#3B82F6' },
+    { value: 'staff', label: 'Employé', color: '#3B82F6' },
+    { value: 'admin', label: 'Responsable', color: '#6366F1' },
   ];
 
   const handleSubmit = async () => {

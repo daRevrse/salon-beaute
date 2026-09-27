@@ -17,6 +17,7 @@ import APISettings from "../components/settings/APISettings";
 import WebhookSettings from "../components/settings/WebhookSettings";
 import { getImageUrl } from "../utils/imageUtils";
 import BusinessHoursEditor, { normalizeBusinessHours } from "../components/common/BusinessHoursEditor";
+import StaffAvailabilityModal from "../components/staff/StaffAvailabilityModal";
 import api from "../services/api";
 import {
   ClockIcon,
@@ -95,6 +96,7 @@ const Settings = () => {
   const [copied, setCopied] = useState(false);
   const [staff, setStaff] = useState([]);
   const [showStaffModal, setShowStaffModal] = useState(false);
+  const [availabilityMember, setAvailabilityMember] = useState(null);
   const [editingStaff, setEditingStaff] = useState(null);
   const [staffFormData, setStaffFormData] = useState({
     first_name: "",
@@ -1004,6 +1006,11 @@ const Settings = () => {
                                 <p className="text-xs sm:text-sm text-slate-600 truncate">
                                   {member.email}
                                 </p>
+                                {(member.is_bookable === 0 || member.is_bookable === false) && (
+                                  <p className="text-xs text-amber-600">
+                                    Ne prend pas de {term.appointments.toLowerCase()}
+                                  </p>
+                                )}
                                 {member.phone && (
                                   <p className="text-xs sm:text-sm text-slate-500 truncate">
                                     {member.phone}
@@ -1028,6 +1035,15 @@ const Settings = () => {
                                 </span>
                               </div>
                             </div>
+
+                            <button
+                              onClick={() => setAvailabilityMember(member)}
+                              aria-label={`Disponibilités de ${member.first_name} ${member.last_name}`}
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors sm:ml-4"
+                            >
+                              <ClockIcon className="h-4 w-4" />
+                              Disponibilités
+                            </button>
 
                             {member.role !== "owner" && (
                               <div className="flex items-center justify-between sm:justify-start space-x-2 sm:ml-4 pt-2 sm:pt-0 border-t sm:border-t-0">
@@ -1373,6 +1389,19 @@ const Settings = () => {
       </div>
 
       {/* Staff Modal */}
+      {availabilityMember && (
+        <StaffAvailabilityModal
+          member={availabilityMember}
+          salonHours={businessHours}
+          config={config}
+          onClose={() => setAvailabilityMember(null)}
+          onSaved={() => {
+            setMessage(`Disponibilités de ${availabilityMember.first_name} enregistrées`);
+            fetchStaff();
+          }}
+        />
+      )}
+
       {showStaffModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-soft-2xl animate-scale-in">

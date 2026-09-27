@@ -170,6 +170,9 @@ const BookingConfirmation = () => {
             {slot && (
               <DetailRow label="Heure" value={slot.time} icon={ClockIcon} config={config} />
             )}
+            {appointment?.staff_first_name && (
+              <DetailRow label="Avec" value={appointment.staff_first_name} icon={UserCircleIcon} config={config} />
+            )}
 
             {service && (
               <DetailRow label={term.serviceDuration} value={`${service.duration} minutes`} config={config} />

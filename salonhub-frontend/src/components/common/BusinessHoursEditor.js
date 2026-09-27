@@ -11,6 +11,7 @@
  *  - onSlotDurationChange(minutes) : appelé avec la nouvelle durée
  *  - showSlotDuration : afficher le bloc "Durée des créneaux" (défaut: true)
  *  - config : configuration secteur (couleurs/terminologie) — défaut: beauté
+ *  - title : titre du bloc horaires (défaut: "Horaires d'ouverture")
  */
 
 import { ClockIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
@@ -80,6 +81,7 @@ const BusinessHoursEditor = ({
   onSlotDurationChange,
   showSlotDuration = true,
   config: configProp,
+  title = "Horaires d'ouverture",
 }) => {
   const config = configProp || getBusinessTypeConfig("beauty");
   const term = config.terminology || {};
@@ -173,7 +175,7 @@ const BusinessHoursEditor = ({
       <div>
         <h3 className="text-lg font-medium text-slate-800 mb-4 flex items-center">
           <ClockIcon className="h-5 w-5 mr-2 text-slate-600" />
-          Horaires d'ouverture
+          {title}
         </h3>
         <div className="space-y-4">
           {DAYS.map(({ key, label }) => {

@@ -101,7 +101,7 @@ export const usePublicBooking = (salonSlug) => {
    * Charger les créneaux disponibles pour un service et une date
    */
   const fetchAvailability = useCallback(
-    async (serviceId, date) => {
+    async (serviceId, date, staffId = null) => {
       if (!salonSlug || !serviceId || !date) {
         setError("Paramètres manquants pour récupérer les disponibilités");
         return;
@@ -117,6 +117,7 @@ export const usePublicBooking = (salonSlug) => {
             params: {
               service_id: serviceId,
               date: date,
+              ...(staffId ? { staff_id: staffId } : {}),
             },
           }
         );
@@ -134,6 +135,27 @@ export const usePublicBooking = (salonSlug) => {
         throw err;
       } finally {
         setLoading(false);
+      }
+    },
+    [salonSlug]
+  );
+
+  /**
+   * Professionnels proposés pour une prestation (liste vide si le salon
+   * ne gère pas de disponibilités par employé)
+   */
+  const fetchStaff = useCallback(
+    async (serviceId) => {
+      if (!salonSlug || !serviceId) return [];
+      try {
+        const response = await axios.get(
+          `${API_URL}/public/salon/${salonSlug}/staff`,
+          { params: { service_id: serviceId } }
+        );
+        return response.data.staff || [];
+      } catch (err) {
+        console.error("Erreur fetchStaff:", err);
+        return [];
       }
     },
     [salonSlug]
@@ -201,6 +223,7 @@ export const usePublicBooking = (salonSlug) => {
     fetchServices,
     fetchSettings,
     fetchAvailability,
+    fetchStaff,
     createAppointment,
     resetAvailability,
     clearError,

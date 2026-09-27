@@ -4,7 +4,6 @@ import {
   ArrowDownTrayIcon, 
   XMarkIcon, 
   ShareIcon, 
-  PlusSquareIcon, 
   SparklesIcon 
 } from '@heroicons/react/24/outline';
 

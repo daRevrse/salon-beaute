@@ -3,13 +3,14 @@
  * Multi-Sector Adaptive with Business Type Terminology
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "../components/common/DashboardLayout";
 import { useClients } from "../hooks/useClients";
 import { useAuth } from "../contexts/AuthContext";
 import { usePermissions } from "../contexts/PermissionContext";
 import { getBusinessTypeConfig } from "../utils/businessTypeConfig";
 import ClientHistory from "../components/clients/ClientHistory";
+import Pagination from "../components/common/Pagination";
 import api from "../services/api";
 import {
   EnvelopeIcon,
@@ -36,6 +37,8 @@ const Clients = () => {
   const { tenant } = useAuth();
   const {
     clients,
+    pagination,
+    goToOffset,
     loading,
     createClient,
     updateClient,
@@ -82,10 +85,15 @@ const Clients = () => {
 
   const [sending, setSending] = useState(false);
 
+  // Recherche serveur temporisée (évite une requête à chaque frappe)
+  const searchTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(searchTimerRef.current), []);
+
   const handleSearch = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
-    fetchClients(query);
+    clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => fetchClients(query), 300);
   };
 
   const handleOpenModal = (client = null) => {
@@ -396,25 +404,33 @@ const Clients = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenModal(client);
-                            }}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                          >
-                            <PencilIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              initiateDelete(client.id);
-                            }}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
+                        <div className="flex justify-end gap-2 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100 transition-opacity">
+                          {can.editClient && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenModal(client);
+                              }}
+                              aria-label={`Modifier ${client.first_name} ${client.last_name}`}
+                              title="Modifier"
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                            >
+                              <PencilIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                          {can.deleteClient && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                initiateDelete(client.id);
+                              }}
+                              aria-label={`Supprimer ${client.first_name} ${client.last_name}`}
+                              title="Supprimer"
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -423,6 +439,13 @@ const Clients = () => {
               </table>
             </div>
           )}
+          <Pagination
+            total={pagination.total}
+            limit={pagination.limit}
+            offset={pagination.offset}
+            onChange={goToOffset}
+            itemLabel={term.clients.toLowerCase()}
+          />
         </div>
       </div>
 
