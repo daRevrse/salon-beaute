@@ -13,21 +13,25 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { getBusinessTypeConfig } from "../../utils/businessTypeConfig";
+import useOnboardingProgress from "../../hooks/useOnboardingProgress";
 import {
   CheckIcon,
   BuildingStorefrontIcon,
   ClockIcon,
   SparklesIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import SalonInfoStep from "./steps/SalonInfoStep";
 import HoursStep from "./steps/HoursStep";
 import ServicesStep from "./steps/ServicesStep";
+import TeamStep from "./steps/TeamStep";
 import FinishStep from "./steps/FinishStep";
 
 const STEPS = [
   { key: "info", label: "Infos", icon: BuildingStorefrontIcon },
   { key: "hours", label: "Horaires", icon: ClockIcon },
   { key: "services", label: "Services", icon: SparklesIcon },
+  { key: "team", label: "Équipe", icon: UserGroupIcon },
 ];
 const STEP_KEYS = STEPS.map((s) => s.key);
 
@@ -35,6 +39,14 @@ const OnboardingWizard = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { tenant, user } = useAuth();
+  // Avancement réel (une étape passée n'est pas cochée)
+  const progress = useOnboardingProgress();
+  const doneByStep = {
+    info: progress.salonInfoDone,
+    hours: progress.hoursDone,
+    services: progress.servicesDone,
+    team: progress.teamDone,
+  };
   const config = getBusinessTypeConfig(tenant?.business_type);
   const term = config.terminology;
 
@@ -45,12 +57,14 @@ const OnboardingWizard = () => {
   const [currentStep, setCurrentStep] = useState(initialStep);
 
   const goTo = (key) => {
+    progress.refresh();
     setCurrentStep(key);
     setSearchParams(key === "info" ? {} : { step: key }, { replace: true });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const currentIndex = STEP_KEYS.indexOf(currentStep);
+  const isCurrentStep = (index) => index === currentIndex;
   const isFinish = currentStep === "finish";
 
   const next = () => {
@@ -140,7 +154,7 @@ const OnboardingWizard = () => {
                 <div className="flex items-center justify-between">
                   {STEPS.map((step, index) => {
                     const Icon = step.icon;
-                    const isDone = index < currentIndex;
+                    const isDone = !!doneByStep[step.key] && !isCurrentStep(index);
                     const isCurrent = index === currentIndex;
                     return (
                       <button
@@ -188,8 +202,9 @@ const OnboardingWizard = () => {
             {currentStep === "info" && <SalonInfoStep {...stepProps} />}
             {currentStep === "hours" && <HoursStep {...stepProps} />}
             {currentStep === "services" && <ServicesStep {...stepProps} />}
+            {currentStep === "team" && <TeamStep {...stepProps} />}
             {currentStep === "finish" && (
-              <FinishStep config={config} term={term} user={user} />
+              <FinishStep config={config} term={term} user={user} onGoToStep={goTo} />
             )}
           </div>
         </div>

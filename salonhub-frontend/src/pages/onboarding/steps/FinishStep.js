@@ -1,26 +1,31 @@
 /**
- * FinishStep - Écran de réussite final
- * Marque l'onboarding comme terminé (PUT /settings/onboarding/complete),
- * propose de partager le lien de réservation, puis dirige vers le dashboard.
+ * FinishStep - Écran final de l'assistant
+ * Si le salon est prêt (horaires + services), marque l'onboarding comme
+ * terminé (PUT /settings/onboarding/complete) et propose de partager le lien
+ * de réservation. Sinon, liste ce qui manque avec un accès direct à l'étape.
  */
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../services/api";
 import { useAuth } from "../../../contexts/AuthContext";
+import useOnboardingProgress from "../../../hooks/useOnboardingProgress";
 import {
   CheckCircleIcon,
   ClipboardDocumentIcon,
   ArrowRightIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
-const FinishStep = ({ config, term }) => {
+const FinishStep = ({ config, term, onGoToStep }) => {
   const navigate = useNavigate();
   const { tenant, refreshTenant } = useAuth();
   const [copied, setCopied] = useState(false);
+  const { loading, ready, hoursDone, servicesDone } = useOnboardingProgress();
 
-  // Marquer l'onboarding terminé dès l'arrivée sur cet écran
+  // Marquer l'onboarding terminé uniquement si le salon peut recevoir des réservations
   useEffect(() => {
+    if (loading || !ready) return undefined;
     let active = true;
     api
       .put("/settings/onboarding/complete")
@@ -34,7 +39,7 @@ const FinishStep = ({ config, term }) => {
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loading, ready]);
 
   const bookingUrl = `${window.location.origin}/book/${tenant?.slug || ""}`;
 
@@ -52,6 +57,52 @@ const FinishStep = ({ config, term }) => {
     const text = `Réservez en ligne : ${bookingUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="w-10 h-10 rounded-xl border-2 border-slate-200 border-t-violet-600 animate-elegant-spin" />
+      </div>
+    );
+  }
+
+  if (!ready) {
+    const missing = [
+      !hoursDone && { key: "hours", label: "Renseigner vos horaires d'ouverture" },
+      !servicesDone && { key: "services", label: `Ajouter vos ${term.services.toLowerCase()}` },
+    ].filter(Boolean);
+    return (
+      <div className="text-center animate-fade-in-up py-2">
+        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-2xl bg-amber-100 mb-5">
+          <ExclamationTriangleIcon className="h-9 w-9 text-amber-600" />
+        </div>
+        <h2 className="font-display text-2xl text-slate-800 mb-2">Presque prêt !</h2>
+        <p className="text-slate-500 mb-6 max-w-md mx-auto">
+          Pour que vos {term.clients.toLowerCase()} puissent réserver en ligne, il reste à configurer :
+        </p>
+        <div className="max-w-md mx-auto space-y-2 mb-8 text-left">
+          {missing.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onGoToStep?.(item.key)}
+              className="w-full flex items-center justify-between rounded-xl px-4 py-3 border border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors"
+            >
+              <span className="text-sm font-medium text-slate-700">{item.label}</span>
+              <ArrowRightIcon className="h-4 w-4 text-amber-700" />
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate("/dashboard")}
+          className="text-sm font-medium text-slate-500 hover:text-slate-700"
+        >
+          Je terminerai plus tard depuis le tableau de bord
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="text-center animate-fade-in-up py-2">

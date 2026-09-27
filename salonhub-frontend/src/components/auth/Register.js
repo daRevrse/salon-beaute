@@ -21,6 +21,8 @@ import {
   AcademicCapIcon,
   HeartIcon,
   Squares2X2Icon,
+  EyeIcon,
+  EyeSlashIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon as CheckCircleSolid } from "@heroicons/react/24/solid";
 
@@ -39,9 +41,12 @@ const SECTOR_CONFIGS = {
   default: { icon: BuildingStorefrontIcon, gradient: "from-violet-500 to-indigo-600", lightBg: "bg-violet-50", borderColor: "border-violet-500", textColor: "text-violet-600" }
 };
 
+// Site vitrine (CGU, confidentialité)
+const LANDING_URL = process.env.REACT_APP_LANDING_URL || "https://salonhub.flowkraftagency.com";
+
 const STEPS = [
   { id: 1, name: "Compte", icon: UserIcon },
-  { id: 2, name: "Activite", icon: Squares2X2Icon },
+  { id: 2, name: "Activité", icon: Squares2X2Icon },
 ];
 
 const Register = () => {
@@ -55,26 +60,41 @@ const Register = () => {
   const [googleUserData, setGoogleUserData] = useState(null);
 
   const [businessTypes, setBusinessTypes] = useState([]);
+  const [sectorsState, setSectorsState] = useState("loading"); // loading | ready | error
+  const sectorParam = searchParams.get("sector");
 
-  useEffect(() => {
+  const loadSectors = () => {
+    setSectorsState("loading");
     fetch(`${process.env.REACT_APP_API_URL}/public/business-sectors`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          const types = data.sectors.map(s => {
-            const config = SECTOR_CONFIGS[s.value] || SECTOR_CONFIGS.default;
-            return {
-              id: s.value,
-              name: s.label,
-              description: "",
-              comingSoon: !s.is_active,
-              ...config
-            };
-          });
-          setBusinessTypes(types);
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success) throw new Error("business-sectors");
+        const types = data.sectors.map((s) => {
+          const config = SECTOR_CONFIGS[s.value] || SECTOR_CONFIGS.default;
+          return {
+            id: s.value,
+            name: s.label,
+            description: "",
+            comingSoon: !s.is_active,
+            ...config,
+          };
+        });
+        setBusinessTypes(types);
+        setSectorsState(types.length > 0 ? "ready" : "error");
+        // Secteur présélectionné depuis le site vitrine (?sector=)
+        const preselected = types.find((t) => t.id === sectorParam && !t.comingSoon);
+        if (preselected) {
+          setFormData((prev) => (prev.business_type ? prev : { ...prev, business_type: preselected.id }));
         }
       })
-      .catch(console.error);
+      .catch((err) => {
+        console.error(err);
+        setSectorsState("error");
+      });
+  };
+
+  useEffect(() => {
+    loadSectors();
 
     if (isGoogleFlow) {
       const storedGoogleUser = sessionStorage.getItem("googleUser");
@@ -91,11 +111,13 @@ const Register = () => {
         }));
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGoogleFlow]);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState("");
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     // Owner / Compte
@@ -134,7 +156,7 @@ const Register = () => {
 
     if (step === 1) {
       if (!formData.first_name || !formData.last_name || !formData.email) {
-        setError("Le prenom, nom et email sont obligatoires");
+        setError("Le prénom, le nom et l'email sont obligatoires");
         return false;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -149,7 +171,7 @@ const Register = () => {
           return false;
         }
         if (formData.password.length < 8) {
-          setError("Le mot de passe doit contenir au moins 8 caracteres");
+          setError("Le mot de passe doit contenir au moins 8 caractères");
           return false;
         }
         if (formData.password !== formData.password_confirm) {
@@ -161,11 +183,11 @@ const Register = () => {
 
     if (step === 2) {
       if (!formData.business_type) {
-        setError("Veuillez selectionner votre type d'activite");
+        setError("Veuillez sélectionner votre type d'activité");
         return false;
       }
       if (!formData.salon_name) {
-        setError("Le nom de l'etablissement est obligatoire");
+        setError("Le nom de l'établissement est obligatoire");
         return false;
       }
     }
@@ -187,7 +209,7 @@ const Register = () => {
         });
         if (!res.data?.available) {
           setError(
-            "Cet email est deja utilise. Connectez-vous ou choisissez une autre adresse."
+            "Cet email est déjà utilisé. Connectez-vous ou choisissez une autre adresse."
           );
           return;
         }
@@ -210,6 +232,12 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    // Entrée à l'étape 1 : passer à l'étape suivante
+    if (currentStep < STEPS.length) {
+      await handleNext();
+      return;
+    }
 
     if (!validateStep(2)) return;
 
@@ -244,7 +272,14 @@ const Register = () => {
   const getEstablishmentLabel = () => {
     switch (formData.business_type) {
       case "beauty":
+      case "coiffure":
+      case "barbier":
+      case "onglerie":
         return "salon";
+      case "institut":
+      case "spa":
+      case "massage":
+        return "institut";
       case "restaurant":
         return "restaurant";
       case "training":
@@ -252,7 +287,7 @@ const Register = () => {
       case "medical":
         return "cabinet";
       default:
-        return "etablissement";
+        return "établissement";
     }
   };
 
@@ -275,7 +310,7 @@ const Register = () => {
               <span className="font-display text-2xl text-slate-800 tracking-tight">SalonHub</span>
             </Link>
             <h1 className="font-display text-display-sm sm:text-display-md text-slate-800 mb-3">
-              Creez votre compte
+              Créez votre compte
             </h1>
             <p className="text-slate-500 text-lg">
               14 jours d'essai gratuit, sans carte bancaire
@@ -359,12 +394,30 @@ const Register = () => {
                       <Squares2X2Icon className="h-8 w-8 text-violet-700" />
                     </div>
                     <h3 className="font-display text-2xl text-slate-800 mb-2">
-                      Quelle est votre activite ?
+                      Quelle est votre activité ?
                     </h3>
                     <p className="text-slate-500">
-                      Selectionnez le type qui correspond a votre etablissement
+                      Sélectionnez le type qui correspond à votre établissement
                     </p>
                   </div>
+
+                  {sectorsState === "loading" && (
+                    <div className="flex items-center justify-center py-10 text-slate-500" role="status">
+                      <div className="w-8 h-8 rounded-xl border-2 border-slate-200 border-t-violet-600 animate-elegant-spin mr-3" />
+                      Chargement des activités...
+                    </div>
+                  )}
+
+                  {sectorsState === "error" && (
+                    <div className="text-center py-8 px-4 rounded-2xl border border-red-100 bg-red-50">
+                      <p className="text-sm text-red-800 mb-3">
+                        Impossible de charger la liste des activités. Vérifiez votre connexion.
+                      </p>
+                      <button type="button" onClick={loadSectors} className="btn-premium-secondary">
+                        Réessayer
+                      </button>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {businessTypes.map((type) => {
@@ -378,6 +431,7 @@ const Register = () => {
                           type="button"
                           onClick={() => selectBusinessType(type.id)}
                           disabled={isDisabled}
+                          aria-pressed={isSelected}
                           className={`
                             relative flex items-start gap-4 p-6 rounded-2xl
                             transition-all duration-300 ease-premium text-left
@@ -395,7 +449,7 @@ const Register = () => {
                             <div className="absolute top-3 right-3">
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-amber-400 to-orange-400 text-white shadow-sm">
                                 <SparklesIcon className="h-3 w-3" />
-                                Soon
+                                Bientôt
                               </span>
                             </div>
                           )}
@@ -435,9 +489,11 @@ const Register = () => {
                             <span className={`font-display text-lg block mb-1 ${isDisabled ? "text-slate-400" : "text-slate-800"}`}>
                               {type.name}
                             </span>
-                            <span className={`text-sm block ${isDisabled ? "text-slate-400" : "text-slate-500"}`}>
-                              {type.description}
-                            </span>
+                            {type.description && (
+                              <span className={`text-sm block ${isDisabled ? "text-slate-400" : "text-slate-500"}`}>
+                                {type.description}
+                              </span>
+                            )}
                           </div>
                         </button>
                       );
@@ -458,14 +514,14 @@ const Register = () => {
                       className="input-premium"
                       placeholder={
                         formData.business_type === "beauty"
-                          ? "Salon Beaute Paris"
+                          ? "Salon Beauté Paris"
                           : formData.business_type === "restaurant"
                           ? "Le Petit Bistrot"
                           : formData.business_type === "training"
                           ? "Academy Pro Formation"
                           : formData.business_type === "medical"
-                          ? "Cabinet Medical du Centre"
-                          : "Nom de l'etablissement"
+                          ? "Cabinet Médical du Centre"
+                          : "Nom de l'établissement"
                       }
                     />
                   </div>
@@ -483,15 +539,16 @@ const Register = () => {
                       Votre compte
                     </h3>
                     <p className="text-slate-500">
-                      Creez vos identifiants de connexion
+                      Créez vos identifiants de connexion
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <label className="label-premium">Prenom *</label>
+                      <label className="label-premium" htmlFor="first_name">Prénom *</label>
                       <input
                         type="text"
+                        id="first_name"
                         name="first_name"
                         required
                         value={formData.first_name}
@@ -502,9 +559,10 @@ const Register = () => {
                     </div>
 
                     <div>
-                      <label className="label-premium">Nom *</label>
+                      <label className="label-premium" htmlFor="last_name">Nom *</label>
                       <input
                         type="text"
+                        id="last_name"
                         name="last_name"
                         required
                         value={formData.last_name}
@@ -516,13 +574,14 @@ const Register = () => {
                   </div>
 
                   <div>
-                    <label className="label-premium">Votre email *</label>
+                    <label className="label-premium" htmlFor="email">Votre email *</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <EnvelopeIcon className="h-5 w-5 text-slate-300" />
                       </div>
                       <input
                         type="email"
+                        id="email"
                         name="email"
                         required
                         value={formData.email}
@@ -543,40 +602,52 @@ const Register = () => {
                   {!isGoogleFlow && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
-                        <label className="label-premium">Mot de passe *</label>
+                        <label className="label-premium" htmlFor="password">Mot de passe *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <LockClosedIcon className="h-5 w-5 text-slate-300" />
                           </div>
                           <input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
+                            autoComplete="new-password"
+                            id="password"
                             name="password"
                             required
                             value={formData.password}
                             onChange={handleChange}
-                            className="input-premium input-premium-icon"
-                            placeholder="Min. 8 caracteres"
+                            className="input-premium input-premium-icon pr-12"
+                            placeholder="8 caractères minimum"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((v) => !v)}
+                            aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600"
+                          >
+                            {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                          </button>
                         </div>
                         <p className="mt-1.5 text-xs text-slate-400">
-                          Au moins 8 caracteres
+                          Au moins 8 caractères
                         </p>
                       </div>
 
                       <div>
-                        <label className="label-premium">Confirmer *</label>
+                        <label className="label-premium" htmlFor="password_confirm">Confirmer *</label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <LockClosedIcon className="h-5 w-5 text-slate-300" />
                           </div>
                           <input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
+                            autoComplete="new-password"
+                            id="password_confirm"
                             name="password_confirm"
                             required
                             value={formData.password_confirm}
                             onChange={handleChange}
-                            className="input-premium input-premium-icon"
-                            placeholder="Meme mot de passe"
+                            className="input-premium input-premium-icon pr-12"
+                            placeholder="Même mot de passe"
                           />
                         </div>
                       </div>
@@ -610,7 +681,7 @@ const Register = () => {
                     className="btn-premium-secondary group"
                   >
                     <ArrowLeftIcon className="h-5 w-5 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
-                    Precedent
+                    Précédent
                   </button>
                 ) : (
                   <Link
@@ -624,8 +695,7 @@ const Register = () => {
 
                 {currentStep < 2 ? (
                   <button
-                    type="button"
-                    onClick={handleNext}
+                    type="submit"
                     disabled={checkingEmail}
                     className="btn-premium group"
                   >
@@ -651,7 +721,7 @@ const Register = () => {
                             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                           />
                         </svg>
-                        Verification...
+                        Vérification...
                       </span>
                     ) : (
                       <>
@@ -688,11 +758,11 @@ const Register = () => {
                             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                           />
                         </svg>
-                        Creation...
+                        Création...
                       </span>
                     ) : (
                       <span className="flex items-center">
-                        Creer mon compte
+                        Créer mon compte
                         <CheckCircleIcon className="h-5 w-5 ml-2" />
                       </span>
                     )}
@@ -705,13 +775,13 @@ const Register = () => {
           {/* Footer */}
           <div className="mt-8 text-center text-sm text-slate-500">
             <p>
-              En creant un compte, vous acceptez nos{" "}
-              <a href="#" className="link-premium">
+              En créant un compte, vous acceptez nos{" "}
+              <a href={`${LANDING_URL}/cgu.html`} target="_blank" rel="noopener noreferrer" className="link-premium">
                 Conditions d'utilisation
               </a>{" "}
               et notre{" "}
-              <a href="#" className="link-premium">
-                Politique de confidentialite
+              <a href={`${LANDING_URL}/confidentialite.html`} target="_blank" rel="noopener noreferrer" className="link-premium">
+                Politique de confidentialité
               </a>
             </p>
           </div>

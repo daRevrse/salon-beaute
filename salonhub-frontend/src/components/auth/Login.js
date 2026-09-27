@@ -103,7 +103,7 @@ const Login = () => {
                 </span>
               </h1>
               <p className="text-violet-200/80 text-lg max-w-md leading-relaxed">
-                Gerez votre activite avec elegance. Une solution adaptee a chaque secteur : beaute, restauration, formation et sante.
+                Gérez votre activité avec élégance. Une solution adaptée à chaque secteur : beauté, restauration, formation et santé.
               </p>
             </div>
 
@@ -112,7 +112,7 @@ const Login = () => {
               {[
                 "Agenda intelligent & reservations",
                 "Gestion clientele premium",
-                "Analyses & statistiques avancees"
+                "Analyses & statistiques avancées"
               ].map((feature, index) => (
                 <div
                   key={index}
@@ -128,7 +128,7 @@ const Login = () => {
 
           {/* Footer */}
           <div className="relative z-10 text-violet-300/50 text-sm">
-            <p>&copy; 2024 SalonHub. Tous droits reserves.</p>
+            <p>&copy; {new Date().getFullYear()} SalonHub. Tous droits réservés.</p>
           </div>
         </div>
 
@@ -149,7 +149,7 @@ const Login = () => {
                 Bon retour
               </h2>
               <p className="text-slate-500">
-                Connectez-vous a votre espace
+                Connectez-vous à votre espace
               </p>
             </div>
 
@@ -205,7 +205,7 @@ const Login = () => {
                       to={tenant ? `/${tenant}/forgot-password` : "/forgot-password"}
                       className="text-sm font-medium text-violet-600 hover:text-violet-700 transition-colors"
                     >
-                      Mot de passe oublie ?
+                      Mot de passe oublié ?
                     </Link>
                   </div>
                   <div className="relative group">
@@ -330,7 +330,7 @@ const Login = () => {
                     to={tenant ? `/${tenant}/register` : "/register"}
                     className="link-premium"
                   >
-                    Creer un compte
+                    Créer un compte
                   </Link>
                 </p>
               </div>

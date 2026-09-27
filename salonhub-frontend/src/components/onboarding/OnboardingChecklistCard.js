@@ -2,8 +2,9 @@
  * OnboardingChecklistCard - Carte de reprise de configuration (dashboard)
  *
  * Remplace l'ancienne alerte rouge anxiogène : présente de façon rassurante
- * les étapes restantes (Infos / Horaires / Services) avec une barre de
- * progression, et permet de reprendre l'assistant là où on s'est arrêté.
+ * les étapes restantes (Infos / Horaires / Services, puis Équipe en option)
+ * avec une barre de progression, et permet de reprendre l'assistant là où
+ * on s'est arrêté.
  * Masquée lorsque l'onboarding est terminé ou que l'utilisateur la ferme.
  */
 
@@ -26,6 +27,7 @@ const OnboardingChecklistCard = () => {
     salonInfoDone,
     hoursDone,
     servicesDone,
+    teamDone,
     doneCount,
     totalSteps,
     completed,
@@ -52,6 +54,12 @@ const OnboardingChecklistCard = () => {
     },
     { key: "hours", label: "Configurer vos horaires d'ouverture", done: hoursDone },
     { key: "services", label: "Ajouter vos premiers services", done: servicesDone },
+    {
+      key: "team",
+      label: "Ajouter votre équipe",
+      optional: true,
+      done: teamDone,
+    },
   ];
 
   return (
@@ -119,6 +127,9 @@ const OnboardingChecklistCard = () => {
                 >
                   {step.label}
                 </span>
+                {step.optional && !step.done && (
+                  <span className="text-xs text-slate-400">(facultatif)</span>
+                )}
               </div>
               {!step.done && (
                 <ChevronRightIcon className="h-5 w-5 text-slate-400" />

@@ -8,7 +8,7 @@
  * partagé conserve la sélection.
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useLocation, useSearchParams } from "react-router-dom";
 import usePublicBooking from "../../hooks/usePublicBooking";
 import { useCurrency } from "../../contexts/CurrencyContext";
@@ -81,6 +81,8 @@ const BookingDateTime = () => {
   const initialStaff = location.state?.staff?.id || Number(searchParams.get("staff")) || null;
   const [selectedStaffId, setSelectedStaffId] = useState(initialStaff);
   const [availabilityMessage, setAvailabilityMessage] = useState(null);
+  // Jour choisi automatiquement (pas par le client) : on avance jusqu'au premier jour disponible
+  const autoPickRef = useRef(!(location.state?.date || searchParams.get("date")));
   const selectedStaff = staffOptions.find((m) => m.id === selectedStaffId) || null;
 
   const today = toDateKey(new Date());
@@ -144,10 +146,27 @@ const BookingDateTime = () => {
     if (selectedDate && service) {
       setAvailabilityMessage(null);
       fetchAvailability(service.id, selectedDate, selectedStaffId)
-        .then((result) => setAvailabilityMessage(result?.message || null))
+        .then((result) => {
+          setAvailabilityMessage(result?.message || null);
+          if (autoPickRef.current && (result?.slots || []).length === 0) {
+            // Plus de créneau ce jour-là (ex. aujourd'hui en fin de journée) : jour ouvert suivant
+            const index = days.findIndex((d) => d.key === selectedDate);
+            const next = days.slice(index + 1).find((d) => !d.closed);
+            if (next) setSelectedDate(next.key);
+            else autoPickRef.current = false;
+          } else {
+            autoPickRef.current = false;
+          }
+        })
         .catch(() => {});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, selectedStaffId, service, fetchAvailability]);
+
+  const chooseDate = (key) => {
+    autoPickRef.current = false;
+    setSelectedDate(key);
+  };
 
   // Garder la sélection dans l'URL
   useEffect(() => {
@@ -335,7 +354,7 @@ const BookingDateTime = () => {
                     aria-checked={isSelected}
                     aria-label={`${day.date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}${day.closed ? " (fermé)" : ""}`}
                     disabled={day.closed}
-                    onClick={() => setSelectedDate(day.key)}
+                    onClick={() => chooseDate(day.key)}
                     className={`flex-shrink-0 w-16 py-2.5 rounded-2xl border-2 text-center transition-all ${
                       day.closed
                         ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
@@ -360,7 +379,7 @@ const BookingDateTime = () => {
                 type="date"
                 value={isOtherDate ? selectedDate : ""}
                 min={today}
-                onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                onChange={(e) => e.target.value && chooseDate(e.target.value)}
                 className="px-3 py-1.5 border border-slate-200 rounded-xl text-sm text-slate-700 bg-white"
               />
             </label>

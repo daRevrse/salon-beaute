@@ -7,8 +7,13 @@
  *  - horaires    : GET /settings        (au moins un jour ouvert valide)
  *  - services    : GET /services        (au moins un service)
  *
- * L'onboarding est considéré comme terminé si toutes les étapes sont faites
- * OU si tenant.onboarding_status === 'completed'.
+ *  - équipe      : GET /auth/staff     (au moins un membre hors propriétaire,
+ *                  étape facultative, non comptée dans la progression)
+ *
+ * "Prêt" = horaires + services : le salon peut recevoir des réservations.
+ * L'onboarding est terminé si toutes les étapes sont faites, ou s'il a été
+ * marqué complété ET que le salon est prêt (le marquage seul ne masque plus
+ * la checklist tant qu'il manque l'essentiel).
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -45,16 +50,19 @@ export default function useOnboardingProgress() {
     salonInfoDone: false,
     hoursDone: false,
     servicesDone: false,
+    teamDone: false,
   });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [salonRes, settingsRes, servicesRes] = await Promise.all([
+      const [salonRes, settingsRes, servicesRes, staffRes] = await Promise.all([
         api.get("/settings/salon").catch(() => null),
         api.get("/settings").catch(() => null),
         api.get("/services").catch(() => null),
+        api.get("/auth/staff").catch(() => null),
       ]);
+      const staff = staffRes?.data?.data || [];
 
       const salon = salonRes?.data?.data || {};
       const settings = settingsRes?.data || {};
@@ -67,6 +75,7 @@ export default function useOnboardingProgress() {
         ),
         hoursDone: hasValidBusinessHours(settings.business_hours),
         servicesDone: Array.isArray(services) && services.length > 0,
+        teamDone: staff.some((member) => member.role !== "owner"),
       });
     } catch (err) {
       console.error("Erreur calcul progression onboarding:", err);
@@ -79,23 +88,25 @@ export default function useOnboardingProgress() {
     load();
   }, [load]);
 
-  const { salonInfoDone, hoursDone, servicesDone } = progress;
+  const { salonInfoDone, hoursDone, servicesDone, teamDone } = progress;
   const doneCount = [salonInfoDone, hoursDone, servicesDone].filter(
     Boolean
   ).length;
   const totalSteps = 3;
   const allDone = doneCount === totalSteps;
+  const ready = hoursDone && servicesDone;
 
   return {
     loading,
     salonInfoDone,
     hoursDone,
     servicesDone,
+    teamDone,
+    ready,
     doneCount,
     totalSteps,
     allDone,
-    // L'onboarding est terminé si tout est fait OU marqué complété côté serveur
-    completed: completedFlag || allDone,
+    completed: allDone || (completedFlag && ready),
     refresh: load,
   };
 }
